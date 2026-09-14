@@ -51,8 +51,11 @@ function columnasBuk(): array
         ["AFP Recaudadora", null, null, null],
         ["Aumentar la cotización en 1%*", null, null, null],
         ["Fonasa/Isapre*", "d", "isapre_fonasa", "texto"],
-        ["Plan Isapre UF*", null, null, null],
-        ["Plan Isapre Pesos*", null, null, null],
+        // v10.14 (pedido explícito del usuario): solo el JAO las llena,
+        // y solo cuando el postulante está en una Isapre real (no
+        // Fonasa) -- ver guardar_datos_jao.php / dashboard-admin-general.js.
+        ["Plan Isapre UF*", "j", "plan_isapre_uf", "texto"],
+        ["Plan Isapre Pesos*", "j", "plan_isapre_pesos", "texto"],
         ["Plan Isapre Porcentual*", null, null, null],
         ["AFC*", "j", "afc", "texto"],
         ["Jubilado", "j", "jubilado", "texto"],

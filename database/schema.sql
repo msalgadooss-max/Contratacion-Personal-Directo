@@ -404,6 +404,13 @@ CREATE TABLE datos_jao (
     bono_obra                       VARCHAR(50) NULL,
     retencion_judicial              VARCHAR(20) NOT NULL DEFAULT 'No está',
     seguro_covid_fecha_inicio       DATE NULL,
+    -- v10.14 (pedido explícito del usuario, tras revisar un envío real a
+    -- Buk): solo aplican cuando el postulante está en una Isapre real
+    -- (datos_contratacion.isapre_fonasa <> 'Fonasa') -- el JAO las llena
+    -- a mano en ese caso. Si está en Fonasa, quedan NULL a propósito
+    -- (el exportador las deja en blanco, no en "0").
+    plan_isapre_uf                  DECIMAL(10,2) NULL,
+    plan_isapre_pesos               INT UNSIGNED NULL,
     discapacidad                    VARCHAR(10) NOT NULL DEFAULT 'No',
     fecha_notif_discapacidad        DATE NULL,
     invalidez                       VARCHAR(60) NOT NULL DEFAULT 'No',

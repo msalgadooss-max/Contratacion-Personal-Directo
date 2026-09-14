@@ -51,6 +51,17 @@ $fechaReconocimiento = limpiarTexto($body['fecha_reconocimiento'] ?? '', 10);
 $seguroCovidFecha = limpiarTexto($body['seguro_covid_fecha_inicio'] ?? '', 10);
 $fechaNotifDiscapacidad = limpiarTexto($body['fecha_notif_discapacidad'] ?? '', 10);
 $fechaNotifInvalidez = limpiarTexto($body['fecha_notif_invalidez'] ?? '', 10);
+// v10.14 (pedido explícito del usuario): solo aplican si el postulante
+// está en una Isapre real -- el frontend solo muestra estos 2 campos en
+// ese caso, pero igual se valida acá por si llegan de otra forma.
+$planIsapreUf = limpiarTexto($body['plan_isapre_uf'] ?? '', 20);
+$planIsaprePesos = limpiarTexto($body['plan_isapre_pesos'] ?? '', 20);
+if ($planIsapreUf !== '' && !is_numeric($planIsapreUf)) {
+    responderError('Plan Isapre UF debe ser un número.', 422);
+}
+if ($planIsaprePesos !== '' && !ctype_digit($planIsaprePesos)) {
+    responderError('Plan Isapre Pesos debe ser un número entero.', 422);
+}
 
 foreach ($campos as $nombreCampo => $valor) {
     if ($valor === '') {
@@ -89,12 +100,12 @@ $stmt = $pdo->prepare(
     'INSERT INTO datos_jao
         (postulacion_id, codigo_ficha, ingreso_compania, forma_pago, regimen_previsional, afc,
          jubilado, escala_sueldo, proceso, tipo_transfer, fecha_reconocimiento, recomendado,
-         bono_obra, retencion_judicial, seguro_covid_fecha_inicio,
+         bono_obra, retencion_judicial, seguro_covid_fecha_inicio, plan_isapre_uf, plan_isapre_pesos,
          discapacidad, fecha_notif_discapacidad, invalidez, fecha_notif_invalidez, creado_por)
      VALUES
         (:postulacion_id, :codigo_ficha, :ingreso_compania, :forma_pago, :regimen_previsional, :afc,
          :jubilado, :escala_sueldo, :proceso, :tipo_transfer, :fecha_reconocimiento, :recomendado,
-         :bono_obra, :retencion_judicial, :seguro_covid_fecha_inicio,
+         :bono_obra, :retencion_judicial, :seguro_covid_fecha_inicio, :plan_isapre_uf, :plan_isapre_pesos,
          :discapacidad, :fecha_notif_discapacidad, :invalidez, :fecha_notif_invalidez, :creado_por)
      ON DUPLICATE KEY UPDATE
         codigo_ficha = VALUES(codigo_ficha), ingreso_compania = VALUES(ingreso_compania),
@@ -104,6 +115,7 @@ $stmt = $pdo->prepare(
         fecha_reconocimiento = VALUES(fecha_reconocimiento), recomendado = VALUES(recomendado),
         bono_obra = VALUES(bono_obra), retencion_judicial = VALUES(retencion_judicial),
         seguro_covid_fecha_inicio = VALUES(seguro_covid_fecha_inicio),
+        plan_isapre_uf = VALUES(plan_isapre_uf), plan_isapre_pesos = VALUES(plan_isapre_pesos),
         discapacidad = VALUES(discapacidad), fecha_notif_discapacidad = VALUES(fecha_notif_discapacidad),
         invalidez = VALUES(invalidez), fecha_notif_invalidez = VALUES(fecha_notif_invalidez)'
 );
@@ -123,6 +135,8 @@ $stmt->execute([
     'bono_obra' => $bonoObra !== '' ? $bonoObra : null,
     'retencion_judicial' => $campos['retencion_judicial'],
     'seguro_covid_fecha_inicio' => $seguroCovidFecha !== '' ? $seguroCovidFecha : null,
+    'plan_isapre_uf' => $planIsapreUf !== '' ? $planIsapreUf : null,
+    'plan_isapre_pesos' => $planIsaprePesos !== '' ? $planIsaprePesos : null,
     'discapacidad' => $campos['discapacidad'],
     'fecha_notif_discapacidad' => $fechaNotifDiscapacidad !== '' ? $fechaNotifDiscapacidad : null,
     'invalidez' => $campos['invalidez'],

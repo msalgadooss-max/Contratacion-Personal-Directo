@@ -85,13 +85,14 @@ foreach ($filas as $filaIdx => $fila) {
         }
         // v10.14 (pedido explícito del usuario): confirmado contra un
         // envío real de Luis López a Buk (Ariel Torres / Elin Sánchez) --
-        // estas 4 columnas quedaban en blanco pero Buk sí las necesita.
+        // estas columnas quedaban en blanco pero Buk sí las necesita.
+        // Plan Isapre UF/Pesos ya no se fuerza a "0" -- el JAO las llena
+        // a mano solo cuando corresponde (Isapre real, no Fonasa) y si
+        // no, quedan en blanco (columnasBuk() ya las mapea a datos_jao).
         if ($encabezado === 'Teléfono Oficina') {
             $valor = (string)($fila['telefono'] ?? '');
         } elseif ($encabezado === 'Email') {
             $valor = (string)($fila['correo'] ?? '');
-        } elseif ($encabezado === 'Plan Isapre UF*' || $encabezado === 'Plan Isapre Pesos*') {
-            $valor = '0'; // en el envío real, "0" explícito -- no vacío -- para quien no está en Isapre.
         } elseif ($encabezado === 'Bono Target') {
             $valor = 'BT_00'; // mismo valor fijo en ambos casos reales revisados.
         }

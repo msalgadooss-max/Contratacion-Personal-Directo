@@ -244,7 +244,7 @@ function tarjeta(p) {
                      <span class="text-xs text-gray-400 bg-gray-50 px-2 py-1 rounded-md font-medium" title="Portería aún no confirma que llegó a faena">⏳ Esperando ingreso a faena</span>
                      <button class="text-xs text-blue-600 underline" onclick="confirmarIngresoFaenaManual(${p.id})" title="Úsalo si la persona ya está físicamente acá pero Portería no alcanzó a escanear su QR">Confirmar manualmente</button>
                    </span>`)}
-          <button class="bg-gray-800 hover:bg-gray-900 text-white text-xs font-semibold px-3 py-2 rounded-lg" onclick="toggleFormJao(${p.id})">
+          <button class="bg-gray-800 hover:bg-gray-900 text-white text-xs font-semibold px-3 py-2 rounded-lg" onclick="toggleFormJao(${p.id}, '${(p.isapre_fonasa || '').replace(/'/g, "\\'")}')">
             ${p.tiene_datos_jao ? 'Editar datos de nómina' : 'Completar datos de nómina'}
           </button>
           <button class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-3 py-2 rounded-lg disabled:opacity-40"
@@ -282,7 +282,7 @@ function tarjeta(p) {
     </div>`;
 }
 
-function toggleFormJao(id) {
+function toggleFormJao(id, isapreFonasa) {
   const cont = document.getElementById(`form-jao-${id}`);
   if (!cont.classList.contains('hidden')) {
     cont.classList.add('hidden');
@@ -290,7 +290,7 @@ function toggleFormJao(id) {
     return;
   }
   cont.classList.remove('hidden');
-  cont.innerHTML = formularioJao(id);
+  cont.innerHTML = formularioJao(id, isapreFonasa);
   activarAutocompletadoFechasJao(id);
 }
 
@@ -309,8 +309,18 @@ function activarAutocompletadoFechasJao(id) {
   });
 }
 
-function formularioJao(id) {
+function formularioJao(id, isapreFonasa) {
   const l = LISTAS;
+  // v10.14 (pedido explícito del usuario, tras revisar un envío real a
+  // Buk): "Plan Isapre UF"/"Plan Isapre Pesos" solo corresponden cuando
+  // el postulante está en una Isapre real, no en Fonasa -- si no,
+  // quedan en blanco en el archivo, no hay nada que el JAO deba llenar.
+  const tieneIsapre = isapreFonasa && isapreFonasa !== 'Fonasa';
+  const camposIsapreHtml = tieneIsapre ? `
+      <div><label class="block text-xs text-gray-600 mb-1">Plan Isapre UF <span class="text-gray-400">(esta persona está en ${isapreFonasa})</span></label>
+        <input id="jao-plan_isapre_uf-${id}" type="number" step="0.01" min="0" class="w-full border border-gray-300 rounded-lg px-2 py-1.5"></div>
+      <div><label class="block text-xs text-gray-600 mb-1">Plan Isapre Pesos</label>
+        <input id="jao-plan_isapre_pesos-${id}" type="number" step="1" min="0" class="w-full border border-gray-300 rounded-lg px-2 py-1.5"></div>` : '';
   return `
     <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Datos de nómina (Buk)</p>
     <div class="grid grid-cols-2 gap-3 text-sm">
@@ -323,6 +333,9 @@ function formularioJao(id) {
         <select id="jao-forma_pago-${id}" class="w-full border border-gray-300 rounded-lg px-2 py-1.5"><option value="">Selecciona</option>${opciones(l.forma_pago)}</select></div>
       <div><label class="block text-xs text-gray-600 mb-1">Régimen previsional</label>
         <select id="jao-regimen_previsional-${id}" class="w-full border border-gray-300 rounded-lg px-2 py-1.5"><option value="">Selecciona</option>${opciones(l.regimen_previsional)}</select></div>
+      <div></div>
+
+      ${camposIsapreHtml}
 
       <div><label class="block text-xs text-gray-600 mb-1">AFC</label>
         <select id="jao-afc-${id}" class="w-full border border-gray-300 rounded-lg px-2 py-1.5"><option value="">Selecciona</option>${opciones(l.afc)}</select></div>
@@ -368,6 +381,10 @@ function formularioJao(id) {
 
 async function guardarDatosJao(id) {
   const campo = (nombre) => document.getElementById(`jao-${nombre}-${id}`).value;
+  // v10.14: Plan Isapre UF/Pesos solo existen en el DOM cuando el
+  // postulante está en una Isapre real (ver formularioJao) -- si no,
+  // no hay campo que leer, y no corresponde exigirlo.
+  const campoOpcional = (nombre) => document.getElementById(`jao-${nombre}-${id}`)?.value || '';
   const body = {
     postulacion_id: id,
     codigo_ficha: campo('codigo_ficha'),
@@ -384,6 +401,8 @@ async function guardarDatosJao(id) {
     bono_obra: campo('bono_obra'),
     retencion_judicial: campo('retencion_judicial'),
     seguro_covid_fecha_inicio: campo('seguro_covid_fecha_inicio'),
+    plan_isapre_uf: campoOpcional('plan_isapre_uf'),
+    plan_isapre_pesos: campoOpcional('plan_isapre_pesos'),
     discapacidad: campo('discapacidad'),
     fecha_notif_discapacidad: campo('fecha_notif_discapacidad'),
     invalidez: campo('invalidez'),
