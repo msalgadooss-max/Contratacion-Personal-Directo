@@ -11,11 +11,16 @@
  * Roa / Elin Sánchez Molina, 10-09) -- reveló una columna obligatoria
  * que no existía en la plantilla en blanco que se había analizado antes
  * ("ctrlit_recinto*") y varios valores que resultaron ser constantes
- * fijas para esta obra, no datos por persona. Todo lo confirmado contra
- * ese envío real queda con su valor; lo que sigue sin dato real
- * confirmado (Sueldo Base, Horario Semanal, Supervisor, Término de
- * Contrato) queda en blanco -- ver la conversación con el usuario sobre
- * si conviene fijarlos como default o seguir dejándolos manuales.
+ * fijas para esta obra, no datos por persona.
+ *
+ * Confirmado explícitamente por el usuario después de ver ese envío:
+ * Horario Semanal (42) y el Supervisor (RUT + código de ficha) son
+ * fijos para todo el personal MOD de esta obra -- ver
+ * OBRA_HORARIO_SEMANAL_MOD_BUK / OBRA_SUPERVISOR_RUT_BUK /
+ * OBRA_SUPERVISOR_FICHA_BUK en config.php. El Sueldo Base sigue en
+ * blanco a propósito ("el sueldo dejémoslo en blanco mientras tanto"),
+ * igual que Término de Contrato (varía por persona, sin dato real
+ * capturado todavía en la app).
  */
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../includes/auth.php';
@@ -108,14 +113,14 @@ foreach ($filas as $filaIdx => $f) {
     $valores = [
         $f['rut'],                  // Número de Documento*
         $f['codigo_ficha'] ?? '',   // Código de Ficha
-        '',                         // Sueldo Base* -- sin dato real capturado aún, ver conversación
+        '',                         // Sueldo Base* -- pedido explícito del usuario: sigue en blanco
         'CLP',                      // Moneda*
         $fechaInicio,               // Fecha de Inicio*
-        '',                         // Horario Semanal* -- sin dato real capturado aún, ver conversación
+        OBRA_HORARIO_SEMANAL_MOD_BUK, // Horario Semanal* -- confirmado por el usuario como default MOD
         $f['cargo_codigo'] ?? '',   // Código Cargo*
         OBRA_SUBAREA_BUK,           // Código Sub-área*
-        '',                         // Número de Documento Supervisor* -- ver conversación
-        '',                         // Código de Ficha Supervisor -- ver conversación
+        OBRA_SUPERVISOR_RUT_BUK,    // Número de Documento Supervisor* -- confirmado por el usuario
+        OBRA_SUPERVISOR_FICHA_BUK,  // Código de Ficha Supervisor -- confirmado por el usuario
         'Plazo fijo',               // Tipo de Contrato* -- estándar para MOD, confirmado en envío real
         OBRA_CODIGO_CORTO_BUK,      // Obra
         '',                         // Comuna/Localidad -- Luis también la deja en blanco
