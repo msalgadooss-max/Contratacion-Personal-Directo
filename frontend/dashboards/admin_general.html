@@ -33,18 +33,19 @@
     <div id="alerta"></div>
     <div id="estado-vivo"></div>
 
-    <!-- v10.14 (pedido explícito del usuario, item 15): antes era solo
-         un interruptor manual, sin fechas -- ahora se puede programar
-         una ventana. Mientras hoy caiga dentro de esas fechas (o el
-         interruptor manual esté prendido), "Finalizar Contratación"
-         queda bloqueado, y "Solicitar Cupos" de Jefe de Terreno sigue
-         funcionando pero con un aviso de que los cupos demorarán en
-         liberarse. -->
+    <!-- v10.14 (pedido explícito del usuario, item 15; corregido después
+         al ver el bloqueo funcionando al revés): desde/hasta es la
+         VENTANA EN QUE SÍ SE PUEDE CONTRATAR ("podemos contratar a un
+         trabajador en este rango de fechas solamente"). Fuera de esas
+         fechas (o con el interruptor manual prendido), "Finalizar
+         Contratación" queda bloqueado, y "Solicitar Cupos" de Jefe de
+         Terreno sigue funcionando pero con un aviso de que los cupos
+         demorarán en liberarse. -->
     <div class="bg-white rounded-xl shadow-sm p-4 mb-6">
       <div class="flex items-center justify-between flex-wrap gap-3 mb-3">
         <div>
-          <p class="text-sm font-semibold text-gray-800">Cierre de remuneraciones</p>
-          <p class="text-xs text-gray-500">Programa la ventana real de tu software de remuneraciones -- el resto del proceso sigue funcionando normalmente, solo "Finalizar Contratación" se bloquea en esas fechas.</p>
+          <p class="text-sm font-semibold text-gray-800">Ventana de contratación (remuneraciones)</p>
+          <p class="text-xs text-gray-500">Define las fechas en que remuneraciones SÍ está procesando y se puede contratar -- el resto del proceso sigue funcionando normalmente, solo "Finalizar Contratación" se bloquea fuera de esas fechas.</p>
         </div>
         <span id="badge-cierre" class="px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-500 shrink-0">Cargando...</span>
       </div>

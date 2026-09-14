@@ -407,13 +407,16 @@ async function firmarContrato(id) {
   }
 }
 
+// v10.14 (corrección): CIERRE_ACTIVO = true significa "fuera de la
+// ventana habilitada" (o cierre manual de emergencia) -- contrataciones
+// bloqueadas. "Abierto" es cuando hoy cae dentro de la ventana desde/hasta.
 function renderBadgeCierre() {
   const badge = document.getElementById('badge-cierre');
   if (CIERRE_ACTIVO) {
-    badge.textContent = 'Activo: contrataciones bloqueadas';
+    badge.textContent = 'Cerrado: contrataciones bloqueadas';
     badge.className = 'px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800 shrink-0';
   } else {
-    badge.textContent = 'Abierto';
+    badge.textContent = 'Abierto: se puede contratar';
     badge.className = 'px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 shrink-0';
   }
 }
@@ -440,7 +443,7 @@ async function guardarCierre() {
     mostrarAlerta('alerta', 'Completa ambas fechas.');
     return;
   }
-  if (!confirm(`¿Programar cierre de remuneraciones del ${desde} al ${hasta}? "Finalizar Contratación" quedará bloqueado en ese rango.`)) return;
+  if (!confirm(`¿Programar la ventana de contratación del ${desde} al ${hasta}? Fuera de ese rango, "Finalizar Contratación" quedará bloqueado.`)) return;
   try {
     const data = await apiFetch('/admin_general/cierre_remuneraciones.php', { method: 'POST', body: { activo: false, desde, hasta } });
     CIERRE_ACTIVO = data.activo;

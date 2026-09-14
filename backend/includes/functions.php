@@ -776,11 +776,17 @@ function cierreRemuneracionesActivo(PDO $pdo): bool
         return false;
     }
     if ((bool)$fila['activo']) {
-        return true;
+        return true; // cierre manual de emergencia -- se ignoran las fechas.
     }
     if ($fila['desde'] !== null && $fila['hasta'] !== null) {
+        // v10.14 (corrección, pedido explícito del usuario): desde/hasta
+        // es la VENTANA EN QUE SÍ SE PUEDE CONTRATAR -- "podemos contratar
+        // a un trabajador en este rango de fechas solamente". Fuera de
+        // ese rango (antes de desde, o después de hasta) es cuando
+        // remuneraciones está cerrado. (Antes esto estaba al revés:
+        // bloqueaba DENTRO del rango, en vez de fuera.)
         $hoy = date('Y-m-d');
-        return $hoy >= $fila['desde'] && $hoy <= $fila['hasta'];
+        return $hoy < $fila['desde'] || $hoy > $fila['hasta'];
     }
     return false;
 }
@@ -798,11 +804,16 @@ function mensajeCierreRemuneraciones(PDO $pdo): ?string
     if (!$fila || !cierreRemuneracionesActivo($pdo)) {
         return null;
     }
-    if ($fila['hasta'] === null) {
-        return 'Estamos en cierre de remuneraciones. Tu solicitud queda registrada, pero los cupos que se aprueben podrían demorar en liberarse.';
+    // v10.14 (corrección): el mensaje de liberación se calcula desde HOY,
+    // no desde `hasta` -- si ya pasamos la fecha `hasta`, el primer día
+    // del mes siguiente A `hasta` podría quedar en el pasado.
+    $liberacion = (new DateTime())->modify('first day of next month')->format('d-m-Y');
+    if ($fila['desde'] === null || $fila['hasta'] === null) {
+        return "Estamos fuera del período habilitado para contratar. Tu solicitud queda registrada, pero considera que estos cupos serán liberados el {$liberacion}.";
     }
-    $liberacion = (new DateTime($fila['hasta']))->modify('first day of next month')->format('d-m-Y');
-    return "Estamos en cierre de remuneraciones hasta el " . (new DateTime($fila['hasta']))->format('d-m-Y') . ". Tu solicitud queda registrada, pero considera que estos cupos serán liberados el {$liberacion}.";
+    $desdeTexto = (new DateTime($fila['desde']))->format('d-m-Y');
+    $hastaTexto = (new DateTime($fila['hasta']))->format('d-m-Y');
+    return "Estamos fuera del período habilitado para contratar (ventana habilitada: {$desdeTexto} al {$hastaTexto}). Tu solicitud queda registrada, pero considera que estos cupos serán liberados el {$liberacion}.";
 }
 
 /**

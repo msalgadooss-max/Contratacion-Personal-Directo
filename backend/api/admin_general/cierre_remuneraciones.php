@@ -56,12 +56,19 @@ $stmt->execute([
     'uid' => $usuario['id'],
 ]);
 
+// v10.14 (corrección, pedido explícito del usuario): desde/hasta es la
+// ventana en que SÍ se puede contratar -- "podemos contratar a un
+// trabajador en este rango de fechas solamente". Fuera de ese rango es
+// cuando remuneraciones queda cerrado.
 $quedaActivo = cierreRemuneracionesActivo($pdo);
-$mensaje = $quedaActivo
-    ? ($desde !== '' && $hasta !== ''
-        ? "Cierre de remuneraciones programado del {$desde} al {$hasta}. \"Finalizar Contratación\" queda bloqueado en ese rango; \"Solicitar Cupos\" sigue funcionando, pero con un aviso de que los cupos se liberarán recién el mes siguiente."
-        : 'Cierre de remuneraciones activado manualmente: "Finalizar Contratación" queda bloqueado hasta que lo reabras.')
-    : 'Cierre de remuneraciones desactivado: ya se pueden finalizar contrataciones con normalidad.';
+if ($desde !== '' && $hasta !== '') {
+    $mensaje = "Ventana de contratación programada del {$desde} al {$hasta}. Fuera de esas fechas, remuneraciones queda cerrado y no se podrá \"Finalizar Contratación\"; \"Solicitar Cupos\" sigue funcionando, pero con un aviso de que los cupos se liberarán recién el mes siguiente."
+        . ($quedaActivo ? ' Con la fecha de hoy, ese cierre ya está activo ahora mismo.' : '');
+} else {
+    $mensaje = $quedaActivo
+        ? 'Cierre de remuneraciones activado manualmente: "Finalizar Contratación" queda bloqueado hasta que lo reabras.'
+        : 'Cierre de remuneraciones desactivado: ya se pueden finalizar contrataciones con normalidad.';
+}
 
 responderOk([
     'activo'  => $quedaActivo,
