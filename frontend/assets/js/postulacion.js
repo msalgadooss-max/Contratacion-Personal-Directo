@@ -29,7 +29,24 @@ correoDominioSelect.addEventListener('change', () => {
   if (correoDominioSelect.value === '__otro__') correoDominioOtroInput.focus();
 });
 
+// v10.14 (pedido explícito del usuario): "cuando el postulante le pone
+// tilde a una letra vocal del correo, no deja avanzar". El teclado del
+// celular a veces autocorrige/acentúa una palabra en este campo sin que
+// la persona se dé cuenta (ej. "jose" -> "josé") -- un correo real
+// nunca tiene tilde en el nombre de usuario, así que el servidor lo
+// rechaza como inválido. En vez de solo explicarlo, se le quita la
+// tilde en vivo mientras escribe, para que nunca llegue a bloquearlo.
+function quitarTildes(texto) {
+  return texto.normalize('NFD').replace(/[̀-ͯ]/g, '');
+}
+
 function actualizarCorreoCompuesto() {
+  const sinTildes = quitarTildes(correoUsuarioInput.value);
+  if (sinTildes !== correoUsuarioInput.value) {
+    const posicion = correoUsuarioInput.selectionStart;
+    correoUsuarioInput.value = sinTildes;
+    correoUsuarioInput.setSelectionRange(posicion, posicion);
+  }
   const dominio = correoDominioSelect.value === '__otro__'
     ? correoDominioOtroInput.value.trim()
     : correoDominioSelect.value;

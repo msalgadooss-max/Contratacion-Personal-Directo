@@ -89,6 +89,24 @@ try {
         throw new RuntimeException('Ese cargo ya no tiene cupos disponibles. Elige otro.|409');
     }
 
+    // v10.14 (pedido explícito del usuario, nota de mano "Mejorar Post.
+    // Piloto": "cuando el capataz arrastra un postulante a un cargo
+    // disponible, se debe restar de los disponibles"): antes, el cupo
+    // recién se descontaba mucho más tarde -- cuando el JAO cerraba el
+    // contrato, días después (ver el trigger `trg_postulaciones_
+    // descuenta_cupo`, ahora retirado). Eso significaba que, mientras
+    // tanto, el mismo cupo podía "prestarse" a más de una persona: el
+    // Capataz seguía viendo el cupo disponible y podía arrastrar a
+    // alguien más antes de que el primero llegara a Contratado. Ahora se
+    // reserva/descuenta AQUÍ MISMO, en el momento de la selección --
+    // terreno/deshacer_seleccion.php lo devuelve si el Capataz se
+    // equivoca de cargo.
+    $stmtDescontar = $pdo->prepare('UPDATE cargos SET cupos_activos = cupos_activos - 1 WHERE id = :id AND cupos_activos > 0');
+    $stmtDescontar->execute(['id' => $cargoId]);
+    if ($stmtDescontar->rowCount() === 0) {
+        throw new RuntimeException('Ese cargo ya no tiene cupos disponibles. Elige otro.|409');
+    }
+
     fijarUsuarioContextoBD($pdo, $usuario['id']);
     $stmt = $pdo->prepare(
         'UPDATE postulaciones SET estado = "Pre_aprobado_terreno", cargo_id = :cargo_id

@@ -20,8 +20,14 @@ USE icafal_rrhh;
 -- ---------------------------------------------------------------------
 -- Tabla: cargos
 -- Catalogo de cargos disponibles y su dotacion (cupos).
--- cupos_activos se decrementa automaticamente (trigger) cuando una
--- postulacion pasa a estado 'Contratado'.
+-- v10.14: cupos_activos se descuenta en terreno/aprobar.php, en el
+-- momento en que el Capataz selecciona/arrastra a la persona a este
+-- cargo -- NO recien cuando llega a 'Contratado' (asi era antes, via un
+-- trigger que se retiro, ver el bloque de TRIGGERS mas abajo). Con el
+-- descuento tan tarde, el mismo cupo se podia "prestar" a mas de una
+-- persona mientras el resto de la contratacion tomaba dias en cerrar.
+-- terreno/deshacer_seleccion.php devuelve el cupo si el Capataz se
+-- equivoca de cargo.
 -- ---------------------------------------------------------------------
 CREATE TABLE cargos (
     id              INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -623,22 +629,16 @@ BEGIN
     END IF;
 END$$
 
--- Al llegar a 'Contratado' se descuenta 1 cupo activo del cargo.
--- La validacion de que existan cupos disponibles se hace tambien en el
--- backend (dentro de una transaccion) para poder informar un error
--- claro al usuario; el trigger es la ultima linea de defensa a nivel
--- de integridad de datos.
-CREATE TRIGGER trg_postulaciones_descuenta_cupo
-AFTER UPDATE ON postulaciones
-FOR EACH ROW
-BEGIN
-    IF NEW.estado = 'Contratado' AND OLD.estado <> 'Contratado' THEN
-        UPDATE cargos
-           SET cupos_activos = cupos_activos - 1
-         WHERE id = NEW.cargo_id
-           AND cupos_activos > 0;
-    END IF;
-END$$
+-- v10.14 (pedido explicito del usuario, nota de mano "Mejorar Post.
+-- Piloto"): el trigger trg_postulaciones_descuenta_cupo que vivia acá
+-- -- descontaba 1 cupo activo recien cuando la postulacion llegaba a
+-- 'Contratado' -- se RETIRA. El cupo ahora se descuenta mucho antes, en
+-- terreno/aprobar.php, en el momento en que el Capataz selecciona a la
+-- persona (ver el comentario en la tabla `cargos` mas arriba). Dejarlo
+-- descontando tambien acá habria descontado el cupo DOS VECES por la
+-- misma persona. Si se despliega sobre una base de datos que ya lo
+-- tiene creado, hay que correr a mano:
+--   DROP TRIGGER IF EXISTS trg_postulaciones_descuenta_cupo;
 
 DELIMITER ;
 

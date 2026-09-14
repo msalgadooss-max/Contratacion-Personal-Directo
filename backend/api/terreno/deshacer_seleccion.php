@@ -38,7 +38,7 @@ $pdo = obtenerConexion();
 $pdo->beginTransaction();
 
 try {
-    $stmtCheck = $pdo->prepare('SELECT estado FROM postulaciones WHERE id = :id FOR UPDATE');
+    $stmtCheck = $pdo->prepare('SELECT estado, cargo_id FROM postulaciones WHERE id = :id FOR UPDATE');
     $stmtCheck->execute(['id' => $postulacionId]);
     $postulacion = $stmtCheck->fetch();
 
@@ -63,6 +63,13 @@ try {
           WHERE id = :id AND estado = "Pre_aprobado_terreno"'
     );
     $stmt->execute(['cargo_id' => (int)$cargoAsignar['id'], 'id' => $postulacionId]);
+
+    // v10.14: terreno/aprobar.php ahora descuenta el cupo del cargo real
+    // justo al seleccionar (no recién en 'Contratado') -- así que
+    // deshacer la selección tiene que devolver ese cupo al cargo del
+    // que salió, o se perdería silenciosamente.
+    $stmtDevolver = $pdo->prepare('UPDATE cargos SET cupos_activos = cupos_activos + 1 WHERE id = :id');
+    $stmtDevolver->execute(['id' => (int)$postulacion['cargo_id']]);
 
     registrarLog($pdo, $postulacionId, $usuario['id'], 'Capataz deshizo la selección (vuelve a la lista de selección en terreno).');
 

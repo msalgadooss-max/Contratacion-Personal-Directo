@@ -251,7 +251,20 @@ async function abrirGuiaCaptura(inputObjetivo, formato = 'documento') {
 
   if (soportaCamaraEnVivo()) {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      // v10.14 (pedido explícito del usuario): "las imágenes sacadas del
+      // postulante tienen mala resolución". Sin pedir un tamaño, muchos
+      // navegadores de celular entregan la cámara trasera en una
+      // resolución baja por defecto (pensada para videollamadas, no para
+      // leer un documento). Se pide una resolución alta como "ideal" --
+      // el navegador entrega lo más cercano que su cámara soporte, nunca
+      // falla si no llega exacto a esto.
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: 'environment',
+          width: { ideal: 2560 },
+          height: { ideal: 1440 },
+        },
+      });
       video.srcObject = stream;
       video.classList.remove('hidden');
       guiaEstatica.classList.add('hidden');

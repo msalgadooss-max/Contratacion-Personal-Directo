@@ -60,9 +60,9 @@ try {
     if ($postulacion['contrato_firmado_at'] === null) {
         throw new RuntimeException('El JAO todavía no firma el contrato de esta persona.|409');
     }
-    if ((int)$postulacion['cupos_activos'] <= 0) {
-        throw new RuntimeException('No quedan cupos activos disponibles para este cargo.|409');
-    }
+    // v10.14: el cupo ya se reservó/descontó al momento de la selección
+    // del Capataz (ver terreno/aprobar.php), no corresponde volver a
+    // exigirlo acá -- ver el mismo cambio en admin_general/firmar_contrato.php.
 
     fijarUsuarioContextoBD($pdo, $usuario['id']);
 

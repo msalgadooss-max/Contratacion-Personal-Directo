@@ -96,11 +96,13 @@ try {
     }
 
     // v9.2 - Etapa 1: sin Bodega activa como candado digital, esta misma
-    // acción cierra el ciclo completo (descuenta cupo, queda Contratado).
+    // acción cierra el ciclo completo (queda Contratado).
+    // v10.14: el cupo de esta persona ya se reservó/descontó al momento
+    // de la selección del Capataz (ver terreno/aprobar.php) -- volver a
+    // exigir cupos_activos > 0 recién acá no corresponde (ya está
+    // reservado para ella) y podría bloquear injustamente el cierre si
+    // otros cupos del mismo cargo se agotaron mientras tanto.
     $cierraAquiMismo = !MODULO_BODEGA_ACTIVO;
-    if ($cierraAquiMismo && (int)$postulacion['cupos_activos'] <= 0) {
-        throw new RuntimeException('No quedan cupos activos disponibles para este cargo.|409');
-    }
 
     $nuevoEstado = $cierraAquiMismo ? 'Contratado' : $postulacion['estado'];
     $stmt = $pdo->prepare(

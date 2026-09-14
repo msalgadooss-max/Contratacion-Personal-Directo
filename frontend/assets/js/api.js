@@ -13,11 +13,33 @@ function setCsrfToken(token) {
   sessionStorage.setItem('csrf_token', token);
 }
 
+// v10.14 (pedido explícito del usuario, nota de mano "Mejorar Post.
+// Piloto": "también arrojó primero a un postulante un error con rojo en
+// su celular que decía algo como 'Failed Fetch'"): cuando el navegador
+// no logra ni siquiera conectarse al servidor (una red de celular
+// inestable, o el instante justo de un redeploy), fetch() lanza un
+// error crudo en inglés ("Failed to fetch") que no significa nada para
+// un postulante. Se reintenta una vez, en silencio, después de un
+// segundo -- suficiente para cortes breves -- y si vuelve a fallar, se
+// muestra un mensaje en español que explica qué hacer.
+async function fetchConReintento(url, opciones) {
+  try {
+    return await fetch(url, opciones);
+  } catch (err) {
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    try {
+      return await fetch(url, opciones);
+    } catch (err2) {
+      throw new Error('No se pudo conectar. Revisa tu conexión a internet e inténtalo de nuevo en unos segundos.');
+    }
+  }
+}
+
 async function apiFetch(path, { method = 'GET', body = null } = {}) {
   const headers = { 'Content-Type': 'application/json' };
   if (CSRF_TOKEN) headers['X-CSRF-Token'] = CSRF_TOKEN;
 
-  const res = await fetch(API_BASE_URL + path, {
+  const res = await fetchConReintento(API_BASE_URL + path, {
     method,
     headers,
     credentials: 'include',
@@ -47,7 +69,7 @@ async function apiFetchFormData(path, formData) {
   const headers = {};
   if (CSRF_TOKEN) headers['X-CSRF-Token'] = CSRF_TOKEN;
 
-  const res = await fetch(API_BASE_URL + path, {
+  const res = await fetchConReintento(API_BASE_URL + path, {
     method: 'POST',
     headers,
     credentials: 'include',
