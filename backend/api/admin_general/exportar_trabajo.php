@@ -7,18 +7,15 @@
  * contratados (admin_general/contratados_listar.php) y el mismo
  * parámetro "ids" que el primer exportador.
  *
- * Columnas obligatorias que Buk exige pero esta app todavía no capta en
- * ningún formulario (Sueldo Base, Horario Semanal, Tipo de Contrato,
- * RUT del Supervisor, Plan de Beneficios) quedan en blanco a propósito
- * -- pedido explícito del usuario: "dejarlos en blanco, y una vez tenga
- * el dato, vemos cómo lo incorporamos en la app". Se completan a mano
- * en Buk, igual que ya se hace con las columnas grises del Template
- * Empleado (ver exportar_excel.php).
- *
- * Los códigos de Comuna, Sub-área y Empresa son fijos para esta obra
- * (ver OBRA_COMUNA_BUK/OBRA_SUBAREA_BUK/OBRA_EMPRESA_BUK en
- * config.php) -- confirmados por el usuario contra las hojas de
- * referencia reales del template ("Comunas", "Sub-áreas", "Empresas").
+ * v2: revisado contra un envío REAL de Luis López a Buk (Ariel Torres
+ * Roa / Elin Sánchez Molina, 10-09) -- reveló una columna obligatoria
+ * que no existía en la plantilla en blanco que se había analizado antes
+ * ("ctrlit_recinto*") y varios valores que resultaron ser constantes
+ * fijas para esta obra, no datos por persona. Todo lo confirmado contra
+ * ese envío real queda con su valor; lo que sigue sin dato real
+ * confirmado (Sueldo Base, Horario Semanal, Supervisor, Término de
+ * Contrato) queda en blanco -- ver la conversación con el usuario sobre
+ * si conviene fijarlos como default o seguir dejándolos manuales.
  */
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../includes/auth.php';
@@ -66,6 +63,10 @@ $sinCodigo = array_values(array_unique(array_map(
     array_filter($filas, fn ($f) => $f['cargo_codigo'] === null || $f['cargo_codigo'] === '')
 )));
 
+// v2: 37 columnas -- la plantilla en blanco que se revisó primero tenía
+// 36, pero un envío real trae "ctrlit_recinto*" entre "Control de
+// Vacaciones" y "Jornada", así que la plantilla real vigente tiene una
+// columna más de la que se había mapeado.
 $columnas = [
     'Número de Documento*', 'Código de Ficha', 'Sueldo Base*', 'Moneda*', 'Fecha de Inicio*',
     'Horario Semanal*', 'Código Cargo*', 'Código Sub-área*', 'Número de Documento Supervisor*',
@@ -73,10 +74,10 @@ $columnas = [
     'Término de Contrato', 'Empresa*', 'Recibe Gratificaciones*', 'Jornada Laboral',
     'Días de la Jornada', 'Tipo de Jornada', 'Con Liquidaciones', 'Recinto',
     'Recintos Secundarios', 'Registra asistencia', 'Recinto para marcar asistencia', 'Aguinaldos',
-    'Valor Diario Amipass', 'Días Amipass', 'Control de Vacaciones', 'Jornada', 'Lugar de Trabajo',
-    'Plan Construye Tranquilo', 'Plan de Beneficios*', 'Seguro Complementario Tritec',
-    'Tramo Prima Seguro Colectivo', 'Tramo Seguro Comple. Carga Especial',
-    'Tramo Seguro Complementario',
+    'Valor Diario Amipass', 'Días Amipass', 'Control de Vacaciones', 'ctrlit_recinto*', 'Jornada',
+    'Lugar de Trabajo', 'Plan Construye Tranquilo', 'Plan de Beneficios*',
+    'Seguro Complementario Tritec', 'Tramo Prima Seguro Colectivo',
+    'Tramo Seguro Comple. Carga Especial', 'Tramo Seguro Complementario',
 ];
 
 $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
@@ -88,6 +89,11 @@ foreach ($columnas as $i => $encabezado) {
 }
 $hoja->getStyle('1:1')->getFont()->setBold(true);
 
+// v10.14: horario de jornada estándar para MOD en esta obra, tal cual
+// lo escribió Luis López en su envío real -- mismo texto para ambos
+// casos revisados.
+const JORNADA_TEXTO_MOD = 'L42. Lun - Mar y Vie 08:00 a 17:00/Mie a Jue 08:00 a 18:00/ CO 13:00 a 14:00';
+
 foreach ($filas as $filaIdx => $f) {
     $numeroFila = $filaIdx + 2;
     $fechaInicio = '';
@@ -95,30 +101,52 @@ foreach ($filas as $filaIdx => $f) {
         $ts = strtotime($f['ingreso_compania']);
         $fechaInicio = $ts ? date('d-m-Y', $ts) : '';
     }
-    // Mismo orden que $columnas -- '' es una columna que se deja en
-    // blanco a propósito (ver docblock de arriba).
+    // Mismo orden que $columnas. '' es una columna que se deja en blanco
+    // a propósito -- o porque el envío real de Luis también la dejaba
+    // en blanco (ej. "Comuna/Localidad"), o porque todavía no hay un
+    // dato real capturado en la app para eso (ej. Sueldo Base).
     $valores = [
         $f['rut'],                  // Número de Documento*
         $f['codigo_ficha'] ?? '',   // Código de Ficha
-        '',                         // Sueldo Base*
+        '',                         // Sueldo Base* -- sin dato real capturado aún, ver conversación
         'CLP',                      // Moneda*
         $fechaInicio,               // Fecha de Inicio*
-        '',                         // Horario Semanal*
+        '',                         // Horario Semanal* -- sin dato real capturado aún, ver conversación
         $f['cargo_codigo'] ?? '',   // Código Cargo*
         OBRA_SUBAREA_BUK,           // Código Sub-área*
-        '',                         // Número de Documento Supervisor*
-        '',                         // Código de Ficha Supervisor
-        '',                         // Tipo de Contrato*
-        '',                         // Obra
-        OBRA_COMUNA_BUK,            // Comuna/Localidad
-        '',                         // Término de Contrato
+        '',                         // Número de Documento Supervisor* -- ver conversación
+        '',                         // Código de Ficha Supervisor -- ver conversación
+        'Plazo fijo',               // Tipo de Contrato* -- estándar para MOD, confirmado en envío real
+        OBRA_CODIGO_CORTO_BUK,      // Obra
+        '',                         // Comuna/Localidad -- Luis también la deja en blanco
+        '',                         // Término de Contrato -- varía por persona, sin dato real capturado aún
         OBRA_EMPRESA_BUK,           // Empresa*
-        '',                         // Recibe Gratificaciones*
+        '1',                        // Recibe Gratificaciones* -- confirmado en envío real
+        'mensual',                  // Jornada Laboral
+        '["l","m","w","j","v"]',    // Días de la Jornada
+        'Ordinaria ART 22',         // Tipo de Jornada
+        '',                         // Con Liquidaciones
+        '',                         // Recinto
+        '',                         // Recintos Secundarios
+        'Sí',                       // Registra asistencia
+        OBRA_CODIGO_CORTO_BUK,      // Recinto para marcar asistencia
+        '',                         // Aguinaldos
+        '',                         // Valor Diario Amipass
+        '',                         // Días Amipass
+        '',                         // Control de Vacaciones
+        OBRA_SUBAREA_NOMBRE_BUK,    // ctrlit_recinto*
+        JORNADA_TEXTO_MOD,          // Jornada
+        '',                         // Lugar de Trabajo
+        '',                         // Plan Construye Tranquilo
+        'Beneficios Generales Personal Obras', // Plan de Beneficios*
+        '',                         // Seguro Complementario Tritec
+        '',                         // Tramo Prima Seguro Colectivo
+        '',                         // Tramo Seguro Comple. Carga Especial
+        '',                         // Tramo Seguro Complementario
     ];
     foreach ($valores as $i => $v) {
         $hoja->setCellValue([$i + 1, $numeroFila], $v);
     }
-    // Columnas 17 a 36: quedan en blanco (ninguna es obligatoria).
 }
 
 foreach (range(1, count($columnas)) as $i) {

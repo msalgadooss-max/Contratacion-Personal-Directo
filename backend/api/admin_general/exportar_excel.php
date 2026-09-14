@@ -83,6 +83,18 @@ foreach ($filas as $filaIdx => $fila) {
                 $valor = $ts ? date('d-m-Y', $ts) : $valor;
             }
         }
+        // v10.14 (pedido explícito del usuario): confirmado contra un
+        // envío real de Luis López a Buk (Ariel Torres / Elin Sánchez) --
+        // estas 4 columnas quedaban en blanco pero Buk sí las necesita.
+        if ($encabezado === 'Teléfono Oficina') {
+            $valor = (string)($fila['telefono'] ?? '');
+        } elseif ($encabezado === 'Email') {
+            $valor = (string)($fila['correo'] ?? '');
+        } elseif ($encabezado === 'Plan Isapre UF*' || $encabezado === 'Plan Isapre Pesos*') {
+            $valor = '0'; // en el envío real, "0" explícito -- no vacío -- para quien no está en Isapre.
+        } elseif ($encabezado === 'Bono Target') {
+            $valor = 'BT_00'; // mismo valor fijo en ambos casos reales revisados.
+        }
         $hoja->setCellValue([$i + 1, $numeroFila], $valor);
     }
     $idsExportados[] = (int)$fila['postulacion_id'];
