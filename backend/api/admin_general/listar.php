@@ -28,7 +28,7 @@ $stmt = $pdo->query(
             d.region, d.comuna AS comuna_etapa2, d.ciudad, d.pais,
             d.afp, d.afp_alerta_jao, d.isapre_fonasa, d.estudios, d.banco, d.tipo_cuenta, d.numero_cuenta,
             d.contacto_emergencia_nombre, d.contacto_emergencia_telefono,
-            d.talla_calzado, d.talla_overol, d.talla_pantalon, d.talla_polera,
+            d.talla_calzado, d.talla_overol,
             j.id AS datos_jao_id
        FROM postulaciones p
        JOIN cargos c ON c.id = p.cargo_id

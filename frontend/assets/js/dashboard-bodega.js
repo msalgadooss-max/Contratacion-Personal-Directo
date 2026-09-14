@@ -31,8 +31,6 @@ async function cargarLista() {
         <td class="px-4 py-3">${p.nombre_cargo}</td>
         <td class="px-4 py-3">${p.talla_calzado}</td>
         <td class="px-4 py-3">${p.talla_overol}</td>
-        <td class="px-4 py-3">${p.talla_pantalon}</td>
-        <td class="px-4 py-3">${p.talla_polera}</td>
         <td class="px-4 py-3 text-right">
           ${p.puede_entregar
             ? `<button class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg" onclick="marcarEpp(${p.id})">Entregar EPP</button>`

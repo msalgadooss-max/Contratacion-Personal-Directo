@@ -33,7 +33,6 @@ const ETIQUETAS_CAMPO = {
   direccion_exacta: 'Dirección', region: 'Región', comuna: 'Comuna', ciudad: 'Ciudad', pais: 'País',
   afp: 'AFP', isapre_fonasa: 'Fonasa/Isapre', banco: 'Banco', tipo_cuenta: 'Tipo de cuenta', numero_cuenta: 'N° de cuenta',
   estudios: 'Estudios', talla_calzado: 'N° de calzado', talla_overol: 'Talla de overol',
-  talla_pantalon: 'Talla de pantalón', talla_polera: 'Talla de polera',
   contacto_emergencia_nombre: 'Contacto de emergencia', contacto_emergencia_telefono: 'Teléfono de emergencia',
 };
 
@@ -54,7 +53,7 @@ const DOCUMENTOS = [
 
 const CAMPOS_TEXTO_PASO = {
   1: ['fecha_nacimiento', 'sexo', 'nacionalidad', 'estado_civil', 'direccion_exacta', 'region', 'comuna', 'ciudad', 'pais'],
-  2: ['afp', 'isapre_fonasa', 'banco', 'tipo_cuenta', 'numero_cuenta', 'estudios', 'talla_calzado', 'talla_overol', 'talla_pantalon', 'talla_polera', 'contacto_emergencia_nombre', 'contacto_emergencia_telefono'],
+  2: ['afp', 'isapre_fonasa', 'banco', 'tipo_cuenta', 'numero_cuenta', 'estudios', 'talla_calzado', 'talla_overol', 'contacto_emergencia_nombre', 'contacto_emergencia_telefono'],
 };
 
 function llenarSelect(id, valores) {
@@ -589,7 +588,7 @@ form.addEventListener('submit', async (e) => {
     'region', 'comuna', 'ciudad', 'pais', 'afp', 'isapre_fonasa', 'banco',
     'tipo_cuenta', 'numero_cuenta', 'estudios',
     'contacto_emergencia_nombre', 'contacto_emergencia_telefono',
-    'talla_calzado', 'talla_overol', 'talla_pantalon', 'talla_polera',
+    'talla_calzado', 'talla_overol',
   ];
 
   const formData = new FormData();

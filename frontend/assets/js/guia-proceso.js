@@ -109,7 +109,7 @@ const GUIA_POR_ROL = {
     contenido: `
       <p class="text-gray-700 mb-4">Tu parte es <b>entregar el kit de EPP</b> -- el paso que cierra el ciclo completo y deja a la persona ✔ Contratada.</p>
       <ul class="space-y-2.5 text-gray-700">
-        <li>• Apenas Prevención marca la inducción (día 1), te llega el aviso con las tallas de calzado, pantalón, overol y polera -- así preparas el kit con anticipación, antes de que la persona vuelva al día 2.</li>
+        <li>• Apenas Prevención marca la inducción (día 1), te llega el aviso con el número de calzado y la talla de overol -- así preparas el kit con anticipación, antes de que la persona vuelva al día 2.</li>
         <li>• <b>El botón de entrega se habilita recién cuando el JAO ya firmó el contrato</b> (día 2) -- antes de eso solo ves el aviso de "todavía no firma".</li>
         <li>• Al confirmar la entrega, el cupo ya estaba reservado desde que el Capataz seleccionó a la persona -- tu acción deja el estado en <b>Contratado</b>, le avisa al postulante con su QR final de acceso, y le avisa a Capataz/Jefe de Terreno que ya pueden retirarlo de la sala de espera.</li>
       </ul>`,
