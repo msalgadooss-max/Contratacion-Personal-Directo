@@ -6,10 +6,16 @@
  *
  * v3 - Campos alineados a "Template Empleados.xls" (columnas VERDES):
  * tipo_documento, numero de documento, apellido, segundo_apellido,
- * nombre, telefono, correo. Ademas se agregan region+comuna (para que
- * Terreno vea de entrada la cercania a la obra -- pedido explicito del
- * usuario) y los campos propios de este sistema que Buk no modela:
- * cargo postulado, CV y consentimiento Ley 19.628.
+ * nombre, telefono, correo. Ademas los campos propios de este sistema
+ * que Buk no modela: cargo postulado, CV y consentimiento Ley 19.628.
+ *
+ * v10.14 (pedido explicito del usuario): region/comuna se sacan de aca
+ * -- se pedian dos veces (aca y de nuevo en Etapa 2), asi que se dejan
+ * solo en Etapa 2 (completar.js/guardar_datos.php), junto con ciudad,
+ * pais y direccion exacta. Las columnas postulaciones.region/comuna
+ * quedan en el esquema (no se borran) pero ahora nacen vacias; quien
+ * necesite la comuna real de alguien que aun no completa Etapa 2 no la
+ * va a tener hasta ese momento.
  *
  * v2 - Banco de Postulantes: si el cargo elegido existe pero no tiene
  * cupos_activos, la postulacion queda en estado 'En_banco' en vez de
@@ -38,12 +44,9 @@ $segundoApellido  = limpiarTexto($_POST['segundo_apellido'] ?? '', 100);
 $nombre           = limpiarTexto($_POST['nombre'] ?? '', 100);
 $telefono         = limpiarTexto($_POST['telefono'] ?? '', 20);
 $correo           = filter_var(trim((string)($_POST['correo'] ?? '')), FILTER_VALIDATE_EMAIL);
-$region           = limpiarTexto($_POST['region'] ?? '', 100);
-$comuna           = limpiarTexto($_POST['comuna'] ?? '', 100);
 $consentimiento   = (bool)($_POST['consentimiento_ley19628'] ?? false);
 
 $listas = listasBuk();
-$regionesComunas = regionesConComunas();
 
 // --- Validaciones server-side (nunca confiar solo en el frontend) -------
 $errores = [];
@@ -57,10 +60,6 @@ if ($segundoApellido === '')                 $errores[] = 'Segundo apellido es o
 if ($nombre === '')                          $errores[] = 'Nombre es obligatorio.';
 if ($telefono === '')                        $errores[] = 'Teléfono es obligatorio.';
 if (!$correo)                                $errores[] = 'Correo inválido.';
-if (!isset($regionesComunas[$region]))       $errores[] = 'Región inválida.';
-elseif (!in_array($comuna, $regionesComunas[$region], true)) {
-    $errores[] = 'La comuna no corresponde a la región seleccionada.';
-}
 if (!$consentimiento)                        $errores[] = 'Debe aceptar el tratamiento de datos personales (Ley 19.628).';
 
 if ($errores) {
@@ -141,8 +140,10 @@ $stmt->execute([
     'segundo_apellido' => $segundoApellido !== '' ? $segundoApellido : null,
     'telefono'         => $telefono,
     'correo'           => $correo,
-    'region'           => $region,
-    'comuna'           => $comuna,
+    // v10.14: ya no se piden en Etapa 1 -- nacen vacios, se completan
+    // recien en Etapa 2 (ver datos_contratacion.region/comuna).
+    'region'           => '',
+    'comuna'           => '',
     'cargo_id'         => $cargoId,
     'obra'             => OBRA_NOMBRE,
     'codigo'           => $codigoSeguimiento,

@@ -123,6 +123,18 @@ try {
 
     $pdo->commit();
 
+    // v10.14 (encontrado al revisar "en qué momento le llegan las
+    // notificaciones a Prevención y Bodega"): antes este correo solo
+    // salía en el atajo de la Etapa 1 -- con Bodega activa de verdad
+    // (Etapa 2), el JAO firmaba y a Bodega nunca le llegaba ningún aviso;
+    // se enteraban solo si revisaban su panel por su cuenta. Ahora sale
+    // siempre que el JAO firma, sea cual sea el modo.
+    try {
+        notificarEntregaEppAhora($pdo, $postulacion);
+    } catch (\Throwable $e) {
+        error_log('notificarEntregaEppAhora error: ' . $e->getMessage());
+    }
+
     if ($cierraAquiMismo) {
         // v9.2: mismos correos de cierre que Bodega dispara en Etapa 2,
         // fuera de la transacción para no hacer fallar el cierre si el
@@ -136,11 +148,6 @@ try {
             notificarLiberacionTrabajador($pdo, $postulacion);
         } catch (\Throwable $e) {
             error_log('notificarLiberacionTrabajador error: ' . $e->getMessage());
-        }
-        try {
-            notificarEntregaEppAhora($pdo, $postulacion);
-        } catch (\Throwable $e) {
-            error_log('notificarEntregaEppAhora error: ' . $e->getMessage());
         }
     }
 } catch (RuntimeException $e) {

@@ -291,6 +291,22 @@ function toggleFormJao(id) {
   }
   cont.classList.remove('hidden');
   cont.innerHTML = formularioJao(id);
+  activarAutocompletadoFechasJao(id);
+}
+
+// v10.14 (pedido explícito del usuario): "que con la fecha inicio del
+// contrato llene automáticamente la misma fecha en seguro covid y
+// fecha reconocimiento" -- ahorra tipeo repetido; solo rellena si el
+// campo destino sigue vacío, así el JAO puede seguir escribiendo una
+// fecha distinta a mano si corresponde.
+function activarAutocompletadoFechasJao(id) {
+  const ingreso = document.getElementById(`jao-ingreso_compania-${id}`);
+  const covid = document.getElementById(`jao-seguro_covid_fecha_inicio-${id}`);
+  const reconocimiento = document.getElementById(`jao-fecha_reconocimiento-${id}`);
+  ingreso.addEventListener('change', () => {
+    if (!covid.value) covid.value = ingreso.value;
+    if (!reconocimiento.value) reconocimiento.value = ingreso.value;
+  });
 }
 
 function formularioJao(id) {

@@ -1,17 +1,21 @@
 /**
  * Lógica de la Etapa 1 (formulario público de postulación).
  * v3: campos alineados a la plantilla Buk + listas desplegables reales
- * (tipo de documento, región→comuna en cascada) cargadas desde
- * /public/listas.php, para que el postulante nunca escriba libremente
- * algo que después no calce con lo que Buk espera.
+ * (tipo de documento) cargadas desde /public/listas.php, para que el
+ * postulante nunca escriba libremente algo que después no calce con lo
+ * que Buk espera.
+ *
+ * v10.14 (pedido explícito del usuario): región/comuna se sacan de acá
+ * -- se piden recién en la Etapa 2 (completar.js), donde ya se
+ * preguntan junto con el resto de los datos de contratación (ciudad,
+ * país, dirección exacta). Antes se pedían dos veces, una vez aquí y
+ * otra en Etapa 2.
  */
 const tipoDocumentoSelect = document.getElementById('tipo_documento');
 const numeroDocumentoInput = document.getElementById('numero_documento');
 const labelDocumento = document.getElementById('label-documento');
 const rutError = document.getElementById('rut-error');
 const docNota = document.getElementById('doc-nota');
-const regionSelect = document.getElementById('region');
-const comunaSelect = document.getElementById('comuna');
 const form = document.getElementById('form-postulacion');
 const resultadoDiv = document.getElementById('resultado');
 const btnEnviar = document.getElementById('btn-enviar');
@@ -56,19 +60,13 @@ correoUsuarioInput.addEventListener('input', actualizarCorreoCompuesto);
 correoDominioSelect.addEventListener('change', actualizarCorreoCompuesto);
 correoDominioOtroInput.addEventListener('input', actualizarCorreoCompuesto);
 
-let REGIONES_COMUNAS = {};
-
 async function cargarListas() {
   try {
     const data = await apiFetch('/public/listas.php');
-    REGIONES_COMUNAS = data.regiones_comunas;
     obraBanner.textContent = '📍 ' + (data.obra || 'Obra ICAFAL');
 
     tipoDocumentoSelect.innerHTML = data.listas.tipo_documento
       .map(v => `<option value="${v}">${v}</option>`).join('');
-
-    regionSelect.innerHTML = '<option value="">Selecciona tu región</option>' +
-      Object.keys(REGIONES_COMUNAS).map(r => `<option value="${r}">${r}</option>`).join('');
   } catch (e) {
     tipoDocumentoSelect.innerHTML = '<option value="">Error al cargar</option>';
   }
@@ -94,18 +92,6 @@ numeroDocumentoInput.addEventListener('blur', () => {
   if (tipoDocumentoSelect.value !== 'RUT') return;
   const valido = numeroDocumentoInput.value === '' || validarRut(numeroDocumentoInput.value);
   rutError.classList.toggle('hidden', valido);
-});
-
-regionSelect.addEventListener('change', () => {
-  const comunas = REGIONES_COMUNAS[regionSelect.value] || [];
-  if (!comunas.length) {
-    comunaSelect.innerHTML = '<option value="">Primero elige tu región</option>';
-    comunaSelect.disabled = true;
-    return;
-  }
-  comunaSelect.innerHTML = '<option value="">Selecciona tu comuna</option>' +
-    comunas.map(c => `<option value="${c}">${c}</option>`).join('');
-  comunaSelect.disabled = false;
 });
 
 cargarListas();
@@ -160,8 +146,6 @@ form.addEventListener('submit', async (e) => {
     formData.append('segundo_apellido', document.getElementById('segundo_apellido').value);
     formData.append('telefono', document.getElementById('telefono').value);
     formData.append('correo', document.getElementById('correo').value);
-    formData.append('region', regionSelect.value);
-    formData.append('comuna', comunaSelect.value);
     formData.append('consentimiento_ley19628', document.getElementById('consentimiento').checked ? '1' : '');
     if (sinCvCheckbox.checked) {
       formData.append('experiencia_cargo', document.getElementById('experiencia_cargo').value);
