@@ -2,6 +2,7 @@
   const usuario = await protegerDashboard('Jefe_Bodega');
   if (!usuario) return;
   await cargarLista();
+  iniciarEstadoVivo();
 })();
 
 // v10.13 (pedido explícito del usuario): botón "🔄 Actualizar" en el
@@ -29,6 +30,7 @@ async function cargarLista() {
         <td class="px-4 py-3">${p.nombre_completo}</td>
         <td class="px-4 py-3">${p.nombre_cargo}</td>
         <td class="px-4 py-3">${p.talla_calzado}</td>
+        <td class="px-4 py-3">${p.talla_overol}</td>
         <td class="px-4 py-3">${p.talla_pantalon}</td>
         <td class="px-4 py-3">${p.talla_polera}</td>
         <td class="px-4 py-3 text-right">

@@ -83,15 +83,15 @@ define('BANCO_RETENCION_MESES', 6);
 define('OBRA_NOMBRE', 'Obra H57 Padre Hurtado IV');
 define('LIMITE_APROBACIONES_DIARIAS_TERRENO', 25);
 
-// v9.2: Etapa 1 del piloto (reunión con Jorge, semana 7-11 sep) -- el
-// alcance de ESTA etapa termina en el JAO. Prevención y Bodega siguen
-// existiendo en la vida real (charla IRL y entrega de EPP en papel al
-// día siguiente), pero no como candados dentro de la app todavía --
-// eso es Etapa 2. admin_general/firmar_contrato.php ya sabe cerrar la
-// contratación él mismo cuando estos dos están inactivos (ver su
-// docblock). Volver a poner ambos en true cuando arranque Etapa 2.
-define('MODULO_PREVENCION_ACTIVO', false);
-define('MODULO_BODEGA_ACTIVO', false);
+// v10.14 (pedido explícito del usuario: "activar nuevamente los
+// perfiles de prevención y bodega definitivamente, activos 100% y de
+// punta a punta"): arranca Etapa 2. Prevención y Bodega pasan a ser
+// candados digitales reales dentro de la app -- admin_general/
+// firmar_contrato.php ya sabía manejar ambos casos desde que se
+// escribió (ver su docblock), así que este es el único cambio que
+// hacía falta para activar el flujo completo.
+define('MODULO_PREVENCION_ACTIVO', true);
+define('MODULO_BODEGA_ACTIVO', true);
 
 define('SESSION_NAME', 'icafal_rrhh_sesion');
 define('APP_DEBUG', false);

@@ -118,15 +118,20 @@ responderOk([
         'url_etapa2' => ($puedeCompletarEtapa2 && $tokenVigente)
             ? BASE_URL . '/frontend/public/completar.html?token=' . $postulacion['token_privado']
             : null,
-        // v6.9: la inducción en video queda disponible apenas autoriza el
-        // Administrador de Contrato (no hace falta esperar a Etapa 2) --
-        // así el postulante puede ir viéndolos antes de presentarse.
+        // v6.9: la inducción en video queda disponible apenas el
+        // postulante completa su Etapa 2 (no hace falta esperar a que el
+        // JAO verifique identidad) -- así puede ir viéndolos en la sala
+        // de espera del día 1, antes de presentarse al día 2.
         // v9.2: en Etapa 1 del piloto, Prevención (y el catálogo de
         // cursos) todavía no participa -- no tiene sentido invitar al
         // postulante a un flujo que nadie del otro lado va a revisar.
+        // v10.14: se saca la dependencia de admin_autorizado_at -- ese
+        // campo ya no se vuelve a fijar desde que Admin_Contrato dejó de
+        // autorizar postulación por postulación (ver terreno/aprobar.php
+        // v10.13), así que esta condición nunca se cumplía. El equivalente
+        // real hoy es haber llegado a 'Aprobado_admin' (o más allá).
         'puede_ver_induccion' => MODULO_PREVENCION_ACTIVO
-            && $postulacion['admin_autorizado_at'] !== null
-            && !$autorizadoIngreso
-            && !in_array($estadoActual, ['Rechazado'], true),
+            && in_array($estadoActual, ['Aprobado_admin', 'Induccion_ok'], true)
+            && !$autorizadoIngreso,
     ],
 ]);

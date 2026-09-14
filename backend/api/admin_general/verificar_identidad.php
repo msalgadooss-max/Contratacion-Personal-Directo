@@ -9,8 +9,11 @@
  * "Firmar Contrato" el día 2 (ver firmar_contrato.php).
  *
  * v10.14 (pedido explícito del usuario): al verificar, se le avisa al
- * postulante que avanzó y que debe volver mañana a las 8am (ver
- * notificarPresentarseManana()) -- antes este paso no le avisaba nada.
+ * postulante que avanzó -- pero SOLO si Prevención sigue pausada
+ * (notificarPresentarseManana() aquí mismo, ver más abajo). Con
+ * Prevención activa, todavía le queda la inducción ODI por hacer ese
+ * mismo día, así que ese aviso ahora sale recién cuando Prevención
+ * marca la inducción como realizada (ver prevencion/marcar_induccion.php).
  */
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../includes/auth.php';
@@ -61,10 +64,12 @@ $stmt->execute(['uid' => $usuario['id'], 'id' => $postulacionId]);
 
 registrarLog($pdo, $postulacionId, $usuario['id'], 'Verificó manualmente que el RUT declarado coincide con la cédula subida.');
 
-try {
-    notificarPresentarseManana($pdo, $postulacionId);
-} catch (\Throwable $e) {
-    error_log('notificarPresentarseManana error: ' . $e->getMessage());
+if (!MODULO_PREVENCION_ACTIVO) {
+    try {
+        notificarPresentarseManana($pdo, $postulacionId);
+    } catch (\Throwable $e) {
+        error_log('notificarPresentarseManana error: ' . $e->getMessage());
+    }
 }
 
 responderOk(['mensaje' => 'Identidad verificada correctamente.']);

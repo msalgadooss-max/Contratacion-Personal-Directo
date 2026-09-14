@@ -23,7 +23,7 @@ exigirMetodo('GET');
 $pdo = obtenerConexion();
 $stmt = $pdo->query(
     'SELECT p.id, p.rut, p.nombre_completo, c.nombre_cargo, p.contrato_firmado_at,
-            d.talla_calzado, d.talla_pantalon, d.talla_polera
+            d.talla_calzado, d.talla_overol, d.talla_pantalon, d.talla_polera
        FROM postulaciones p
        JOIN cargos c ON c.id = p.cargo_id
        JOIN datos_contratacion d ON d.postulacion_id = p.id

@@ -60,6 +60,10 @@ $campos = [
     'contacto_emergencia_telefono' => limpiarTexto($_POST['contacto_emergencia_telefono'] ?? '', 20),
     'talla_calzado'                => limpiarTexto($_POST['talla_calzado'] ?? '', 10),
     'talla_overol'                 => limpiarTexto($_POST['talla_overol'] ?? '', 10),
+    // v10.14: Bodega (ahora activa de punta a punta) arma el kit de EPP
+    // completo con estas 4 tallas, no solo calzado/overol.
+    'talla_pantalon'               => limpiarTexto($_POST['talla_pantalon'] ?? '', 10),
+    'talla_polera'                 => limpiarTexto($_POST['talla_polera'] ?? '', 10),
 ];
 
 foreach ($campos as $nombreCampo => $valor) {
@@ -148,13 +152,13 @@ try {
              region, comuna, ciudad, pais, afp, afp_alerta_jao, isapre_fonasa, estudios,
              banco, tipo_cuenta, numero_cuenta,
              contacto_emergencia_nombre, contacto_emergencia_telefono,
-             talla_calzado, talla_overol)
+             talla_calzado, talla_overol, talla_pantalon, talla_polera)
          VALUES
             (:postulacion_id, :fecha_nacimiento, :estado_civil, :sexo, :nacionalidad, :direccion_exacta,
              :region, :comuna, :ciudad, :pais, :afp, :afp_alerta_jao, :isapre_fonasa, :estudios,
              :banco, :tipo_cuenta, :numero_cuenta,
              :contacto_emergencia_nombre, :contacto_emergencia_telefono,
-             :talla_calzado, :talla_overol)'
+             :talla_calzado, :talla_overol, :talla_pantalon, :talla_polera)'
     );
     $stmtInsert->execute(array_merge($campos, [
         'postulacion_id' => $postulacionId,

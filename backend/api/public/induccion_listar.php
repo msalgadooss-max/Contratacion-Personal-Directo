@@ -36,7 +36,7 @@ $documentoRut = normalizarRut($documentoCrudo);
 
 $pdo = obtenerConexion();
 $stmt = $pdo->prepare(
-    'SELECT id, nombre_completo, admin_autorizado_at
+    'SELECT id, nombre_completo, estado
        FROM postulaciones
       WHERE (rut = :doc_crudo OR rut = :doc_rut) AND codigo_seguimiento = :codigo
       LIMIT 1'
@@ -47,7 +47,13 @@ $postulacion = $stmt->fetch();
 if (!$postulacion) {
     responderError('No se encontró una postulación con esos datos.', 404);
 }
-if ($postulacion['admin_autorizado_at'] === null) {
+// v10.14: antes exigía admin_autorizado_at, un campo que ya no se
+// vuelve a fijar desde que Admin_Contrato dejó de autorizar postulación
+// por postulación (ver terreno/aprobar.php v10.13) -- eso bloqueaba a
+// TODO postulante nuevo, no solo a los de antes del cambio. El
+// equivalente real hoy es haber llegado a 'Aprobado_admin' (mismo gate
+// que seguimiento.php usa para mostrar el link "Ver mis cursos").
+if (!in_array($postulacion['estado'], ['Aprobado_admin', 'Induccion_ok'], true)) {
     responderError('Todavía no está disponible la inducción para tu proceso.', 409);
 }
 

@@ -65,4 +65,15 @@ fijarUsuarioContextoBD($pdo, $usuario['id']);
 $stmt = $pdo->prepare('UPDATE postulaciones SET estado = "Induccion_ok" WHERE id = :id');
 $stmt->execute(['id' => $postulacionId]);
 
+registrarLog($pdo, $postulacionId, $usuario['id'], 'Prevención registró la inducción ODI (charla + todos los cursos aprobados).');
+
+// v10.14: con Prevención activa, este es el verdadero cierre del día 1
+// (antes, con Prevención pausada, ese aviso salía apenas el JAO
+// verificaba identidad -- ver admin_general/verificar_identidad.php).
+try {
+    notificarPresentarseManana($pdo, $postulacionId);
+} catch (\Throwable $e) {
+    error_log('notificarPresentarseManana error: ' . $e->getMessage());
+}
+
 responderOk(['mensaje' => 'Inducción ODI registrada correctamente.']);

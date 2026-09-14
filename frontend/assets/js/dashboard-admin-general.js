@@ -257,6 +257,8 @@ function tarjeta(p) {
         <p><span class="text-gray-400">Comuna:</span> ${p.comuna_etapa2}</p>
         <p><span class="text-gray-400">Calzado:</span> ${p.talla_calzado}</p>
         <p><span class="text-gray-400">Overol:</span> ${p.talla_overol}</p>
+        <p><span class="text-gray-400">Pantalón:</span> ${p.talla_pantalon}</p>
+        <p><span class="text-gray-400">Polera:</span> ${p.talla_polera}</p>
       </div>
 
       <div class="mt-3 flex flex-wrap gap-1.5">${enlacesDocumentos(p)}</div>

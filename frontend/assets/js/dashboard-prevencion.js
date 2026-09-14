@@ -10,6 +10,7 @@
   const usuario = await protegerDashboard('Prevencionista');
   if (!usuario) return;
   await cargarLista();
+  iniciarEstadoVivo();
 })();
 
 // v10.13 (pedido explícito del usuario): botón "🔄 Actualizar" en el

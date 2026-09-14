@@ -13,8 +13,9 @@ require_once __DIR__ . '/../../includes/rut.php';
 
 exigirMetodo('POST');
 
-// v10.14: ver el mismo aviso en induccion_listar.php -- Etapa 1 del
-// piloto, Prevención no participa todavía.
+// v10.14: si Prevención vuelve a pausarse en el futuro, este aviso
+// evita que alguien quede esperando una revisión que nunca va a llegar
+// (ver el mismo bloque en induccion_listar.php).
 if (!MODULO_PREVENCION_ACTIVO) {
     responderError('Todavía no necesitas hacer esto. Sigue tu proceso desde el módulo de seguimiento -- te avisaremos si se habilita este paso.', 409);
 }
@@ -38,7 +39,7 @@ $documentoRut = normalizarRut($documentoCrudo);
 
 $pdo = obtenerConexion();
 $stmt = $pdo->prepare(
-    'SELECT id, admin_autorizado_at FROM postulaciones
+    'SELECT id, estado FROM postulaciones
       WHERE (rut = :doc_crudo OR rut = :doc_rut) AND codigo_seguimiento = :codigo
       LIMIT 1'
 );
@@ -48,7 +49,9 @@ $postulacion = $stmt->fetch();
 if (!$postulacion) {
     responderError('No se encontró una postulación con esos datos.', 404);
 }
-if ($postulacion['admin_autorizado_at'] === null) {
+// v10.14: ver el mismo cambio en induccion_listar.php -- admin_autorizado_at
+// ya no se vuelve a fijar nunca, el equivalente real es 'Aprobado_admin'.
+if (!in_array($postulacion['estado'], ['Aprobado_admin', 'Induccion_ok'], true)) {
     responderError('Todavía no está disponible la inducción para tu proceso.', 409);
 }
 

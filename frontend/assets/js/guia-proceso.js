@@ -93,6 +93,27 @@ const GUIA_POR_ROL = {
         <li>• <b>Pestaña "Rechazados":</b> los que fueron rechazados en cualquier etapa anterior (Terreno o Administrador), solo para trazabilidad -- tú no rechazas desde aquí, eso ya pasó antes de llegar a ti.</li>
       </ul>`,
   },
+  prevencion: {
+    titulo: 'Guía de uso · Prevención de Riesgos',
+    contenido: `
+      <p class="text-gray-700 mb-4">Tu parte es la <b>inducción de seguridad (charla ODI)</b> -- ves a cada postulante recién cuando el JAO ya verificó su identidad el día 1.</p>
+      <ul class="space-y-2.5 text-gray-700">
+        <li>• El postulante ve y responde el catálogo de cursos desde su propio celular (video + evaluación de preguntas abiertas), normalmente mientras espera en la sala el día 1.</li>
+        <li>• <b>Revisa cada evaluación enviada</b> y apruébala o repruébala con un comentario -- si repruebas, el postulante ve tu comentario y puede reenviar su respuesta corregida.</li>
+        <li>• <b>Marcar Inducción ODI:</b> se habilita recién cuando TODOS los cursos activos están aprobados para esa persona. Al marcarla, la postulación queda lista para que el JAO firme el contrato al día siguiente, y Bodega ya recibe aviso con las tallas para preparar el kit de EPP con anticipación.</li>
+        <li>• No ves datos sensibles de la persona (AFP, banco, etc.) -- solo lo necesario para identificarla y hacer la charla.</li>
+      </ul>`,
+  },
+  bodega: {
+    titulo: 'Guía de uso · Jefe de Bodega',
+    contenido: `
+      <p class="text-gray-700 mb-4">Tu parte es <b>entregar el kit de EPP</b> -- el paso que cierra el ciclo completo y deja a la persona ✔ Contratada.</p>
+      <ul class="space-y-2.5 text-gray-700">
+        <li>• Apenas Prevención marca la inducción (día 1), te llega el aviso con las tallas de calzado, pantalón, overol y polera -- así preparas el kit con anticipación, antes de que la persona vuelva al día 2.</li>
+        <li>• <b>El botón de entrega se habilita recién cuando el JAO ya firmó el contrato</b> (día 2) -- antes de eso solo ves el aviso de "todavía no firma".</li>
+        <li>• Al confirmar la entrega, el cupo ya estaba reservado desde que el Capataz seleccionó a la persona -- tu acción deja el estado en <b>Contratado</b>, le avisa al postulante con su QR final de acceso, y le avisa a Capataz/Jefe de Terreno que ya pueden retirarlo de la sala de espera.</li>
+      </ul>`,
+  },
 };
 
 function abrirGuia(rol) {
@@ -171,12 +192,16 @@ const FLUJO_DIAGRAMA_HTML = `
     })}
     ${pasoFlujo(5, 'Portería confirma el ingreso con el QR', 'Lo deja pasar a la sala de espera -- ahí mismo, con su celular, completa sus datos y documentos.')}
     ${pasoFlujo(6, 'Postulante completa Etapa 2', 'Datos personales, previsionales, bancarios + documentos: cédula, certificado de AFP, de salud, de residencia y (si aplica) último finiquito. Al terminar, el JAO recibe el aviso de que ya está listo para revisión.')}
-    ${pasoFlujo(7, 'Día 1: JAO verifica identidad', 'Compara el RUT declarado contra la cédula subida. Al confirmar, el postulante recibe un correo: "preséntate mañana a las 8am para ser contratado, hacer tu IRL y recibir tu kit de EPP".', {
+    ${pasoFlujo(7, 'Día 1: JAO verifica identidad', 'Compara el RUT declarado contra la cédula subida, apenas Portería confirma que se presentó (QR de ingreso a faena). Desde su celular, el postulante ya puede ir viendo y rindiendo el catálogo de cursos de Prevención mientras espera.', {
       rama: ramaFlujo('El JAO observa un documento → el postulante recibe un correo pidiéndole que lo vuelva a subir, y vuelve a este mismo paso apenas lo corrige. El resto de lo ya aprobado no se pierde.', 'observacion'),
     })}
-    ${pasoFlujo(8, 'Día 2: se presenta con el mismo QR', 'Portería lo reconoce ("viene por su proceso de contratación") y lo deja pasar de nuevo a la sala de espera.')}
-    ${pasoFlujo(9, 'Día 2: JAO cierra -- firma el Contrato', 'En esta etapa del piloto, Prevención y Bodega todavía no son candados digitales propios (la charla IRL y la entrega de EPP se hacen en la vida real) -- este mismo paso del JAO cierra todo: descuenta el cupo, deja Contratado, avisa al postulante con el QR final de acceso a la obra, y avisa a Capataz/Jefe de Terreno que ya pueden retirarlo de la sala de espera.')}
-    ${pasoFlujo(10, 'Capataz o Jefe de Terreno confirman que lo retiraron', 'Lo van a buscar a la sala de espera y confirman en su panel ("Ya lo retiré"), en la pestaña Personal Contratado. Con eso el ciclo completo queda cerrado, desde la postulación hasta el primer día en su cuadrilla.', { ultimo: true })}
+    ${pasoFlujo(8, 'Día 1: Prevención hace la inducción (charla ODI)', 'Revisa las evaluaciones de cada curso que el postulante ya envió y las aprueba o reprueba (con comentario). Cuando TODOS los cursos activos están aprobados y el JAO ya verificó identidad, marca la inducción como realizada -- ahí el postulante recibe el correo: "preséntate mañana a las 8am para ser contratado y recibir tu kit de EPP".', {
+      rama: ramaFlujo('Reprueba un curso → el postulante ve el comentario y puede reenviar su evaluación corregida, sin perder los cursos ya aprobados.', 'observacion'),
+    })}
+    ${pasoFlujo(9, 'Día 2: se presenta con el mismo QR', 'Portería lo reconoce ("viene por su proceso de contratación") y lo deja pasar de nuevo a la sala de espera.')}
+    ${pasoFlujo(10, 'Día 2: JAO firma el Contrato', 'Se habilita recién cuando ya verificó identidad, Prevención ya hizo la inducción, Y no queda ningún documento observado. Al firmar, todavía no se descuenta cupo ni queda Contratado -- eso pasa cuando Bodega entrega el kit de EPP, que ya sabe de antemano las tallas y estaba esperando esta firma para poder entregarlo.')}
+    ${pasoFlujo(11, 'Día 2: Bodega entrega el kit de EPP -- cierre', 'Al entregarlo, el postulante queda ✔ Contratado (el cupo ya se había reservado antes, al momento de la selección del Capataz), recibe el QR final de acceso a la obra, y se avisa a Capataz/Jefe de Terreno que ya pueden retirarlo de la sala de espera.')}
+    ${pasoFlujo(12, 'Capataz o Jefe de Terreno confirman que lo retiraron', 'Lo van a buscar a la sala de espera y confirman en su panel ("Ya lo retiré"), en la pestaña Personal Contratado. Con eso el ciclo completo queda cerrado, desde la postulación hasta el primer día en su cuadrilla.', { ultimo: true })}
   </div>`;
 
 function abrirFlujo() {
