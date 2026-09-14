@@ -188,6 +188,20 @@ async function rechazarDocumento(id, tipo) {
   }
 }
 
+// v10.14 (caso real de la prueba en Padre Hurtado: "no tengo de dónde
+// liberarlo" -- Portería nunca confirmó el ingreso a faena y la
+// postulación quedaba sin ninguna acción disponible para nadie).
+async function confirmarIngresoFaenaManual(id) {
+  if (!confirm('¿Confirmas que esta persona ya está físicamente en la obra? Úsalo solo si Portería no alcanzó a escanear su QR.')) return;
+  try {
+    const data = await apiFetch('/admin_general/confirmar_ingreso_faena.php', { method: 'POST', body: { postulacion_id: id } });
+    mostrarAlerta('alerta', data.mensaje, 'exito');
+    await cargarLista();
+  } catch (err) {
+    mostrarAlerta('alerta', err.message);
+  }
+}
+
 async function noCoincideIdentidad(id) {
   const motivo = prompt('¿Por qué no coincide el RUT de la foto con el declarado?', 'El RUT de la foto no coincide con el declarado.');
   if (motivo === null) return;
@@ -226,7 +240,10 @@ function tarjeta(p) {
                      <button class="bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold px-3 py-2 rounded-lg" onclick="verificarIdentidad(${p.id})">Coincide</button>
                      <button class="bg-red-100 hover:bg-red-200 text-red-700 text-xs font-semibold px-3 py-2 rounded-lg" onclick="noCoincideIdentidad(${p.id})">No coincide</button>
                    </span>`
-                : `<span class="text-xs text-gray-400 bg-gray-50 px-2 py-1 rounded-md font-medium" title="Portería aún no confirma que llegó a faena">⏳ Esperando ingreso a faena</span>`)}
+                : `<span class="inline-flex items-center gap-1.5">
+                     <span class="text-xs text-gray-400 bg-gray-50 px-2 py-1 rounded-md font-medium" title="Portería aún no confirma que llegó a faena">⏳ Esperando ingreso a faena</span>
+                     <button class="text-xs text-blue-600 underline" onclick="confirmarIngresoFaenaManual(${p.id})" title="Úsalo si la persona ya está físicamente acá pero Portería no alcanzó a escanear su QR">Confirmar manualmente</button>
+                   </span>`)}
           <button class="bg-gray-800 hover:bg-gray-900 text-white text-xs font-semibold px-3 py-2 rounded-lg" onclick="toggleFormJao(${p.id})">
             ${p.tiene_datos_jao ? 'Editar datos de nómina' : 'Completar datos de nómina'}
           </button>
