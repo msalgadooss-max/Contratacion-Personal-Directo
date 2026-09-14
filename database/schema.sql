@@ -32,6 +32,11 @@ USE icafal_rrhh;
 CREATE TABLE cargos (
     id              INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     nombre_cargo    VARCHAR(100) NOT NULL,
+    -- v10.14 (pedido explicito del usuario): codigo exacto de la hoja
+    -- "Cargos" del template Buk "Trabajos.xls" -- necesario para el
+    -- segundo exportador ("Codigo Cargo*"). NULL para cargos que aun no
+    -- se hayan mapeado a un codigo real de Buk.
+    codigo_buk      VARCHAR(80) NULL,
     cupos_totales   INT UNSIGNED NOT NULL DEFAULT 0,
     cupos_activos   INT UNSIGNED NOT NULL DEFAULT 0,
     activo          TINYINT(1) NOT NULL DEFAULT 1,
@@ -650,21 +655,49 @@ DELIMITER ;
 -- mano aqui, se abren via el flujo de "Solicitar cupos" de
 -- Jefe_Terreno (ver terreno/solicitar_cupo.php), que es lo que decide
 -- cuantos postulantes ven "cupos disponibles" para cada cargo.
-INSERT INTO cargos (nombre_cargo, cupos_totales, cupos_activos) VALUES
-    ('Maestro Urbanización', 0, 0),
-    ('Ayudante Maestro Urbanización', 0, 0),
-    ('Ayudante de Maestro', 0, 0),
-    ('Maestro Pintor', 0, 0),
-    ('Carpintero', 0, 0),
-    ('Gasfiter', 0, 0),
-    ('Ayudante de Gásfiter', 0, 0),
-    ('Paletero', 0, 0),
-    ('Jornal Concretero', 0, 0),
-    ('Albañil', 0, 0),
-    ('Ayudante Carpintero', 0, 0),
-    ('Maestro Camarero', 0, 0),
-    ('Jornal Picador', 0, 0),
-    ('Jornal Excavador', 0, 0);
+-- v10.14 (pedido explícito del usuario): nombre_cargo debe calzar
+-- EXACTO con el nombre oficial de la hoja "Cargos" del template Buk
+-- "Trabajos.xls" (mismo tilde/mayúscula), y codigo_buk es el código de
+-- esa misma hoja. La lista completa (27 cargos) sale de cruzar dos
+-- fuentes reales que aportó el usuario: (1) el catálogo oficial de
+-- Buk, y (2) el historial real de dotación de la obra H57 (Conjunto
+-- Padre Hurtado Etapa 4) en "Version_Rev.xlsx", filtrando por esa obra
+-- y excluyendo cargos de línea de mando (Capataz de Obras, Jefe de
+-- Obras, Jefe de Patio, Jefe de Bodega), administrativos (Ayudante
+-- Administrativo, Ayudante Oficina Técnica), y profesionales/encargados
+-- (Asist. en Prev. de Riesgos, Asistente de Calidad) -- ninguno de esos
+-- es "cupo" de mano de obra directa que Terreno deba poder solicitar.
+-- Los primeros 14 ya estaban en el catálogo (con 2 nombres corregidos:
+-- "Albañil" y "Maestro Urbanización" -- Buk los tiene sin tilde); los
+-- 13 siguientes son nuevos, confirmados en el historial real de H57.
+INSERT INTO cargos (nombre_cargo, codigo_buk, cupos_totales, cupos_activos) VALUES
+    ('Maestro Urbanizacion', 'maestro_urbanizacion', 0, 0),
+    ('Ayudante Maestro Urbanización', 'ayudante_maestro_urbanizacion', 0, 0),
+    ('Ayudante de Maestro', 'ayudante_de_maestro', 0, 0),
+    ('Maestro Pintor', 'maestro_pintor', 0, 0),
+    ('Carpintero', 'carpintero', 0, 0),
+    ('Gasfiter', 'gasfiter', 0, 0),
+    ('Ayudante de Gásfiter', 'ayudante_de_gasfiter', 0, 0),
+    ('Paletero', 'paletero', 0, 0),
+    ('Jornal Concretero', 'jornal_concretero', 0, 0),
+    ('Albanil', 'albanil', 0, 0),
+    ('Ayudante Carpintero', 'ayudante_carpintero', 0, 0),
+    ('Maestro Camarero', 'maestro_camarero', 0, 0),
+    ('Jornal Picador', 'jornal_picador', 0, 0),
+    ('Jornal Excavador', 'jornal_excavador', 0, 0),
+    ('Jornalero', 'jornalero', 0, 0),
+    ('Ayudante', 'ayudante', 0, 0),
+    ('Rigger', 'rigger', 0, 0),
+    ('Ayudante Trazador', 'ayudante_trazador', 0, 0),
+    ('Trazador', 'trazador', 0, 0),
+    ('Chofer Operador Máquina', 'chofer_operador_maquina', 0, 0),
+    ('Jornal Aseo', 'jornal_aseo', 0, 0),
+    ('Ayudante de Bodega', 'ayudante_de_bodega', 0, 0),
+    ('Ayudante Elec Mantención', 'ayudante_elec_mantencion', 0, 0),
+    ('Pañolero', 'panolero', 0, 0),
+    ('Junior de Obra', 'junior_de_obra', 0, 0),
+    ('Electrico de Mantencion', 'electrico_de_mantencion', 0, 0),
+    ('Nivelador', 'nivelador', 0, 0);
 
 -- v10.5 (Mejorar APP, punto 2): el postulante ya no elige cargo al
 -- postular -- el Capataz se lo asigna despues, en persona, cuando lo

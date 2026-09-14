@@ -81,6 +81,17 @@ define('CODIGO_SEGUIMIENTO_LARGO', 6);
 define('BANCO_RETENCION_MESES', 6);
 
 define('OBRA_NOMBRE', 'Obra H57 Padre Hurtado IV');
+
+// v10.14 (pedido explícito del usuario, segundo exportador Buk
+// "Trabajos"): códigos exactos sacados de las hojas de referencia del
+// template Trabajos.xls para esta obra -- Comuna Padre Hurtado (hoja
+// "Comunas"), Sub-área base de "H57 Conjunto Padre Hurtado Etapa 4"
+// bajo Gerencia Edificación (hoja "Sub-áreas"), y la Empresa real
+// (confirmado por el usuario: Icafal Ingeniería y Construcción S.A.,
+// no la que traía la fila de ejemplo del template).
+define('OBRA_COMUNA_BUK', '371');
+define('OBRA_SUBAREA_BUK', '9042');
+define('OBRA_EMPRESA_BUK', 'Icafal Ingeniería y Construcción S.A.');
 define('LIMITE_APROBACIONES_DIARIAS_TERRENO', 25);
 
 // v10.14 (pedido explícito del usuario: "activar nuevamente los

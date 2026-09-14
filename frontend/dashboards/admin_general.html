@@ -154,9 +154,17 @@
         <button onclick="seleccionarTodosExport(false)" class="text-blue-600 font-medium">Desmarcar todos</button>
       </div>
       <div id="lista-export" class="overflow-y-auto flex-1 space-y-1.5 pr-1"></div>
-      <button onclick="confirmarExport()" class="mt-4 bg-gray-900 hover:bg-gray-800 text-white text-sm font-semibold px-4 py-2.5 rounded-lg">
-        Exportar seleccionados (Excel)
-      </button>
+      <!-- v10.14 (pedido explícito del usuario): segundo archivo Buk
+           ("Template Trabajos"), complementario al de empleado -- se
+           enlazan por RUT. Misma selección de personas que el de arriba. -->
+      <div class="mt-4 grid grid-cols-2 gap-2">
+        <button onclick="confirmarExport()" class="bg-gray-900 hover:bg-gray-800 text-white text-sm font-semibold px-4 py-2.5 rounded-lg">
+          Empleado (Excel)
+        </button>
+        <button onclick="confirmarExportTrabajo()" class="bg-gray-700 hover:bg-gray-800 text-white text-sm font-semibold px-4 py-2.5 rounded-lg">
+          Trabajo (Excel)
+        </button>
+      </div>
     </div>
   </div>
 

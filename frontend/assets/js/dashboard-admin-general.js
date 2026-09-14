@@ -607,3 +607,35 @@ async function confirmarExport() {
     mostrarAlerta('alerta', err.message || 'No fue posible exportar.');
   }
 }
+
+// v10.14 (pedido explícito del usuario): segundo archivo Buk ("Template
+// Trabajos"), se enlaza con el de Empleado por RUT -- misma selección
+// de personas que el botón de arriba.
+async function confirmarExportTrabajo() {
+  const ids = Array.from(document.querySelectorAll('.chk-export:checked')).map(chk => chk.value);
+  if (!ids.length) {
+    mostrarAlerta('alerta', 'Selecciona al menos una persona para exportar.');
+    return;
+  }
+  try {
+    const res = await apiFetch(`/admin_general/exportar_trabajo.php?ids=${ids.join(',')}`);
+    const sinCodigo = res.headers.get('X-Cargos-Sin-Codigo-Buk');
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'carga_masiva_buk_trabajos.xlsx';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+    cerrarModalExport();
+    if (sinCodigo) {
+      mostrarAlerta('alerta', `Exportado, pero ojo: estos cargos no tienen código Buk asignado y salieron con "Código Cargo" en blanco: ${sinCodigo}.`, 'exito');
+    } else {
+      mostrarAlerta('alerta', `Se exportaron ${ids.length} persona(s) al Template Trabajo.`, 'exito');
+    }
+  } catch (err) {
+    mostrarAlerta('alerta', err.message || 'No fue posible exportar.');
+  }
+}
