@@ -54,7 +54,7 @@ RUN { \
         echo '        AllowOverride None'; \
         echo '        Require all granted'; \
         echo '    </Directory>'; \
-        echo '    <FilesMatch "\.(js|css)$">'; \
+        echo '    <FilesMatch "\.(js|css|html)$">'; \
         echo '        Header set Cache-Control "no-cache, must-revalidate"'; \
         echo '    </FilesMatch>'; \
         echo '    ErrorLog ${APACHE_LOG_DIR}/error.log'; \
