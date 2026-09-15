@@ -27,6 +27,22 @@ let REGIONES_COMUNAS = {};
 let PASO_ACTUAL = 1;
 const TOTAL_PASOS = 4;
 
+// v10.15 (pedido explícito del usuario, item 3 de la lista post-prueba):
+// datos de una postulación anterior de esta misma persona (mismo RUT),
+// si existe -- ver token_info.php. Null si es la primera vez.
+let DATOS_ANTERIORES = null;
+let DOCUMENTOS_ANTERIORES = [];
+// Traduce el id corto que usa el formulario (DOCUMENTOS de más abajo) al
+// tipo real guardado en la base de datos (postulacion_documentos.tipo).
+const MAPA_TIPO_DOCUMENTO = {
+  cedula: 'cedula_identidad',
+  cedula_reverso: 'cedula_identidad_reverso',
+  certificado_afp: 'certificado_afp',
+  certificado_salud: 'certificado_salud',
+  certificado_residencia: 'certificado_residencia',
+  ultimo_finiquito: 'ultimo_finiquito',
+};
+
 // v5.2: etiquetas legibles para la pantalla de "Revisar y confirmar".
 const ETIQUETAS_CAMPO = {
   fecha_nacimiento: 'Fecha de nacimiento', sexo: 'Sexo', nacionalidad: 'Nacionalidad', estado_civil: 'Estado civil',
@@ -104,6 +120,7 @@ function campoDocumentoHtml(d) {
       </div>
       <p id="preview-${d.id}" class="text-xs text-green-600 font-medium mt-1 hidden"></p>
       <p class="text-xs text-gray-400 mt-1">${d.ayuda}</p>
+      <p id="hint-${d.id}" class="text-xs text-orange-600 mt-1 hidden"></p>
     </div>`;
 }
 
@@ -159,6 +176,30 @@ function renderCamposDocumentos() {
       preview.textContent = `✓ ${archivo.name}`;
       preview.classList.remove('hidden');
     });
+  });
+}
+
+// v10.15 (pedido explícito del usuario, item 3): informa, junto a cada
+// documento, si ya lo subió en una postulación anterior -- NO se
+// reutiliza el archivo automáticamente (varios de estos documentos
+// vencen o cambian entre una contratación y otra, ver conversación con
+// Ricardo/Luis sobre vigencia de documentos en Buk), solo se le avisa
+// para que sepa que "esto ya lo hice antes" y decida si igual conviene
+// tomar una foto nueva y actualizada.
+function marcarDocumentosAnteriores() {
+  if (!DOCUMENTOS_ANTERIORES.length) return;
+  const fechaPorTipo = {};
+  DOCUMENTOS_ANTERIORES.forEach(doc => { fechaPorTipo[doc.tipo] = doc.subido_at; });
+
+  DOCUMENTOS.forEach(d => {
+    const tipoDb = MAPA_TIPO_DOCUMENTO[d.id];
+    const fechaSubida = tipoDb ? fechaPorTipo[tipoDb] : null;
+    if (!fechaSubida) return;
+    const fechaTexto = new Date(fechaSubida).toLocaleDateString('es-CL', { year: 'numeric', month: 'long' });
+    const hint = document.getElementById(`hint-${d.id}`);
+    if (!hint) return;
+    hint.textContent = `🔁 Ya subiste este documento la vez anterior (${fechaTexto}) -- si sigue vigente, tómale la foto igual para dejarla actualizada.`;
+    hint.classList.remove('hidden');
   });
 }
 
@@ -525,12 +566,17 @@ function guardarBorrador() {
   } catch (e) { /* localStorage no disponible: seguimos sin guardar borrador */ }
 }
 
+// v10.15: ahora devuelve true/false -- inicializar() necesita saber si
+// hubo un borrador propio de ESTA postulación, porque en ese caso tiene
+// prioridad sobre los datos de una postulación anterior (ver
+// precargarDatosAnteriores()) -- lo más reciente que la persona escribió
+// gana, no una postulación más vieja.
 function restaurarBorrador() {
   let borrador;
   try {
     borrador = JSON.parse(localStorage.getItem(CLAVE_BORRADOR) || 'null');
-  } catch (e) { return; }
-  if (!borrador) return;
+  } catch (e) { return false; }
+  if (!borrador) return false;
 
   // La región se restaura primero para que dispare la carga de comunas
   // antes de intentar poner el valor guardado de comuna.
@@ -544,7 +590,44 @@ function restaurarBorrador() {
   });
   document.getElementById('aviso-borrador').classList.remove('hidden');
   irAPaso(borrador.paso || 1);
+  return true;
 }
+
+// v10.15 (pedido explícito del usuario, item 3): prellena el formulario
+// con los datos de la postulación anterior de esta misma persona (mismo
+// RUT) -- ella misma revisa y confirma que sigan vigentes antes de
+// enviar, no se guarda nada nuevo hasta que ella lo haga.
+function precargarDatosAnteriores() {
+  if (!DATOS_ANTERIORES) return;
+  if (DATOS_ANTERIORES.region) {
+    regionSelect.value = DATOS_ANTERIORES.region;
+    regionSelect.dispatchEvent(new Event('change'));
+  }
+  [...CAMPOS_TEXTO_PASO[1], ...CAMPOS_TEXTO_PASO[2]].forEach(id => {
+    const valor = DATOS_ANTERIORES[id];
+    const el = document.getElementById(id);
+    if (el && valor) el.value = valor;
+  });
+
+  const fecha = DATOS_ANTERIORES.fecha_anterior ? new Date(DATOS_ANTERIORES.fecha_anterior) : null;
+  const fechaTexto = fecha ? fecha.toLocaleDateString('es-CL', { year: 'numeric', month: 'long' }) : '';
+  document.getElementById('recontratado-contexto').textContent =
+    `como ${DATOS_ANTERIORES.cargo_anterior}${fechaTexto ? ' (' + fechaTexto + ')' : ''}`;
+  document.getElementById('aviso-recontratado').classList.remove('hidden');
+}
+
+// "Prefiero completar todo de nuevo": vuelve a dejar el formulario en
+// blanco y no vuelve a ofrecer el prellenado en esta sesión.
+document.getElementById('btn-completar-de-nuevo').addEventListener('click', () => {
+  [...CAMPOS_TEXTO_PASO[1], ...CAMPOS_TEXTO_PASO[2]].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  comunaSelect.innerHTML = '<option value="">Primero elige tu región</option>';
+  comunaSelect.disabled = true;
+  document.getElementById('aviso-recontratado').classList.add('hidden');
+  try { localStorage.removeItem(CLAVE_BORRADOR); } catch (e) { /* nada que limpiar */ }
+});
 
 // Autoguardado mientras el postulante escribe, no solo al presionar "Siguiente".
 form.addEventListener('input', () => { if (!form.classList.contains('hidden')) guardarBorrador(); });
@@ -560,11 +643,21 @@ async function inicializar() {
       cargarListas(),
     ]);
     subtitulo.textContent = `Hola ${infoToken.postulacion.nombre_completo}, completa tus datos para continuar.`;
+    DATOS_ANTERIORES = infoToken.datos_anteriores || null;
+    DOCUMENTOS_ANTERIORES = infoToken.documentos_anteriores || [];
     renderCamposDocumentos();
+    marcarDocumentosAnteriores();
     form.classList.remove('hidden');
     document.getElementById('progreso-wizard').classList.remove('hidden');
     document.getElementById('ayuda-asistida').classList.remove('hidden');
-    restaurarBorrador();
+    // v10.15: un borrador propio de ESTA postulación (si ya había
+    // empezado a llenarla) siempre gana por sobre los datos de una
+    // postulación anterior -- solo se ofrece el prellenado histórico si
+    // no hay nada más reciente que recuperar.
+    const huboBorrador = restaurarBorrador();
+    if (!huboBorrador) {
+      precargarDatosAnteriores();
+    }
   } catch (err) {
     mostrarError(err.message);
   }

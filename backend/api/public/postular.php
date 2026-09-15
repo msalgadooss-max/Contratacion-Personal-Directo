@@ -85,8 +85,20 @@ if (!$cargoAsignar) {
 $cargoId = (int)$cargoAsignar['id'];
 $estadoInicial = 'Pendiente';
 
-// Documento unico: una persona no puede tener mas de una postulacion activa.
-$stmtDup = $pdo->prepare('SELECT id FROM postulaciones WHERE rut = :rut');
+// v10.15 (corrección, pedido explícito del usuario, item 3 de la lista
+// post-prueba -- "plan para personal recontratado"): antes esto
+// bloqueaba una postulación nueva si el RUT existía en CUALQUIER
+// estado, para siempre -- alguien que ya trabajó y terminó su ciclo
+// (Rechazado, o Contratado/Proceso_completo de un ciclo anterior) nunca
+// podía volver a postular, ni siquiera meses después. Ahora solo se
+// bloquea si hay una postulación de este RUT todavía EN CURSO (nadie
+// necesita dos postulaciones activas al mismo tiempo); una vez que su
+// ciclo anterior terminó -- para bien (Contratado/Proceso_completo) o
+// para mal (Rechazado) -- puede volver a postular con normalidad.
+$stmtDup = $pdo->prepare(
+    "SELECT id FROM postulaciones
+      WHERE rut = :rut AND estado NOT IN ('Rechazado', 'Contratado', 'Proceso_completo')"
+);
 $stmtDup->execute(['rut' => $numeroDocumento]);
 if ($stmtDup->fetch()) {
     responderError('Ya existe una postulación registrada con ese documento. Usa el módulo de seguimiento para ver su estado.', 409);
@@ -104,7 +116,46 @@ $tieneArchivoCv = ($_FILES['cv']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_
 $cvRuta = null;
 $experienciaSinCv = null;
 
-if ($tieneArchivoCv) {
+// v10.15 (pedido explícito del usuario, item 3): "personal recontratado"
+// -- si vino de la búsqueda de "recuperar mis datos" (ver
+// buscar_postulante_anterior.php) y eligió reusar el CV de esa
+// postulación anterior, se vuelve a validar acá mismo que ese RUT+correo
+// coincidan EXACTAMENTE con lo que se está enviando ahora -- así este id
+// no sirve por sí solo para copiarse el CV de otra persona.
+$reutilizarCvDe = (int)($_POST['reutilizar_cv_de'] ?? 0);
+if (!$tieneArchivoCv && $reutilizarCvDe > 0) {
+    $stmtCvAnterior = $pdo->prepare(
+        'SELECT rut, correo, cv_ruta_archivo FROM postulaciones WHERE id = :id'
+    );
+    $stmtCvAnterior->execute(['id' => $reutilizarCvDe]);
+    $postulacionAnterior = $stmtCvAnterior->fetch();
+    if ($postulacionAnterior
+        && $postulacionAnterior['cv_ruta_archivo'] !== null
+        && $postulacionAnterior['rut'] === $numeroDocumento
+        && strtolower($postulacionAnterior['correo']) === strtolower($correo)
+    ) {
+        $origenCv = __DIR__ . '/../../uploads/' . $postulacionAnterior['cv_ruta_archivo'];
+        $extensionCv = pathinfo($origenCv, PATHINFO_EXTENSION);
+        if (is_file($origenCv) && in_array($extensionCv, ['pdf', 'jpg', 'png'], true)) {
+            $carpetaCv = __DIR__ . '/../../uploads/cv';
+            if (!is_dir($carpetaCv)) {
+                mkdir($carpetaCv, 0750, true);
+            }
+            $nombreNuevo = bin2hex(random_bytes(16)) . '.' . $extensionCv;
+            if (copy($origenCv, $carpetaCv . '/' . $nombreNuevo)) {
+                $cvRuta = 'cv/' . $nombreNuevo;
+                $tieneArchivoCv = true; // deja de exigirse el archivo nuevo mas abajo.
+            }
+        }
+    }
+    // Si la validación falla por cualquier motivo, simplemente no se
+    // reutiliza nada -- sigue el camino normal (exigir CV nuevo o "no
+    // tengo CV"), sin mostrar ningún error por esto.
+}
+
+if ($cvRuta !== null) {
+    // Ya se resolvió arriba por reutilización -- no hacer nada más.
+} elseif ($tieneArchivoCv) {
     try {
         $cvRuta = guardarArchivoSubido($_FILES['cv'], 'cv', 'tu CV');
     } catch (RuntimeException $e) {

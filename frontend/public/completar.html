@@ -47,6 +47,22 @@
     <div id="aviso-borrador" class="hidden bg-blue-50 border border-blue-200 text-blue-700 text-xs rounded-lg px-4 py-2.5 mb-4">
       📝 Recuperamos lo que ya habías completado antes.
     </div>
+    <!-- v10.15 (pedido explícito del usuario, item 3 de la lista post-
+         prueba): "plan para personal recontratado" -- si esta persona ya
+         trabajó antes con nosotros, se le avisa y se le completan los
+         datos que probablemente siguen vigentes, para que solo tenga que
+         revisarlos y confirmarlos (o corregir lo que cambió). -->
+    <div id="aviso-recontratado" class="hidden bg-orange-50 border border-orange-200 rounded-lg px-4 py-3 mb-4">
+      <p class="text-sm text-orange-800">
+        👋 <strong>¡Qué bueno tenerte de vuelta<span id="recontratado-nombre"></span>!</strong>
+        Ya trabajaste con nosotros <span id="recontratado-contexto"></span>. Completamos algunos
+        datos por ti -- <strong>revisa que sigan vigentes</strong> (AFP, Isapre, dirección, etc.)
+        y corrige lo que haya cambiado.
+      </p>
+      <button type="button" id="btn-completar-de-nuevo" class="text-xs text-orange-700 underline font-medium mt-1.5">
+        Prefiero completar todo de nuevo
+      </button>
+    </div>
 
     <!-- v5.1: barra "Paso X de 3" -->
     <div id="progreso-wizard" class="hidden mb-5">

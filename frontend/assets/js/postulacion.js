@@ -102,12 +102,24 @@ cargarListas();
 const sinCvCheckbox = document.getElementById('sin-cv');
 const cvInput = document.getElementById('cv');
 const experienciaManualDiv = document.getElementById('experiencia-manual');
+const reutilizarCvDeInput = document.getElementById('reutilizar_cv_de');
+
+// v10.15 (pedido explícito del usuario, item 3): el CV deja de ser
+// obligatorio si "No tengo CV" está marcado O si vamos a reutilizar uno
+// de una postulación anterior (ver buscarPostulanteAnterior() más abajo)
+// -- cualquiera de los dos casos libera el campo.
+function actualizarObligatoriedadCv() {
+  const sinCv = sinCvCheckbox.checked;
+  const tieneCvReutilizable = reutilizarCvDeInput.value !== '';
+  cvInput.required = !sinCv && !tieneCvReutilizable;
+}
+
 sinCvCheckbox.addEventListener('change', () => {
   const sinCv = sinCvCheckbox.checked;
   experienciaManualDiv.classList.toggle('hidden', !sinCv);
-  cvInput.required = !sinCv;
   cvInput.disabled = sinCv;
   if (sinCv) cvInput.value = '';
+  actualizarObligatoriedadCv();
 });
 
 // v10.15 (pedido explícito del usuario, item 4 de la lista post-prueba):
@@ -128,6 +140,97 @@ if (btnFotoCv && cvCamaraInput) {
     cvInput.dispatchEvent(new Event('change', { bubbles: true }));
   });
 }
+
+// v10.15 (pedido explícito del usuario, item 3 de la lista post-prueba):
+// "plan para personal recontratado" -- exige el mismo doble factor que
+// "Consulta tu estado" (documento + correo) para no exponer datos de
+// otra persona con solo un RUT adivinado; ver
+// backend/api/public/buscar_postulante_anterior.php.
+const btnMostrarRecuperar = document.getElementById('btn-mostrar-recuperar');
+const cajaRecuperar = document.getElementById('caja-recuperar');
+const btnBuscarAnterior = document.getElementById('btn-buscar-anterior');
+const recuperarMensaje = document.getElementById('recuperar-mensaje');
+const avisoRecuperado = document.getElementById('aviso-recuperado');
+const hintCvReutilizable = document.getElementById('hint-cv-reutilizable');
+
+btnMostrarRecuperar.addEventListener('click', () => {
+  cajaRecuperar.classList.toggle('hidden');
+});
+
+// Reparte un correo completo entre el campo de usuario y el select de
+// dominio del formulario principal -- mismo criterio que seguimiento.js.
+function precargarCorreoPrincipal(correoCompleto) {
+  const arroba = correoCompleto.indexOf('@');
+  if (arroba === -1) return;
+  const usuario = correoCompleto.slice(0, arroba);
+  const dominio = correoCompleto.slice(arroba);
+  const dominiosConocidos = ['@gmail.com', '@hotmail.com', '@outlook.com', '@yahoo.com', '@icloud.com'];
+  correoUsuarioInput.value = usuario;
+  if (dominiosConocidos.includes(dominio)) {
+    correoDominioSelect.value = dominio;
+  } else {
+    correoDominioSelect.value = '__otro__';
+    correoDominioOtroInput.classList.remove('hidden');
+    correoDominioOtroInput.value = dominio;
+  }
+  actualizarCorreoCompuesto();
+}
+
+btnBuscarAnterior.addEventListener('click', async () => {
+  const documento = document.getElementById('recuperar-documento').value.trim();
+  const correo = document.getElementById('recuperar-correo').value.trim();
+  recuperarMensaje.classList.add('hidden');
+  if (!documento || !correo) {
+    recuperarMensaje.textContent = 'Completa tu documento y tu correo.';
+    recuperarMensaje.className = 'text-xs text-center text-red-600';
+    recuperarMensaje.classList.remove('hidden');
+    return;
+  }
+  btnBuscarAnterior.disabled = true;
+  btnBuscarAnterior.textContent = 'Buscando...';
+  try {
+    const data = await apiFetch('/public/buscar_postulante_anterior.php', {
+      method: 'POST',
+      body: { numero_documento: documento, correo },
+    });
+    if (!data.encontrado) {
+      recuperarMensaje.textContent = 'No encontramos una postulación anterior con esos datos -- completa el formulario normalmente.';
+      recuperarMensaje.className = 'text-xs text-center text-gray-500';
+      recuperarMensaje.classList.remove('hidden');
+      return;
+    }
+    // Prellena el formulario principal con lo encontrado -- la persona
+    // igual puede corregir cualquier campo antes de enviar.
+    numeroDocumentoInput.value = documento;
+    numeroDocumentoInput.dispatchEvent(new Event('input', { bubbles: true }));
+    document.getElementById('nombre').value = data.nombre || '';
+    document.getElementById('apellido').value = data.apellido || '';
+    document.getElementById('segundo_apellido').value = data.segundo_apellido || '';
+    document.getElementById('telefono').value = data.telefono || '';
+    precargarCorreoPrincipal(data.correo || correo);
+
+    if (data.reutilizar_cv_de) {
+      reutilizarCvDeInput.value = String(data.reutilizar_cv_de);
+      const fechaTexto = data.fecha_anterior
+        ? new Date(data.fecha_anterior).toLocaleDateString('es-CL', { year: 'numeric', month: 'long' })
+        : '';
+      hintCvReutilizable.textContent = `✅ Podemos usar el CV que enviaste${fechaTexto ? ' en ' + fechaTexto : ' la vez anterior'} -- si prefieres, sube uno nuevo abajo.`;
+      hintCvReutilizable.classList.remove('hidden');
+      actualizarObligatoriedadCv();
+    }
+
+    cajaRecuperar.classList.add('hidden');
+    avisoRecuperado.classList.remove('hidden');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  } catch (err) {
+    recuperarMensaje.textContent = err.message;
+    recuperarMensaje.className = 'text-xs text-center text-red-600';
+    recuperarMensaje.classList.remove('hidden');
+  } finally {
+    btnBuscarAnterior.disabled = false;
+    btnBuscarAnterior.textContent = 'Buscar mis datos';
+  }
+});
 
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -172,6 +275,11 @@ form.addEventListener('submit', async (e) => {
       formData.append('experiencia_descripcion', document.getElementById('experiencia_descripcion').value);
     } else if (cvInput.files[0]) {
       formData.append('cv', cvInput.files[0]);
+    } else if (reutilizarCvDeInput.value !== '') {
+      // v10.15 (item 3): no adjuntó un CV nuevo, pero hay uno reutilizable
+      // de una postulación anterior -- postular.php vuelve a validar que
+      // documento+correo coincidan antes de copiarlo.
+      formData.append('reutilizar_cv_de', reutilizarCvDeInput.value);
     }
 
     const data = await apiFetchFormData('/public/postular.php', formData);
