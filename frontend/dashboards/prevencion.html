@@ -6,6 +6,36 @@
 <title>Dashboard Prevención de Riesgos - ICAFAL</title>
 <link rel="icon" href="../assets/img/logo-icafal-mark.png">
 <script src="https://cdn.tailwindcss.com"></script>
+<!-- ICAFAL_TEMA_MARCA v1 -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script>
+  // Tema de marca ICAFAL (naranjo real extraido del logo, HSL escalado a
+  // una paleta de 11 tonos). Reemplaza el "blue" por defecto de Tailwind
+  // -- toda la app ya usaba blue-* como unico color de acento, asi que
+  // esto recolorea todo sin tocar ninguna clase en el HTML existente.
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          blue: {
+            50: '#fdf5f2', 100: '#fae7e1', 200: '#fac9b7', 300: '#f7a587',
+            400: '#f47c50', 500: '#f15922', 600: '#e1460e', 700: '#c03c0c',
+            800: '#a23006', 900: '#802605', 950: '#531903',
+          },
+        },
+        fontFamily: {
+          sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        },
+      },
+    },
+  }
+</script>
+<style>
+  h1, h2, h3 { font-family: 'Manrope', 'Inter', ui-sans-serif, system-ui, sans-serif; }
+  input[type="checkbox"], input[type="radio"] { accent-color: #e1460e; }
+</style>
 </head>
 <body class="bg-gray-50 min-h-screen">
   <header class="bg-white border-b px-6 py-4 flex justify-between items-center">
