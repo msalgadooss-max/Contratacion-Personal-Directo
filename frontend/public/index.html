@@ -125,6 +125,16 @@
         <label class="block text-sm font-medium text-gray-700 mb-1">Tu CV</label>
         <input id="cv" type="file" accept="application/pdf,image/*" required
                class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:bg-blue-50 file:text-blue-700 file:text-sm">
+        <!-- v10.15 (pedido explícito del usuario, item 4 de la lista
+             post-prueba): opción explícita de sacar la foto con la cámara
+             (en vez de depender de que el postulante sepa que el input de
+             arriba también acepta fotos) -- usa la cámara trasera y su
+             resolución nativa, no una captura de baja calidad. -->
+        <button type="button" id="btn-foto-cv"
+                class="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg px-3 py-2 transition">
+          📷 Sacar foto con la cámara
+        </button>
+        <input id="cv-camara" type="file" accept="image/*" capture="environment" class="hidden">
         <p class="text-xs text-gray-400 mt-1">PDF, JPG o PNG, hasta 8 MB. Puedes tomarle una foto con tu celular: que quede bien enfocada y con buena luz, para que se pueda leer.</p>
         <label class="flex items-center gap-2 text-xs text-gray-600 mt-2">
           <input id="sin-cv" type="checkbox" class="mt-0">

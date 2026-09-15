@@ -52,8 +52,26 @@
       </div>
       <div>
         <label class="block text-sm font-medium text-gray-700 mb-1">Correo electrónico</label>
-        <input id="correo" type="email" placeholder="tucorreo@ejemplo.com" required
-               class="w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+        <!-- v10.15 (pedido explícito del usuario): mismo selector de
+             dominio que en la postulación de Etapa 1 -- evita errores de
+             tilde/@ al escribir el correo también acá. -->
+        <div class="flex gap-2">
+          <input id="correo_usuario" type="text" placeholder="tunombre" required
+                 autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"
+                 class="flex-1 min-w-0 border border-gray-300 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+          <select id="correo_dominio"
+                  class="w-32 shrink-0 border border-gray-300 rounded-lg px-2 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+            <option value="@gmail.com">@gmail.com</option>
+            <option value="@hotmail.com">@hotmail.com</option>
+            <option value="@outlook.com">@outlook.com</option>
+            <option value="@yahoo.com">@yahoo.com</option>
+            <option value="@icloud.com">@icloud.com</option>
+            <option value="__otro__">Otro...</option>
+          </select>
+        </div>
+        <input id="correo_dominio_otro" type="text" placeholder="@tudominio.com" maxlength="100"
+               class="hidden mt-2 w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+        <input id="correo" type="hidden">
       </div>
       <button type="submit" id="btn-consultar"
               class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg py-3 transition">

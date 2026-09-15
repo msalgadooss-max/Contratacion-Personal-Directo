@@ -668,7 +668,7 @@ function carpetaBasePostulantes(): string
  */
 function generarCarpetaDocumentosPersonales(PDO $pdo, int $postulacionId): void
 {
-    $stmt = $pdo->prepare('SELECT id, nombre, apellido, segundo_apellido FROM postulaciones WHERE id = :id');
+    $stmt = $pdo->prepare('SELECT id, nombre, apellido, segundo_apellido, cv_ruta_archivo FROM postulaciones WHERE id = :id');
     $stmt->execute(['id' => $postulacionId]);
     $p = $stmt->fetch();
     if (!$p) {
@@ -702,6 +702,19 @@ function generarCarpetaDocumentosPersonales(PDO $pdo, int $postulacionId): void
         $etiquetaArchivo = str_replace(['/', '\\'], '-', $etiquetas[$doc['tipo']] ?? $doc['tipo']);
         $nombreDestino = $etiquetaArchivo . '.' . $extension;
         copy($origen, $rutaDocsPersonales . '/' . $nombreDestino);
+    }
+
+    // v10.15 (pedido explícito del usuario, item 4 de la lista post-prueba):
+    // el CV de la Etapa 1 (foto o PDF) vive en postulaciones.cv_ruta_archivo,
+    // no en postulacion_documentos -- por eso nunca quedaba copiado acá.
+    // Si el postulante marcó "No tengo CV" este campo queda NULL y no hay
+    // nada que copiar.
+    if (!empty($p['cv_ruta_archivo'])) {
+        $origenCv = __DIR__ . '/../uploads/' . $p['cv_ruta_archivo'];
+        if (is_file($origenCv)) {
+            $extensionCv = pathinfo($origenCv, PATHINFO_EXTENSION);
+            copy($origenCv, $rutaDocsPersonales . '/CV.' . $extensionCv);
+        }
     }
 }
 

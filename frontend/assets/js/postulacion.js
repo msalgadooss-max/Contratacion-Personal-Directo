@@ -110,6 +110,25 @@ sinCvCheckbox.addEventListener('change', () => {
   if (sinCv) cvInput.value = '';
 });
 
+// v10.15 (pedido explícito del usuario, item 4 de la lista post-prueba):
+// "Sacar foto con la cámara" abre la cámara (no la galería) gracias a
+// capture="environment" en el input oculto, y el archivo resultante se
+// traspasa al input real de CV via DataTransfer -- así se ve reflejado
+// en su nombre de archivo normal y el resto del formulario (envío,
+// validaciones) no necesita saber que vino de la cámara y no del picker.
+const btnFotoCv = document.getElementById('btn-foto-cv');
+const cvCamaraInput = document.getElementById('cv-camara');
+if (btnFotoCv && cvCamaraInput) {
+  btnFotoCv.addEventListener('click', () => cvCamaraInput.click());
+  cvCamaraInput.addEventListener('change', () => {
+    if (!cvCamaraInput.files[0]) return;
+    const dt = new DataTransfer();
+    dt.items.add(cvCamaraInput.files[0]);
+    cvInput.files = dt.files;
+    cvInput.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+}
+
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
 

@@ -24,12 +24,64 @@ const alertaDiv = document.getElementById('alerta');
 
 formatearRutInput(rutInput);
 
+// v10.15 (pedido explícito del usuario, item 1 de la lista post-prueba):
+// mismo selector de dominio de correo que la Etapa 1 (postulacion.js),
+// para evitar los mismos errores de tilde/@ acá también.
+const correoUsuarioInput = document.getElementById('correo_usuario');
+const correoDominioSelect = document.getElementById('correo_dominio');
+const correoDominioOtroInput = document.getElementById('correo_dominio_otro');
+const correoHidden = document.getElementById('correo');
+const DOMINIOS_CONOCIDOS = ['@gmail.com', '@hotmail.com', '@outlook.com', '@yahoo.com', '@icloud.com'];
+
+correoDominioSelect.addEventListener('change', () => {
+  correoDominioOtroInput.classList.toggle('hidden', correoDominioSelect.value !== '__otro__');
+  if (correoDominioSelect.value === '__otro__') correoDominioOtroInput.focus();
+});
+
+function quitarTildes(texto) {
+  return texto.normalize('NFD').replace(/[̀-ͯ]/g, '');
+}
+
+function actualizarCorreoCompuesto() {
+  const sinTildes = quitarTildes(correoUsuarioInput.value);
+  if (sinTildes !== correoUsuarioInput.value) {
+    const posicion = correoUsuarioInput.selectionStart;
+    correoUsuarioInput.value = sinTildes;
+    correoUsuarioInput.setSelectionRange(posicion, posicion);
+  }
+  const dominio = correoDominioSelect.value === '__otro__'
+    ? correoDominioOtroInput.value.trim()
+    : correoDominioSelect.value;
+  correoHidden.value = correoUsuarioInput.value.trim() + dominio;
+}
+correoUsuarioInput.addEventListener('input', actualizarCorreoCompuesto);
+correoDominioSelect.addEventListener('change', actualizarCorreoCompuesto);
+correoDominioOtroInput.addEventListener('input', actualizarCorreoCompuesto);
+
+// Reparte un correo completo (que puede venir de un QR con ?correo=...)
+// entre el campo de usuario y el select de dominio.
+function precargarCorreo(correoCompleto) {
+  const arroba = correoCompleto.indexOf('@');
+  if (arroba === -1) return;
+  const usuario = correoCompleto.slice(0, arroba);
+  const dominio = correoCompleto.slice(arroba); // incluye el "@"
+  correoUsuarioInput.value = usuario;
+  if (DOMINIOS_CONOCIDOS.includes(dominio)) {
+    correoDominioSelect.value = dominio;
+  } else {
+    correoDominioSelect.value = '__otro__';
+    correoDominioOtroInput.classList.remove('hidden');
+    correoDominioOtroInput.value = dominio;
+  }
+  actualizarCorreoCompuesto();
+}
+
 // Prefill si venimos desde el correo de confirmación (?rut=...), o de un
 // QR personalizado que ya trae ambos datos (?rut=...&correo=...) -- ej.
 // el que el asistente del JAO podria mostrar al entregar casco y peto.
 const params = new URLSearchParams(window.location.search);
 if (params.get('rut')) rutInput.value = params.get('rut');
-if (params.get('correo')) document.getElementById('correo').value = params.get('correo');
+if (params.get('correo')) precargarCorreo(params.get('correo'));
 
 // v6.6: se guardan para poder reenviar el enlace de Etapa 2 sin pedirle
 // de nuevo el RUT y el código al postulante.
