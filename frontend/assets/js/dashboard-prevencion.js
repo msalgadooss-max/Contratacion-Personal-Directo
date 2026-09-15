@@ -73,7 +73,7 @@ async function marcarInduccion(id) {
 // --- v9: modal de detalle de cursos ----------------------------------------
 async function abrirCursos(postulacionId) {
   const modal = document.getElementById('cursos-modal');
-  modal.innerHTML = `<div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 text-sm text-gray-500">Cargando...</div>`;
+  modal.innerHTML = `<div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6">${spinnerHtml()}</div>`;
   modal.classList.remove('hidden');
   modal.onclick = (e) => { if (e.target === modal) cerrarCursos(); };
 

@@ -38,12 +38,20 @@
 </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
+  <!-- v10.15 (pedido explícito del usuario): franja de marca -- detalle
+       simple (una sola linea de color) que da un "sello" reconocible
+       sin agregar riesgo ni tocar la logica del formulario. -->
+  <div class="fixed top-0 inset-x-0 h-1.5 bg-gradient-to-r from-blue-500 via-blue-600 to-blue-700"></div>
   <div class="max-w-md mx-auto px-4 py-8">
     <div class="text-center mb-6">
       <img src="../assets/img/logo-icafal.png" alt="ICAFAL Ingeniería y Construcción" class="h-16 mx-auto mb-4">
       <h1 class="text-2xl font-bold text-gray-900">Postulación de Personal</h1>
       <p class="text-gray-500 text-sm mt-1">Completa tus datos para postular a una obra ICAFAL.</p>
-      <p id="obra-banner" class="inline-block mt-3 bg-blue-50 text-blue-700 text-sm font-semibold px-3 py-1.5 rounded-full">
+      <p id="obra-banner" class="inline-flex items-center gap-1.5 mt-3 bg-blue-50 text-blue-700 text-sm font-semibold px-3 py-1.5 rounded-full">
+        <svg class="animate-spin h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+        </svg>
         Cargando obra...
       </p>
     </div>

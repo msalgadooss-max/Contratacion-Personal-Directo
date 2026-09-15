@@ -41,7 +41,22 @@
   <div class="max-w-lg mx-auto px-4 py-8">
     <img src="../assets/img/logo-icafal.png" alt="ICAFAL Ingeniería y Construcción" class="h-14 mx-auto mb-4">
     <h1 class="text-2xl font-bold text-gray-900 text-center mb-1">¿Cómo te fue con el proceso?</h1>
-    <p class="text-gray-500 text-sm text-center mb-6">Tu opinión nos ayuda a mejorarlo. Es anónima y toma menos de 2 minutos.</p>
+    <p class="text-gray-500 text-sm text-center mb-4">Tu opinión nos ayuda a mejorarlo. Es anónima y toma menos de 2 minutos.</p>
+
+    <!-- v10.15 (pedido explícito del usuario): barra de progreso -- como
+         las 8 preguntas se muestran todas juntas (no una por pantalla),
+         "avance" acá significa cuántas ya se respondieron, no en cuál
+         está el usuario. Sticky para que se vea siempre al hacer scroll
+         por un formulario largo. -->
+    <div class="sticky top-0 z-10 bg-gray-50/95 backdrop-blur-sm -mx-4 px-4 pt-2 pb-3 mb-2">
+      <div class="flex justify-between items-baseline text-xs font-medium text-gray-500 mb-1">
+        <span id="progreso-texto">0 de 8 respondidas</span>
+        <span id="progreso-porcentaje">0%</span>
+      </div>
+      <div class="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+        <div id="progreso-barra" class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width:0%"></div>
+      </div>
+    </div>
 
     <form id="form-encuesta" class="space-y-4">
       <div id="preguntas" class="space-y-4"></div>

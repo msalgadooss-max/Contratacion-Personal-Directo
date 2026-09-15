@@ -54,9 +54,23 @@ function seleccionar(clave, valor) {
   grupo.querySelectorAll('.opcion-escala').forEach(btn => {
     btn.className = claseBoton(Number(btn.dataset.valor) === valor);
   });
+  actualizarProgreso();
+}
+
+// v10.15 (pedido explícito del usuario): barra de progreso -- cuenta
+// cuántas de las 8 preguntas ya tienen respuesta, no en cuál va el
+// usuario (las 8 se ven todas juntas, se responden en cualquier orden).
+function actualizarProgreso() {
+  const respondidas = Object.keys(respuestas).length;
+  const total = PREGUNTAS.length;
+  const pct = Math.round((respondidas / total) * 100);
+  document.getElementById('progreso-texto').textContent = `${respondidas} de ${total} respondidas`;
+  document.getElementById('progreso-porcentaje').textContent = `${pct}%`;
+  document.getElementById('progreso-barra').style.width = `${pct}%`;
 }
 
 renderPreguntas();
+actualizarProgreso();
 
 document.getElementById('form-encuesta').addEventListener('submit', async (e) => {
   e.preventDefault();

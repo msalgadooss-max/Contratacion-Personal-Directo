@@ -532,7 +532,7 @@ let CONTRATADOS_EXPORT = [];
 async function abrirModalExport() {
   const modal = document.getElementById('modal-export');
   const cont = document.getElementById('lista-export');
-  cont.innerHTML = '<p class="text-sm text-gray-400 py-4 text-center">Cargando...</p>';
+  cont.innerHTML = spinnerHtml('Cargando...', 'py-4');
   modal.classList.remove('hidden');
   try {
     const data = await apiFetch('/admin_general/contratados_listar.php');
