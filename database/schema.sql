@@ -449,12 +449,13 @@ CREATE TABLE trazabilidad_logs (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ---------------------------------------------------------------------
--- Tabla: cierre_remuneraciones (v2)
--- Fila unica (id=1) que refleja si el mes esta cerrado para el
--- software de remuneraciones. Mientras esta activo, el paso final
--- "Finalizar Contratacion" queda bloqueado (no se emiten contratos),
--- pero el resto del proceso (postulacion, aprobaciones, datos
--- privados) sigue funcionando con normalidad.
+-- Tabla: cierre_remuneraciones (v3)
+-- Fila unica (id=1) que define cuando remuneraciones esta procesando
+-- (desde/hasta = ventana en que SI se puede contratar; ver
+-- cierreRemuneracionesActivo() -- fuera de ese rango, o dentro del
+-- cierre de quincena, "Finalizar Contratacion" queda bloqueado, pero el
+-- resto del proceso -- postulacion, aprobaciones, datos privados --
+-- sigue funcionando con normalidad).
 -- ---------------------------------------------------------------------
 CREATE TABLE cierre_remuneraciones (
     id              TINYINT UNSIGNED PRIMARY KEY DEFAULT 1,
@@ -468,6 +469,14 @@ CREATE TABLE cierre_remuneraciones (
     -- emergencia sin fechas definidas.
     desde           DATE NULL,
     hasta           DATE NULL,
+    -- v10.15 (pedido explícito del usuario, item 5 de la lista post-
+    -- prueba): "en la quincena también se cierra el proceso unos días,
+    -- más acotado". A diferencia de desde/hasta (ventana permitida), este
+    -- es un rango BLOQUEADO que se aplica aunque hoy esté dentro de la
+    -- ventana mensual -- dos cierres de remuneraciones al mes (quincena y
+    -- mes), cada uno con su propio rango de fechas.
+    quincena_desde  DATE NULL,
+    quincena_hasta  DATE NULL,
     actualizado_por INT UNSIGNED NULL,
     actualizado_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
                         ON UPDATE CURRENT_TIMESTAMP,

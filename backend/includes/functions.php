@@ -783,7 +783,7 @@ function exigirModuloActivo(bool $activo, string $nombreModulo): void
  */
 function cierreRemuneracionesActivo(PDO $pdo): bool
 {
-    $stmt = $pdo->query('SELECT activo, desde, hasta FROM cierre_remuneraciones WHERE id = 1');
+    $stmt = $pdo->query('SELECT activo, desde, hasta, quincena_desde, quincena_hasta FROM cierre_remuneraciones WHERE id = 1');
     $fila = $stmt->fetch();
     if (!$fila) {
         return false;
@@ -791,6 +791,7 @@ function cierreRemuneracionesActivo(PDO $pdo): bool
     if ((bool)$fila['activo']) {
         return true; // cierre manual de emergencia -- se ignoran las fechas.
     }
+    $hoy = date('Y-m-d');
     if ($fila['desde'] !== null && $fila['hasta'] !== null) {
         // v10.14 (corrección, pedido explícito del usuario): desde/hasta
         // es la VENTANA EN QUE SÍ SE PUEDE CONTRATAR -- "podemos contratar
@@ -798,8 +799,20 @@ function cierreRemuneracionesActivo(PDO $pdo): bool
         // ese rango (antes de desde, o después de hasta) es cuando
         // remuneraciones está cerrado. (Antes esto estaba al revés:
         // bloqueaba DENTRO del rango, en vez de fuera.)
-        $hoy = date('Y-m-d');
-        return $hoy < $fila['desde'] || $hoy > $fila['hasta'];
+        if ($hoy < $fila['desde'] || $hoy > $fila['hasta']) {
+            return true;
+        }
+    }
+    // v10.15 (pedido explícito del usuario, item 5 de la lista post-
+    // prueba): "en la quincena también se cierra el proceso unos días,
+    // más acotado pero se cierra" -- a diferencia de desde/hasta de
+    // arriba (ventana permitida), este es un rango BLOQUEADO: si hoy cae
+    // adentro, el cierre está activo aunque también estemos dentro de la
+    // ventana mensual permitida.
+    if ($fila['quincena_desde'] !== null && $fila['quincena_hasta'] !== null) {
+        if ($hoy >= $fila['quincena_desde'] && $hoy <= $fila['quincena_hasta']) {
+            return true;
+        }
     }
     return false;
 }
@@ -812,7 +825,7 @@ function cierreRemuneracionesActivo(PDO $pdo): bool
  */
 function mensajeCierreRemuneraciones(PDO $pdo): ?string
 {
-    $stmt = $pdo->query('SELECT activo, desde, hasta FROM cierre_remuneraciones WHERE id = 1');
+    $stmt = $pdo->query('SELECT activo, desde, hasta, quincena_desde, quincena_hasta FROM cierre_remuneraciones WHERE id = 1');
     $fila = $stmt->fetch();
     if (!$fila || !cierreRemuneracionesActivo($pdo)) {
         return null;
@@ -821,6 +834,18 @@ function mensajeCierreRemuneraciones(PDO $pdo): ?string
     // no desde `hasta` -- si ya pasamos la fecha `hasta`, el primer día
     // del mes siguiente A `hasta` podría quedar en el pasado.
     $liberacion = (new DateTime())->modify('first day of next month')->format('d-m-Y');
+    $hoy = date('Y-m-d');
+
+    // v10.15 (item 5): si el motivo real es el cierre de quincena (aunque
+    // también estemos dentro de la ventana mensual), el mensaje lo dice
+    // explícitamente -- si no, cae al mensaje de ventana mensual de abajo.
+    if ($fila['quincena_desde'] !== null && $fila['quincena_hasta'] !== null
+        && $hoy >= $fila['quincena_desde'] && $hoy <= $fila['quincena_hasta']
+    ) {
+        $hastaQuincenaTexto = (new DateTime($fila['quincena_hasta']))->format('d-m-Y');
+        return "Estamos en el cierre de quincena de remuneraciones (hasta el {$hastaQuincenaTexto}). Tu solicitud queda registrada, pero considera que estos cupos se liberarán apenas termine ese cierre.";
+    }
+
     if ($fila['desde'] === null || $fila['hasta'] === null) {
         return "Estamos fuera del período habilitado para contratar. Tu solicitud queda registrada, pero considera que estos cupos serán liberados el {$liberacion}.";
     }

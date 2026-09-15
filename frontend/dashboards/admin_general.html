@@ -80,17 +80,31 @@
       <div class="flex items-center justify-between flex-wrap gap-3 mb-3">
         <div>
           <p class="text-sm font-semibold text-gray-800">Ventana de contratación (remuneraciones)</p>
-          <p class="text-xs text-gray-500">Define las fechas en que remuneraciones SÍ está procesando y se puede contratar -- el resto del proceso sigue funcionando normalmente, solo "Finalizar Contratación" se bloquea fuera de esas fechas.</p>
+          <p class="text-xs text-gray-500">"Desde/Hasta" define cuándo remuneraciones SÍ está procesando en el mes. El "Cierre de quincena" es un segundo bloqueo, más acotado, a mitad de mes -- aplica aunque estemos dentro de la ventana mensual. El resto del proceso sigue funcionando normalmente; solo "Finalizar Contratación" se bloquea mientras cualquiera de los dos cierres esté activo.</p>
         </div>
         <span id="badge-cierre" class="px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-500 shrink-0">Cargando...</span>
       </div>
-      <div class="flex flex-wrap items-end gap-3">
+      <div class="flex flex-wrap items-end gap-3 mb-4">
         <div><label class="block text-xs text-gray-600 mb-1">Desde</label>
           <input type="date" id="cierre-desde" class="border border-gray-300 rounded-lg px-2 py-1.5 text-sm"></div>
         <div><label class="block text-xs text-gray-600 mb-1">Hasta</label>
           <input type="date" id="cierre-hasta" class="border border-gray-300 rounded-lg px-2 py-1.5 text-sm"></div>
+      </div>
+      <!-- v10.15 (pedido explícito del usuario, item 5 de la lista
+           post-prueba): segundo cierre, independiente del mensual, para
+           la quincena -- más acotado, y ambos pueden estar programados
+           a la vez (se guardan juntos con el mismo botón). -->
+      <div class="flex flex-wrap items-end gap-3">
+        <div>
+          <label class="block text-xs text-gray-600 mb-1">Cierre de quincena -- desde</label>
+          <input type="date" id="cierre-quincena-desde" class="border border-gray-300 rounded-lg px-2 py-1.5 text-sm">
+        </div>
+        <div>
+          <label class="block text-xs text-gray-600 mb-1">Cierre de quincena -- hasta</label>
+          <input type="date" id="cierre-quincena-hasta" class="border border-gray-300 rounded-lg px-2 py-1.5 text-sm">
+        </div>
         <button onclick="guardarCierre()" class="bg-gray-900 hover:bg-gray-800 text-white text-xs font-semibold px-3 py-2 rounded-lg">Guardar fechas</button>
-        <button onclick="limpiarCierre()" class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold px-3 py-2 rounded-lg">Quitar cierre</button>
+        <button onclick="limpiarCierre()" class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold px-3 py-2 rounded-lg">Quitar todo</button>
       </div>
     </div>
 

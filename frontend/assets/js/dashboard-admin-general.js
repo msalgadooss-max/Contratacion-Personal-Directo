@@ -465,6 +465,10 @@ async function cargarCierre() {
     CIERRE_ACTIVO = data.activo;
     document.getElementById('cierre-desde').value = data.desde || '';
     document.getElementById('cierre-hasta').value = data.hasta || '';
+    // v10.15 (pedido explícito del usuario, item 5): segundo cierre,
+    // independiente, para la quincena.
+    document.getElementById('cierre-quincena-desde').value = data.quincena_desde || '';
+    document.getElementById('cierre-quincena-hasta').value = data.quincena_hasta || '';
     renderBadgeCierre();
   } catch (err) {
     mostrarAlerta('alerta', err.message);
@@ -474,13 +478,26 @@ async function cargarCierre() {
 async function guardarCierre() {
   const desde = document.getElementById('cierre-desde').value;
   const hasta = document.getElementById('cierre-hasta').value;
-  if (!desde || !hasta) {
-    mostrarAlerta('alerta', 'Completa ambas fechas.');
+  const quincenaDesde = document.getElementById('cierre-quincena-desde').value;
+  const quincenaHasta = document.getElementById('cierre-quincena-hasta').value;
+  if ((desde && !hasta) || (!desde && hasta)) {
+    mostrarAlerta('alerta', 'Completa ambas fechas de la ventana mensual (o deja las dos vacías).');
     return;
   }
-  if (!confirm(`¿Programar la ventana de contratación del ${desde} al ${hasta}? Fuera de ese rango, "Finalizar Contratación" quedará bloqueado.`)) return;
+  if ((quincenaDesde && !quincenaHasta) || (!quincenaDesde && quincenaHasta)) {
+    mostrarAlerta('alerta', 'Completa ambas fechas del cierre de quincena (o deja las dos vacías).');
+    return;
+  }
+  if (!desde && !hasta && !quincenaDesde && !quincenaHasta) {
+    mostrarAlerta('alerta', 'Completa al menos un rango de fechas.');
+    return;
+  }
+  if (!confirm('¿Guardar estas fechas de cierre de remuneraciones?')) return;
   try {
-    const data = await apiFetch('/admin_general/cierre_remuneraciones.php', { method: 'POST', body: { activo: false, desde, hasta } });
+    const data = await apiFetch('/admin_general/cierre_remuneraciones.php', {
+      method: 'POST',
+      body: { activo: false, desde, hasta, quincena_desde: quincenaDesde, quincena_hasta: quincenaHasta },
+    });
     CIERRE_ACTIVO = data.activo;
     renderBadgeCierre();
     mostrarAlerta('alerta', data.mensaje, 'exito');
@@ -490,12 +507,17 @@ async function guardarCierre() {
 }
 
 async function limpiarCierre() {
-  if (!confirm('¿Quitar el cierre de remuneraciones? Se volverá a poder finalizar contrataciones y solicitar cupos con normalidad.')) return;
+  if (!confirm('¿Quitar AMBOS cierres de remuneraciones (mensual y quincena)? Se volverá a poder finalizar contrataciones y solicitar cupos con normalidad.')) return;
   try {
-    const data = await apiFetch('/admin_general/cierre_remuneraciones.php', { method: 'POST', body: { activo: false, desde: '', hasta: '' } });
+    const data = await apiFetch('/admin_general/cierre_remuneraciones.php', {
+      method: 'POST',
+      body: { activo: false, desde: '', hasta: '', quincena_desde: '', quincena_hasta: '' },
+    });
     CIERRE_ACTIVO = data.activo;
     document.getElementById('cierre-desde').value = '';
     document.getElementById('cierre-hasta').value = '';
+    document.getElementById('cierre-quincena-desde').value = '';
+    document.getElementById('cierre-quincena-hasta').value = '';
     renderBadgeCierre();
     mostrarAlerta('alerta', data.mensaje, 'exito');
   } catch (err) {
