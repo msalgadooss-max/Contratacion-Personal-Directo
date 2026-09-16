@@ -32,7 +32,7 @@ $documentoRut = normalizarRut($documentoCrudo);
 
 $pdo = obtenerConexion();
 $stmt = $pdo->prepare(
-    'SELECT p.id, p.nombre, p.apellido, p.segundo_apellido, p.telefono, p.correo,
+    'SELECT p.id, p.tipo_documento, p.nombre, p.apellido, p.segundo_apellido, p.telefono, p.correo,
             p.cv_ruta_archivo, p.creado_at, c.nombre_cargo
        FROM postulaciones p
        JOIN cargos c ON c.id = p.cargo_id
@@ -52,6 +52,7 @@ if (!$postulacion) {
 
 responderOk([
     'encontrado' => true,
+    'tipo_documento' => $postulacion['tipo_documento'],
     'nombre' => $postulacion['nombre'],
     'apellido' => $postulacion['apellido'],
     'segundo_apellido' => $postulacion['segundo_apellido'],

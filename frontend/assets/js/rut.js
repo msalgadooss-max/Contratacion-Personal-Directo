@@ -35,8 +35,20 @@ function validarRut(rutCompleto) {
   return dvCalculado === dvIngresado;
 }
 
+// v10.15 -- hallazgo real durante una prueba de punta a punta: este
+// campo se usa en pantallas públicas (seguimiento.html, induccion.js)
+// que NO preguntan tipo de documento -- es el mismo campo para quien
+// postuló con RUT y para quien postuló con "Otro" documento (pasaporte,
+// DNI extranjero, etc., ver Etapa 1). Antes se le quitaba a la fuerza
+// cualquier caracter que no fuera dígito/K y se le insertaba un guion,
+// mutilando cualquier documento que no fuera un RUT chileno -- alguien
+// sin RUT nunca podía consultar su estado. Ahora el auto-guion solo se
+// aplica si lo que se ha tipeado hasta ahora sigue pareciendo un RUT
+// (solo dígitos/K); en cualquier otro caso se deja el texto tal cual.
 function formatearRutInput(input) {
   input.addEventListener('input', () => {
+    const pareceRut = /^[0-9kK-]*$/.test(input.value);
+    if (!pareceRut) return;
     let valor = input.value.toUpperCase().replace(/[^0-9K]/g, '');
     if (valor.length > 1) {
       valor = valor.slice(0, -1) + '-' + valor.slice(-1);

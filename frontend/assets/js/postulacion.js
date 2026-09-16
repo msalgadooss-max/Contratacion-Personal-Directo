@@ -201,6 +201,15 @@ btnBuscarAnterior.addEventListener('click', async () => {
     }
     // Prellena el formulario principal con lo encontrado -- la persona
     // igual puede corregir cualquier campo antes de enviar.
+    // v10.15 (corrección, hallada en una prueba de punta a punta): hay
+    // que fijar el tipo de documento ANTES de rellenar el número --
+    // si quedaba en "RUT" (el valor por defecto) mientras la persona
+    // había postulado con "Otro" (pasaporte, etc.), el formateador de
+    // RUT de más abajo le arrancaba las letras a su documento real.
+    if (data.tipo_documento) {
+      tipoDocumentoSelect.value = data.tipo_documento;
+      tipoDocumentoSelect.dispatchEvent(new Event('change', { bubbles: true }));
+    }
     numeroDocumentoInput.value = documento;
     numeroDocumentoInput.dispatchEvent(new Event('input', { bubbles: true }));
     document.getElementById('nombre').value = data.nombre || '';
