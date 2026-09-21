@@ -32,14 +32,19 @@ const COLOR_ESTADO = {
 };
 
 let TODAS_LAS_POSTULACIONES = [];
+let CHART_INGRESOS = null;
+let CHART_DONUT_GERENCIA = null;
 
 (async () => {
   const usuario = await protegerDashboard('Gerencia');
   if (!usuario) return;
   await cargarPanel();
   await cargarBitacora();
+  await cargarIndicadores();
   iniciarEstadoVivo();
 })();
+
+document.getElementById('rango-indicadores').addEventListener('change', cargarIndicadores);
 
 // v10.13 (pedido explícito del usuario): botón "🔄 Actualizar" en el
 // header -- por si el proceso "parece pegado", refresca todo sin
@@ -47,8 +52,105 @@ let TODAS_LAS_POSTULACIONES = [];
 function actualizarTodo() {
   cargarPanel();
   cargarBitacora();
+  cargarIndicadores();
   cargarEstadoVivo();
   mostrarAlerta('alerta', 'Actualizado.', 'exito');
+}
+
+// --- v10.16 (pedido explícito de Ricardo): indicadores de gestión ---------
+async function cargarIndicadores() {
+  const dias = document.getElementById('rango-indicadores').value;
+  try {
+    const [indicadores, donut] = await Promise.all([
+      apiFetch(`/gerencia/indicadores.php?dias=${dias}`),
+      apiFetch(`/admin_general/estadisticas.php?dias=${dias}`),
+    ]);
+    renderChartIngresos(indicadores.ingresos_por_dia);
+    renderTiempoPromedio(indicadores.tiempo_contratacion);
+    renderContratacionesPromedioSemanal(indicadores.contrataciones_por_semana, indicadores.contrataciones_promedio_semanal);
+    renderChartDonutGerencia(donut.conteo);
+  } catch (err) {
+    mostrarAlerta('alerta', err.message);
+  }
+}
+
+function renderContratacionesPromedioSemanal(porSemana, promedio) {
+  const el = document.getElementById('contrataciones-promedio-semanal');
+  const detalle = document.getElementById('contrataciones-semanal-detalle');
+  if (!porSemana.length) {
+    el.textContent = 'Sin datos';
+    detalle.textContent = 'Nadie fue contratado en este rango todavía.';
+    return;
+  }
+  el.textContent = promedio;
+  const totalContrataciones = porSemana.reduce((sum, s) => sum + s.total, 0);
+  detalle.textContent = `${totalContrataciones} contratación(es) en ${porSemana.length} semana(s) con actividad`;
+}
+
+// v10.16 (pedido explícito de Ricardo): descarga en Excel de los mismos
+// indicadores que se ven en pantalla, con el rango elegido en el selector.
+async function exportarIndicadoresExcel() {
+  const dias = document.getElementById('rango-indicadores').value;
+  try {
+    const res = await apiFetch(`/gerencia/indicadores_exportar_excel.php?dias=${dias}`);
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'indicadores_gestion.xlsx';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+  } catch (err) {
+    mostrarAlerta('alerta', err.message || 'No hay datos para exportar en ese rango.');
+  }
+}
+
+function renderChartIngresos(ingresosPorDia) {
+  const ctx = document.getElementById('chart-ingresos');
+  if (CHART_INGRESOS) CHART_INGRESOS.destroy();
+  CHART_INGRESOS = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ingresosPorDia.map(f => new Date(f.fecha + 'T00:00:00').toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit' })),
+      datasets: [{ data: ingresosPorDia.map(f => f.total), backgroundColor: '#f15922', borderRadius: 4, maxBarThickness: 28 }],
+    },
+    options: {
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
+    },
+  });
+}
+
+function renderTiempoPromedio(tiempo) {
+  const el = document.getElementById('tiempo-promedio-contratacion');
+  const detalle = document.getElementById('tiempo-promedio-detalle');
+  if (!tiempo.muestras) {
+    el.textContent = 'Sin datos';
+    detalle.textContent = 'Nadie fue contratado en este rango todavía.';
+    return;
+  }
+  el.textContent = tiempo.promedio_texto;
+  detalle.textContent = `${tiempo.muestras} contratación(es) · mín. ${tiempo.minimo_texto} · máx. ${tiempo.maximo_texto}`;
+}
+
+function renderChartDonutGerencia(conteo) {
+  const { Contratado, Rechazado } = conteo;
+  const ctx = document.getElementById('chart-donut-gerencia');
+  if (CHART_DONUT_GERENCIA) CHART_DONUT_GERENCIA.destroy();
+  CHART_DONUT_GERENCIA = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: ['Contratado', 'Rechazado'],
+      datasets: [{ data: [Contratado, Rechazado], backgroundColor: ['#16a34a', '#dc2626'], borderWidth: 0 }],
+    },
+    options: { plugins: { legend: { display: false } }, cutout: '65%' },
+  });
+  document.getElementById('leyenda-chart-gerencia').innerHTML = `
+    <p><span class="inline-block w-2 h-2 rounded-full bg-green-600 mr-1.5"></span>Contratado: <strong>${Contratado}</strong></p>
+    <p><span class="inline-block w-2 h-2 rounded-full bg-red-600 mr-1.5"></span>Rechazado: <strong>${Rechazado}</strong></p>`;
 }
 
 // --- v5: bitácora de actividad en lenguaje natural -------------------------

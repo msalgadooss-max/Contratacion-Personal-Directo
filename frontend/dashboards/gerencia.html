@@ -6,6 +6,7 @@
 <title>Panel de Subgerente - ICAFAL</title>
 <link rel="icon" href="../assets/img/logo-icafal-mark.png">
 <script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <!-- ICAFAL_TEMA_MARCA v1 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -66,6 +67,52 @@
     <div class="bg-white rounded-xl shadow-sm p-4 mb-6">
       <h2 class="text-sm font-semibold text-gray-700 mb-3">Dotación por cargo</h2>
       <div id="cupos" class="grid grid-cols-2 sm:grid-cols-4 gap-3"></div>
+    </div>
+
+    <!-- v10.16 (pedido explícito de Ricardo): indicadores de gestión del
+         proyecto -- ingresos por día (throughput) y tiempo promedio de
+         contratación, para controlar el avance sin tener que leer la
+         tabla completa. -->
+    <div class="bg-white rounded-xl shadow-sm p-4 mb-6">
+      <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+        <h2 class="text-sm font-semibold text-gray-700">Indicadores de gestión</h2>
+        <div class="flex items-center gap-2">
+          <select id="rango-indicadores" class="border border-gray-300 rounded-lg px-2 py-1 text-xs">
+            <option value="7">Últimos 7 días</option>
+            <option value="30" selected>Últimos 30 días</option>
+            <option value="90">Últimos 90 días</option>
+            <option value="0">Todo el historial</option>
+          </select>
+          <button class="bg-gray-900 hover:bg-gray-800 text-white text-xs font-semibold px-3 py-1.5 rounded-lg" onclick="exportarIndicadoresExcel()">Descargar Excel</button>
+        </div>
+      </div>
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
+        <div class="lg:col-span-2 border border-gray-100 rounded-lg p-3">
+          <p class="text-xs font-medium text-gray-500 mb-2">Ingresos por día (postulaciones recibidas)</p>
+          <div class="h-52"><canvas id="chart-ingresos"></canvas></div>
+        </div>
+        <div class="border border-gray-100 rounded-lg p-3">
+          <p class="text-xs font-medium text-gray-500 mb-2">Contratados vs. rechazados</p>
+          <div class="flex items-center gap-4">
+            <div class="w-24 h-24 shrink-0"><canvas id="chart-donut-gerencia"></canvas></div>
+            <div id="leyenda-chart-gerencia" class="text-xs space-y-1"></div>
+          </div>
+        </div>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div class="border border-gray-100 rounded-lg p-3">
+          <p class="text-xs font-medium text-gray-500">Tiempo promedio de contratación</p>
+          <p class="text-xs text-gray-400 mb-1">Desde selección en terreno hasta contratado</p>
+          <p id="tiempo-promedio-contratacion" class="text-2xl font-bold text-gray-900">--</p>
+          <p id="tiempo-promedio-detalle" class="text-xs text-gray-400 mt-1"></p>
+        </div>
+        <div class="border border-gray-100 rounded-lg p-3">
+          <p class="text-xs font-medium text-gray-500">Contrataciones promedio por semana</p>
+          <p class="text-xs text-gray-400 mb-1">Promedio de las semanas con al menos una contratación</p>
+          <p id="contrataciones-promedio-semanal" class="text-2xl font-bold text-gray-900">--</p>
+          <p id="contrataciones-semanal-detalle" class="text-xs text-gray-400 mt-1"></p>
+        </div>
+      </div>
     </div>
 
     <!-- v5: Bitácora de actividad en lenguaje natural -->
