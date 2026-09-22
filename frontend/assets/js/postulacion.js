@@ -74,7 +74,7 @@ async function cargarListas() {
     // nada (el campo ya era opcional).
     const capatazSelect = document.getElementById('capataz_esperado');
     if (capatazSelect && data.capataces && data.capataces.length) {
-      capatazSelect.innerHTML = '<option value="">No lo sé / nadie en particular</option>' +
+      capatazSelect.innerHTML = '<option value="">No, nadie en particular</option>' +
         data.capataces.map(c => `<option value="${c.id}">${c.nombre}</option>`).join('');
     }
   } catch (e) {
