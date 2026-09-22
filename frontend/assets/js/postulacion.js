@@ -67,6 +67,16 @@ async function cargarListas() {
 
     tipoDocumentoSelect.innerHTML = data.listas.tipo_documento
       .map(v => `<option value="${v}">${v}</option>`).join('');
+
+    // v10.19 (pedido explícito del usuario, tras la reunión con la obra
+    // del 16-09): lista de Capataces para el "match" -- si no hay
+    // ninguno activo, se deja la única opción "No lo sé" y no se rompe
+    // nada (el campo ya era opcional).
+    const capatazSelect = document.getElementById('capataz_esperado');
+    if (capatazSelect && data.capataces && data.capataces.length) {
+      capatazSelect.innerHTML = '<option value="">No lo sé / nadie en particular</option>' +
+        data.capataces.map(c => `<option value="${c.id}">${c.nombre}</option>`).join('');
+    }
   } catch (e) {
     tipoDocumentoSelect.innerHTML = '<option value="">Error al cargar</option>';
   }
@@ -278,6 +288,12 @@ form.addEventListener('submit', async (e) => {
     formData.append('telefono', document.getElementById('telefono').value);
     formData.append('correo', document.getElementById('correo').value);
     formData.append('consentimiento_ley19628', document.getElementById('consentimiento').checked ? '1' : '');
+    // v10.19 (pedido explícito del usuario): "match" opcional con el
+    // Capataz que está esperando a esta persona.
+    const capatazEsperado = document.getElementById('capataz_esperado');
+    if (capatazEsperado && capatazEsperado.value) {
+      formData.append('capataz_esperado_id', capatazEsperado.value);
+    }
     if (sinCvCheckbox.checked) {
       formData.append('experiencia_cargo', document.getElementById('experiencia_cargo').value);
       formData.append('experiencia_fecha', document.getElementById('experiencia_fecha').value);

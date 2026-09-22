@@ -257,6 +257,15 @@ CREATE TABLE postulaciones (
     -- reunion 28-ago) -- ultimo cargo/fecha/descripcion en texto libre,
     -- en vez de bloquearlo por no tener el archivo.
     experiencia_sin_cv          TEXT NULL,
+    -- v10.19 (pedido explicito del usuario, tras la reunion con la obra
+    -- del 16-09): "match" entre el postulante y el Capataz que lo esta
+    -- esperando -- se declara acá mismo en Etapa 1 (portería), NO
+    -- reserva cupo por si solo todavia (eso queda para una version
+    -- futura que ademas reparta los cupos por capataz/frente), pero le
+    -- permite al Capataz correcto identificar de inmediato "este viene
+    -- por mi" en vez de tener que llamar a todos los que llegan.
+    -- Opcional: el postulante puede no saber quien lo convoco.
+    capataz_esperado_id         INT UNSIGNED NULL,
     exportado_at                DATETIME NULL,
     creado_at                   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     actualizado_at              TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -277,6 +286,9 @@ CREATE TABLE postulaciones (
         ON DELETE SET NULL,
     CONSTRAINT fk_identidad_verificada_por
         FOREIGN KEY (identidad_verificada_por) REFERENCES usuarios(id)
+        ON DELETE SET NULL,
+    CONSTRAINT fk_capataz_esperado
+        FOREIGN KEY (capataz_esperado_id) REFERENCES usuarios(id)
         ON DELETE SET NULL,
     INDEX idx_postulaciones_estado (estado),
     INDEX idx_postulaciones_token (token_privado),

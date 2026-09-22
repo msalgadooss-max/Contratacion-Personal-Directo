@@ -23,13 +23,20 @@ exigirMetodo('GET');
 
 $pdo = obtenerConexion();
 
+// v10.19 (pedido explícito del usuario, tras la reunión con la obra del
+// 16-09): "match" declarado por el postulante en Etapa 1 -- se muestra
+// el nombre del Capataz esperado (si declaró alguno) para que se
+// identifique de inmediato quién lo está esperando.
 $stmt = $pdo->prepare(
     "SELECT p.id, p.tipo_documento, p.rut, p.nombre_completo, p.telefono, p.correo, p.comuna,
             c.nombre_cargo, p.creado_at,
             (p.cv_ruta_archivo IS NOT NULL) AS tiene_cv,
-            p.experiencia_sin_cv
+            p.experiencia_sin_cv,
+            p.capataz_esperado_id,
+            cap.nombre AS capataz_esperado_nombre
        FROM postulaciones p
        JOIN cargos c ON c.id = p.cargo_id
+       LEFT JOIN usuarios cap ON cap.id = p.capataz_esperado_id
       WHERE p.estado = 'Pendiente'
       ORDER BY p.creado_at ASC"
 );

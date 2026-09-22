@@ -71,6 +71,24 @@ $nombreCompleto = trim($nombre . ' ' . $apellido . ' ' . $segundoApellido);
 
 $pdo = obtenerConexion();
 
+// v10.19 (pedido explícito del usuario, tras la reunión con la obra del
+// 16-09): "match" opcional con el Capataz que está esperando a esta
+// persona -- se declara en Etapa 1 (portería), no reserva cupo por sí
+// solo (el Capataz sigue arrastrando para asignar cargo de verdad), es
+// solo para que el Capataz correcto la identifique de inmediato. Si el
+// id no corresponde a un Capataz activo real, simplemente se ignora en
+// vez de rechazar la postulación por esto.
+$capatazEsperadoId = (int)($_POST['capataz_esperado_id'] ?? 0);
+if ($capatazEsperadoId > 0) {
+    $stmtCapataz = $pdo->prepare("SELECT id FROM usuarios WHERE id = :id AND rol = 'Capataz' AND activo = 1");
+    $stmtCapataz->execute(['id' => $capatazEsperadoId]);
+    if (!$stmtCapataz->fetch()) {
+        $capatazEsperadoId = null;
+    }
+} else {
+    $capatazEsperadoId = null;
+}
+
 // v10.5: ya no se le pide cargo al postulante -- nace apuntando al
 // cargo interno "Por asignar" (nunca visible para el, ver comentario de
 // cabecera) y siempre en estado 'Pendiente'. El Capataz reemplaza este
@@ -176,11 +194,12 @@ $stmt = $pdo->prepare(
     'INSERT INTO postulaciones
         (tipo_documento, rut, nombre_completo, nombre, apellido, segundo_apellido,
          telefono, correo, region, comuna, cargo_id, obra,
-         codigo_seguimiento, estado, consentimiento_ley19628, cv_ruta_archivo, experiencia_sin_cv)
+         codigo_seguimiento, estado, consentimiento_ley19628, cv_ruta_archivo, experiencia_sin_cv,
+         capataz_esperado_id)
      VALUES
         (:tipo_documento, :rut, :nombre_completo, :nombre, :apellido, :segundo_apellido,
          :telefono, :correo, :region, :comuna, :cargo_id, :obra,
-         :codigo, :estado, 1, :cv_ruta, :experiencia_sin_cv)'
+         :codigo, :estado, 1, :cv_ruta, :experiencia_sin_cv, :capataz_esperado_id)'
 );
 $stmt->execute([
     'tipo_documento'   => $tipoDocumento,
@@ -201,6 +220,7 @@ $stmt->execute([
     'estado'           => $estadoInicial,
     'cv_ruta'          => $cvRuta,
     'experiencia_sin_cv' => $experienciaSinCv,
+    'capataz_esperado_id' => $capatazEsperadoId,
 ]);
 
 $postulacionId = (int)$pdo->lastInsertId();

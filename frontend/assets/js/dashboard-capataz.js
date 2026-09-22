@@ -33,10 +33,14 @@ let ARRASTRANDO = false;
 // detalle de "Estado en vivo" (ver estado-vivo.js) -- solo en este
 // dashboard, para el error típico de "arrastré a la caja equivocada".
 ESTADO_VIVO_MOSTRAR_DESHACER = true;
+// v10.19 (pedido explícito del usuario): quién soy yo, para poder
+// resaltar en la lista "este viene por mí" contra los demás.
+let USUARIO_ACTUAL = null;
 
 (async () => {
   const usuario = await protegerDashboard('Capataz');
   if (!usuario) return;
+  USUARIO_ACTUAL = usuario;
   await cargarCargosConCupo();
   await cargarLista();
   configurarTabs();
@@ -119,6 +123,21 @@ function cambiarTab(tab) {
   if (tab === 'contratados') cargarContratados();
 }
 
+// v10.19 (pedido explícito del usuario, tras la reunión con la obra del
+// 16-09): si el postulante declaró en Etapa 1 quién lo está esperando,
+// se lo mostramos al Capataz -- resaltado en naranjo si es él mismo
+// ("viene por mí"), en gris neutro si espera a otro Capataz (para que
+// no se confunda ni se lo lleve por error).
+function match(p) {
+  if (!p.capataz_esperado_id) return '';
+  const esParaMi = USUARIO_ACTUAL && Number(p.capataz_esperado_id) === Number(USUARIO_ACTUAL.id);
+  const clases = esParaMi
+    ? 'bg-blue-50 text-blue-700 border border-blue-200'
+    : 'bg-gray-100 text-gray-600 border border-gray-200';
+  const texto = esParaMi ? '✓ Viene por ti' : `Espera a: ${p.capataz_esperado_nombre}`;
+  return `<p class="inline-block mt-1.5 text-xs font-semibold px-2 py-1 rounded-full ${clases}">${texto}</p>`;
+}
+
 async function cargarLista() {
   const cont = document.getElementById('lista-postulantes');
   const vacio = document.getElementById('vacio');
@@ -145,6 +164,7 @@ async function cargarLista() {
               <p class="text-2xl font-mono font-bold text-gray-900 tracking-wide">${celdaDocumento(p)}</p>
               <p class="nombre-postulante text-base font-semibold text-gray-800">${p.nombre_completo}</p>
               <p class="text-sm text-gray-500">${p.comuna}</p>
+              ${match(p)}
             </div>
             ${p.tiene_cv
               ? `<a href="${API_BASE_URL}/terreno/ver_cv.php?postulacion_id=${p.id}" target="_blank" class="text-blue-600 font-medium underline text-sm">Ver CV</a>`
