@@ -15,9 +15,14 @@
  *
  * v9: reemplaza el conteo de "videos vistos" por el catálogo completo
  * de cursos -- cuántos aprobó, cuántos tiene pendientes de revisión
- * (ya envió su evaluación) y si con eso ya puede confirmarse la
- * inducción ODI (ver marcar_induccion.php, que ahora exige que TODOS
- * los cursos activos estén Aprobados).
+ * (ya envió su evaluación).
+ *
+ * v10.20 (pedido explícito del usuario): marcar_induccion.php ya NO
+ * exige que todos los cursos estén Aprobados (no hay forma real de
+ * rendirlos en este piloto) -- puede_marcar_induccion queda siempre en
+ * true para cualquiera que aparezca en esta lista (ya pasó el candado
+ * real, que es identidad_verificada_at). Los cursos siguen viéndose,
+ * solo que ya no bloquean.
  */
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../includes/auth.php';
@@ -43,7 +48,7 @@ $stmt = $pdo->query(
       ORDER BY p.actualizado_at ASC'
 );
 $postulaciones = array_map(function ($p) {
-    $p['puede_marcar_induccion'] = (int)$p['cursos_total'] > 0 && (int)$p['cursos_aprobados'] === (int)$p['cursos_total'];
+    $p['puede_marcar_induccion'] = true;
     return $p;
 }, $stmt->fetchAll());
 

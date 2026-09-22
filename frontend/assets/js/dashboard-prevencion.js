@@ -2,9 +2,17 @@
  * v9 - Catálogo de cursos de Prevención (reunión Ricardo, 31-ago):
  * reemplaza el conteo simple de "videos vistos" por el detalle completo
  * de cada curso -- Prevención lee las respuestas que envió el
- * postulante y decide Aprobado/Reprobado curso por curso. "Inducción
- * Realizada" (que deja al postulante en Induccion_ok) solo se habilita
- * cuando TODOS los cursos activos ya están Aprobados.
+ * postulante y decide Aprobado/Reprobado curso por curso.
+ *
+ * v10.20 (pedido explícito del usuario, hallado dos veces en pruebas
+ * reales -- 16-09 y 22-09): "Inducción Realizada" antes SOLO aparecía
+ * cuando TODOS los cursos activos estaban Aprobados -- en este piloto no
+ * existe una forma real de que el postulante rinda esos cursos, así que
+ * el botón nunca llegaba a mostrarse ("cursos 0 de 5" quedaba pegado
+ * para siempre). Ahora el botón siempre está disponible (misma
+ * confirmación de "¿dictaste la charla ODI?" de antes); el detalle de
+ * cursos queda solo como información de apoyo para Prevención, sin
+ * bloquear nada.
  */
 (async () => {
   const usuario = await protegerDashboard('Prevencionista');
@@ -48,9 +56,7 @@ async function cargarLista() {
           </button>
         </td>
         <td class="px-4 py-3 text-right">
-          ${completo
-            ? `<button class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg" onclick="marcarInduccion(${p.id})">Inducción Realizada</button>`
-            : `<span class="text-xs text-gray-400" title="Faltan cursos por aprobar">⏳ Faltan cursos</span>`}
+          <button class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg" onclick="marcarInduccion(${p.id})">Inducción Realizada</button>
         </td>
       </tr>`;
     }).join('');

@@ -7,10 +7,19 @@
  * (día 1). Antes exigía estado 'Datos_completados', que nunca se
  * alcanzaba en la práctica (ver nota en listar.php de este mismo módulo).
  *
- * v9: candado nuevo -- además exige que TODOS los cursos activos del
- * catálogo estén 'Aprobado' para este postulante. Ya no basta con haber
- * visto los videos: hay que haber aprobado la evaluación de cada uno
- * (ver evaluar_curso.php).
+ * v9: candado nuevo -- exigía que TODOS los cursos activos del catálogo
+ * estuvieran 'Aprobado' para este postulante antes de poder marcar la
+ * inducción.
+ *
+ * v10.20 (pedido explícito del usuario, hallado dos veces en pruebas
+ * reales -- 16-09 y 22-09): ese candado de cursos bloqueaba a
+ * Prevención sin que hubiera ninguna forma real, en este piloto, de que
+ * el postulante rindiera esos cursos ("cursos 0 de 5" nunca podía
+ * avanzar). "En esta etapa solo necesito, independiente de los cursos
+ * que tenga, verificar" -- se retira el bloqueo: los cursos del
+ * catálogo (si existen) quedan como información para Prevención, pero
+ * ya NO impiden marcar la inducción. Verificar identidad (JAO, día 1)
+ * sigue siendo un requisito real y aparte -- no se toca acá.
  */
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../includes/auth.php';
@@ -44,28 +53,12 @@ if ($postulacion['identidad_verificada_at'] === null) {
     responderError('El JAO todavía no verifica la identidad de esta persona (día 1).', 409);
 }
 
-$stmtCursos = $pdo->prepare(
-    'SELECT
-        (SELECT COUNT(*) FROM cursos_induccion WHERE activo = 1) AS total,
-        (SELECT COUNT(*) FROM postulacion_cursos pc
-           JOIN cursos_induccion ci ON ci.id = pc.curso_id AND ci.activo = 1
-          WHERE pc.postulacion_id = :pid AND pc.estado = "Aprobado") AS aprobados'
-);
-$stmtCursos->execute(['pid' => $postulacionId]);
-$cursos = $stmtCursos->fetch();
-if ((int)$cursos['total'] > 0 && (int)$cursos['aprobados'] < (int)$cursos['total']) {
-    responderError(
-        "Todavía faltan cursos por aprobar ({$cursos['aprobados']}/{$cursos['total']}).",
-        409
-    );
-}
-
 fijarUsuarioContextoBD($pdo, $usuario['id']);
 
 $stmt = $pdo->prepare('UPDATE postulaciones SET estado = "Induccion_ok" WHERE id = :id');
 $stmt->execute(['id' => $postulacionId]);
 
-registrarLog($pdo, $postulacionId, $usuario['id'], 'Prevención registró la inducción ODI (charla + todos los cursos aprobados).');
+registrarLog($pdo, $postulacionId, $usuario['id'], 'Prevención registró la inducción ODI (charla presencial).');
 
 // v10.14: con Prevención activa, este es el verdadero cierre del día 1
 // (antes, con Prevención pausada, ese aviso salía apenas el JAO
