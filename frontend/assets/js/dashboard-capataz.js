@@ -143,7 +143,7 @@ async function cargarLista() {
           <div class="flex items-start justify-between gap-4 flex-wrap">
             <div>
               <p class="text-2xl font-mono font-bold text-gray-900 tracking-wide">${celdaDocumento(p)}</p>
-              <p class="text-base font-semibold text-gray-800">${p.nombre_completo}</p>
+              <p class="nombre-postulante text-base font-semibold text-gray-800">${p.nombre_completo}</p>
               <p class="text-sm text-gray-500">${p.comuna}</p>
             </div>
             ${p.tiene_cv
@@ -208,6 +208,17 @@ function mostrarAlertaConDeshacer(postulacionId) {
 }
 
 // --- v10.6: arrastre real de la tarjeta hasta la caja del cargo -----------
+// v10.18 (pedido explicito del usuario, hallado en una prueba real): el
+// "fantasma" arrastrado era un clon completo de la tarjeta -- una masa
+// grande y rigida que tapaba las cajas de cupo justo debajo del dedo,
+// impidiendo ver (y por lo tanto acertar) el destino. Ahora es una
+// pildora chica con solo el nombre, flotando ARRIBA del punto de
+// contacto (no encima), para que la caja de cupo quede siempre visible
+// mientras se arrastra. La deteccion de destino sigue usando la
+// posicion real del puntero (elementFromPoint), no la del fantasma, asi
+// que este cambio es solo visual -- no cambia que se puede soltar.
+const ARRASTRE_OFFSET_Y = 54; // px que el fantasma flota sobre el dedo/cursor
+
 function iniciarArrastre(handle, card, postulacionId) {
   handle.addEventListener('pointerdown', (e) => {
     if (handle.dataset.habilitado !== 'true') return; // v10.14: falta marcar "trae sus documentos"
@@ -216,24 +227,22 @@ function iniciarArrastre(handle, card, postulacionId) {
     ARRASTRANDO = true;
     handle.setPointerCapture(e.pointerId);
 
-    const rect = card.getBoundingClientRect();
-    const offsetX = e.clientX - rect.left;
-    const offsetY = e.clientY - rect.top;
-
-    const ghost = card.cloneNode(true);
-    ghost.classList.add('drag-ghost');
-    ghost.style.width = rect.width + 'px';
-    ghost.style.left = rect.left + 'px';
-    ghost.style.top = rect.top + 'px';
+    const nombre = card.querySelector('.nombre-postulante')?.textContent.trim() || 'Postulante';
+    const ghost = document.createElement('div');
+    ghost.className = 'drag-ghost';
     ghost.setAttribute('aria-hidden', 'true');
+    ghost.innerHTML = `<span class="drag-ghost-dot"></span><span class="drag-ghost-nombre"></span>`;
+    ghost.querySelector('.drag-ghost-nombre').textContent = nombre;
+    ghost.style.left = (e.clientX - 90) + 'px';
+    ghost.style.top = (e.clientY - ARRASTRE_OFFSET_Y) + 'px';
     document.body.appendChild(ghost);
     card.classList.add('arrastrando-origen');
 
     let zonaActual = null;
 
     function mover(e2) {
-      ghost.style.left = (e2.clientX - offsetX) + 'px';
-      ghost.style.top = (e2.clientY - offsetY) + 'px';
+      ghost.style.left = (e2.clientX - 90) + 'px';
+      ghost.style.top = (e2.clientY - ARRASTRE_OFFSET_Y) + 'px';
 
       const bajoElPuntero = document.elementFromPoint(e2.clientX, e2.clientY);
       const zona = bajoElPuntero ? bajoElPuntero.closest('.cargo-zone') : null;

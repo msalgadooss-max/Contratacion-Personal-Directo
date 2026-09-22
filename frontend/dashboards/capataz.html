@@ -52,14 +52,38 @@
   }
   .cargo-zone--rebajado { animation: cupoRebajado 900ms ease-out; }
   .postulante-card.arrastrando-origen { opacity: .35; }
+  /* v10.18 (pedido explicito del usuario): pildora chica en vez de un
+     clon de la tarjeta completa -- flota sobre el dedo/cursor, sin tapar
+     la caja de cupo debajo (ver ARRASTRE_OFFSET_Y en dashboard-capataz.js). */
   .drag-ghost {
     position: fixed;
     pointer-events: none;
     z-index: 9999;
-    margin: 0;
-    opacity: .96;
-    transform: scale(1.03) rotate(-1deg);
-    box-shadow: 0 16px 34px rgba(0,0,0,.28);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    max-width: 200px;
+    padding: 9px 16px;
+    border-radius: 999px;
+    background: #1F2937;
+    box-shadow: 0 12px 28px rgba(0,0,0,.32);
+    transform: scale(1.02);
+  }
+  .drag-ghost-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    background: #E1460E;
+    flex-shrink: 0;
+  }
+  .drag-ghost-nombre {
+    color: #fff;
+    font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 </style>
 </head>
