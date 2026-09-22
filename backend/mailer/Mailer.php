@@ -18,10 +18,37 @@ if (file_exists($vendorAutoload)) {
 final class Mailer
 {
     /**
+     * v10.17 (pedido explicito del usuario): modo prueba de correos --
+     * para hacer una prueba de punta a punta sin que le lleguen
+     * notificaciones reales a Ricardo/Jaime/JAO/etc. ni a nadie mas.
+     * Se activa con variables de entorno (no config.php) para poder
+     * prenderlo/apagarlo desde el dashboard de Render sin tocar codigo
+     * ni redeploy: EMAIL_MODO_PRUEBA=1 y EMAIL_PRUEBA_DESTINO=tu@correo.
+     * Reescribe el destinatario ANTES de elegir el proveedor de envio,
+     * asi que aplica igual con Brevo, PHPMailer o mail() nativo. El
+     * asunto original queda con el destinatario real entre corchetes,
+     * para poder seguir viendo a quien le habria llegado cada correo.
+     */
+    private static function aplicarModoPrueba(string &$destinatario, string &$asunto): void
+    {
+        if (getenv('EMAIL_MODO_PRUEBA') !== '1') {
+            return;
+        }
+        $destinoPrueba = getenv('EMAIL_PRUEBA_DESTINO');
+        if ($destinoPrueba === false || trim($destinoPrueba) === '') {
+            return;
+        }
+        $asunto = "[PRUEBA -> {$destinatario}] {$asunto}";
+        $destinatario = trim($destinoPrueba);
+    }
+
+    /**
      * @return bool true si el correo se encolo/envio correctamente.
      */
     public static function enviar(string $destinatario, string $nombreDestinatario, string $asunto, string $htmlBody): bool
     {
+        self::aplicarModoPrueba($destinatario, $asunto);
+
         if (defined('BREVO_API_KEY') && BREVO_API_KEY !== '') {
             return self::enviarConBrevo($destinatario, $nombreDestinatario, $asunto, $htmlBody);
         }
