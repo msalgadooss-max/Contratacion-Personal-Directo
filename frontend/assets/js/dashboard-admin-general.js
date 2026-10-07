@@ -202,6 +202,20 @@ async function confirmarIngresoFaenaManual(id) {
   }
 }
 
+// v10.21 (pedido explícito del usuario): respaldo si Portería no alcanzó a
+// autorizar el paso de la persona a contratación (8 am) -- mismo caso que
+// confirmarIngresoFaenaManual() de arriba, pero para el día de contratación.
+async function confirmarPasoContratacionManual(id) {
+  if (!confirm('¿Confirmas que esta persona ya está contigo para su contratación? Úsalo solo si Portería no alcanzó a autorizar su paso.')) return;
+  try {
+    const data = await apiFetch('/admin_general/confirmar_ingreso_contratacion.php', { method: 'POST', body: { postulacion_id: id } });
+    mostrarAlerta('alerta', data.mensaje, 'exito');
+    await cargarLista();
+  } catch (err) {
+    mostrarAlerta('alerta', err.message);
+  }
+}
+
 async function noCoincideIdentidad(id) {
   const motivo = prompt('¿Por qué no coincide el RUT de la foto con el declarado?', 'El RUT de la foto no coincide con el declarado.');
   if (motivo === null) return;
@@ -244,24 +258,32 @@ function tarjeta(p) {
                      <span class="text-xs text-gray-400 bg-gray-50 px-2 py-1 rounded-md font-medium" title="Portería aún no confirma que llegó a faena">⏳ Esperando ingreso a faena</span>
                      <button class="text-xs text-blue-600 underline" onclick="confirmarIngresoFaenaManual(${p.id})" title="Úsalo si la persona ya está físicamente acá pero Portería no alcanzó a escanear su QR">Confirmar manualmente</button>
                    </span>`)}
+          ${MODULO_PREVENCION_ACTIVO && p.estado === 'Induccion_ok'
+            ? (p.paso_contratacion_autorizado
+                ? '<span class="text-xs text-green-700 bg-green-50 px-2 py-1 rounded-md font-medium">✓ Paso autorizado por Portería</span>'
+                : `<span class="inline-flex items-center gap-1.5">
+                     <span class="text-xs text-gray-400 bg-gray-50 px-2 py-1 rounded-md font-medium" title="Portería todavía no autoriza el paso de esta persona a contratación">⏳ Esperando paso de Portería</span>
+                     <button class="text-xs text-blue-600 underline" onclick="confirmarPasoContratacionManual(${p.id})" title="Úsalo si la persona ya está contigo pero Portería no alcanzó a autorizar su paso">Confirmar manualmente</button>
+                   </span>`)
+            : ''}
           <button class="bg-gray-800 hover:bg-gray-900 text-white text-xs font-semibold px-3 py-2 rounded-lg" onclick="toggleFormJao(${p.id}, '${(p.isapre_fonasa || '').replace(/'/g, "\\'")}')">
             ${p.tiene_datos_jao ? 'Editar datos de nómina' : 'Completar datos de nómina'}
           </button>
           <button class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-3 py-2 rounded-lg disabled:opacity-40"
                   ${p.puede_firmar ? '' : 'disabled'} onclick="firmarContrato(${p.id})"
-                  title="${MODULO_PREVENCION_ACTIVO ? 'Día 2, 8am: firma de contrato. Habilita a Bodega para entregar el EPP.' : 'Día 2, 8am: firma de contrato. Etapa 1 del piloto: esto cierra la contratación.'}">
-            Firmar Contrato (día 2)
+                  title="${MODULO_PREVENCION_ACTIVO ? 'Día 1, 8am: firma de contrato. Habilita a Bodega para entregar el EPP.' : 'Día 1, 8am: firma de contrato. Etapa 1 del piloto: esto cierra la contratación.'}">
+            Firmar Contrato (día 1)
           </button>
         </div>
       </div>
 
       ${p.afp_alerta_jao ? `<p class="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2 mt-3">⚠ Esta persona declaró un régimen previsional antiguo ("${p.afp}"), no una AFP vigente. Verifica manualmente antes de finalizar.</p>` : ''}
       ${p.tiene_documento_observado ? `<p class="text-xs text-red-700 bg-red-50 border border-red-200 rounded-md px-3 py-2 mt-3">⚠ Hay un documento observado esperando que el postulante lo corrija: no se puede firmar el contrato hasta entonces. El resto del proceso ya avanzado no se pierde.</p>` : ''}
-      ${p.estado === 'Induccion_ok' && !p.puede_firmar && !p.tiene_documento_observado ? `<p class="text-xs text-blue-700 bg-blue-50 border border-blue-200 rounded-md px-3 py-2 mt-3">Ya hizo la inducción de seguridad con Prevención. Falta completar la nómina para poder firmar el contrato.</p>` : ''}
+      ${p.estado === 'Induccion_ok' && p.paso_contratacion_autorizado && !p.puede_firmar && !p.tiene_documento_observado ? `<p class="text-xs text-blue-700 bg-blue-50 border border-blue-200 rounded-md px-3 py-2 mt-3">Ya hizo la inducción de seguridad con Prevención. Falta completar la nómina para poder firmar el contrato.</p>` : ''}
       ${p.estado === 'Aprobado_admin' && !p.puede_firmar && !p.tiene_documento_observado
         ? (MODULO_PREVENCION_ACTIVO
-            ? `<p class="text-xs text-gray-500 bg-gray-50 border border-gray-200 rounded-md px-3 py-2 mt-3">Todavía en día 1 -- falta la inducción de seguridad con Prevención antes de poder firmar el contrato.</p>`
-            : `<p class="text-xs text-gray-500 bg-gray-50 border border-gray-200 rounded-md px-3 py-2 mt-3">Todavía en día 1 -- falta verificar la identidad y/o completar la nómina antes de poder firmar el contrato.</p>`)
+            ? `<p class="text-xs text-gray-500 bg-gray-50 border border-gray-200 rounded-md px-3 py-2 mt-3">Todavía en día 0 -- falta la inducción de seguridad con Prevención antes de poder firmar el contrato.</p>`
+            : `<p class="text-xs text-gray-500 bg-gray-50 border border-gray-200 rounded-md px-3 py-2 mt-3">Todavía en día 0 -- falta verificar la identidad y/o completar la nómina antes de poder firmar el contrato.</p>`)
         : ''}
       ${!MODULO_PREVENCION_ACTIVO && p.puede_firmar ? `<p class="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2 mt-3">Etapa 1 del piloto: al firmar, esta acción cierra la contratación directamente.</p>` : ''}
 

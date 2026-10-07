@@ -76,6 +76,17 @@ try {
     if ($postulacion['identidad_verificada_at'] === null) {
         throw new RuntimeException('Debes verificar la identidad (RUT vs. cédula) antes de firmar el contrato.|409');
     }
+    // v10.21 (pedido explícito del usuario): el día de contratación,
+    // Portería autoriza primero el paso de la persona (o el JAO lo
+    // confirma manualmente desde su panel) -- ver porteria/
+    // autorizar_contratacion.php.
+    if (MODULO_PREVENCION_ACTIVO) {
+        $stmtPaso = $pdo->prepare('SELECT COUNT(*) FROM trazabilidad_logs WHERE postulacion_id = :id AND accion = :accion');
+        $stmtPaso->execute(['id' => $postulacionId, 'accion' => ACCION_INGRESO_CONTRATACION]);
+        if ((int)$stmtPaso->fetchColumn() === 0) {
+            throw new RuntimeException('Portería todavía no autoriza el paso de esta persona a contratación (puedes confirmarlo manualmente en su tarjeta).|409');
+        }
+    }
     if ($postulacion['contrato_firmado_at'] !== null) {
         throw new RuntimeException('El contrato ya estaba firmado.|409');
     }
@@ -117,22 +128,23 @@ try {
         $postulacionId,
         $usuario['id'],
         $cierraAquiMismo
-            ? 'Firmó el contrato (día 2). Etapa 1 del piloto: cierra la contratación directamente (Bodega todavía no participa en la app).'
-            : 'Firmó el contrato (día 2). Pasa a Bodega para entrega de EPP.'
+            ? 'Firmó el contrato (día 1). Etapa 1 del piloto: cierra la contratación directamente (Bodega todavía no participa en la app).'
+            : 'Firmó el contrato (día 1). Pasa a Prevención para la IRL y luego a Bodega para entrega de EPP.'
     );
 
     $pdo->commit();
 
-    // v10.14 (encontrado al revisar "en qué momento le llegan las
-    // notificaciones a Prevención y Bodega"): antes este correo solo
-    // salía en el atajo de la Etapa 1 -- con Bodega activa de verdad
-    // (Etapa 2), el JAO firmaba y a Bodega nunca le llegaba ningún aviso;
-    // se enteraban solo si revisaban su panel por su cuenta. Ahora sale
-    // siempre que el JAO firma, sea cual sea el modo.
-    try {
-        notificarEntregaEppAhora($pdo, $postulacion);
-    } catch (\Throwable $e) {
-        error_log('notificarEntregaEppAhora error: ' . $e->getMessage());
+    // v10.21 (pedido explícito del usuario): con Prevención y Bodega
+    // activas, después de la firma todavía falta la IRL (segundo check de
+    // Prevención) -- el aviso "Entrega EPP ahora" a Bodega sale recién
+    // cuando Prevención la marca (ver prevencion/marcar_irl.php). Acá solo
+    // se mantiene para el atajo en que nadie más va a cerrar el ciclo.
+    if ($cierraAquiMismo) {
+        try {
+            notificarEntregaEppAhora($pdo, $postulacion);
+        } catch (\Throwable $e) {
+            error_log('notificarEntregaEppAhora error: ' . $e->getMessage());
+        }
     }
 
     if ($cierraAquiMismo) {
@@ -163,5 +175,5 @@ try {
 responderOk([
     'mensaje' => $cierraAquiMismo
         ? 'Contrato firmado. Contratación cerrada -- avisa a Capataz o Jefe de Terreno para que lo vayan a buscar.'
-        : 'Contrato firmado. Pasa a Bodega para la entrega de EPP.',
+        : 'Contrato firmado. Pasa a Prevención para la IRL y luego a Bodega para la entrega de EPP.',
 ]);

@@ -11,7 +11,7 @@
 return <<<HTML
 <div style="font-family:Arial,sans-serif;max-width:520px;margin:auto;color:#1f2937">
   <h2 style="color:#0F6B4C">✔ Entrega el EPP ahora</h2>
-  <p>El contrato ya se firmó y la persona está en la obra en este momento. Prepárale su kit con estos datos:</p>
+  <p>El contrato ya se firmó y la IRL quedó realizada: la persona va camino a Bodega por su kit. Entrégaselo con estos datos:</p>
   <table style="width:100%;border-collapse:collapse;margin:16px 0">
     <tr>
       <td style="padding:8px 0;color:#6b7280;width:140px">Nombre</td>

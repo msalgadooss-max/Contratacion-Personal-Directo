@@ -976,3 +976,278 @@ function notificarPresentarseManana(PDO $pdo, int $postulacionId): void
 
     Mailer::enviar($postulacion['correo'], $nombreCompleto, 'Avanzaste en tu proceso - preséntate mañana - ICAFAL', $html);
 }
+
+/**
+ * v10.21 (pedido explícito del usuario, hallado en el piloto del 16-09):
+ * el aviso de "trabajador liberado" llegaba UNO POR UNO a Capataz y Jefe
+ * de Terreno -- con varios trabajadores el mismo día eran decenas de
+ * correos sueltos. Ahora Bodega envía UNA nómina consolidada (tabla en el
+ * cuerpo del correo) con todos los liberados que todavía no fueron
+ * avisados (ver bodega/enviar_nomina.php).
+ *
+ * Marca que se deja en trazabilidad_logs por cada trabajador incluido, así
+ * nunca aparece dos veces en una nómina y no hace falta ninguna columna
+ * nueva en la base de datos.
+ */
+const ACCION_NOMINA_LIBERADOS = 'Incluido en la nómina de liberados enviada por correo.';
+
+/**
+ * v10.21: marca del SEGUNDO check de Prevención (IRL, día de contratación,
+ * después de que el JAO firma el contrato) -- el primero es la inducción
+ * del día de postulación (estado 'Induccion_ok', ver marcar_induccion.php).
+ * Bodega solo puede entregar el kit si esta marca existe (ver
+ * bodega/marcar_epp.php). Se guarda en trazabilidad_logs (igual que la
+ * marca de la nómina) para no necesitar ninguna columna nueva en la base
+ * de datos viva.
+ */
+const ACCION_IRL_REALIZADA = 'Prevención registró la IRL realizada.';
+
+/**
+ * Trabajadores ya liberados por Bodega (Contratado / Proceso_completo) hoy
+ * o ayer que todavía no fueron incluidos en ninguna nómina enviada. Se
+ * limita a los últimos dos días para no arrastrar contrataciones antiguas
+ * (de pilotos anteriores) que nunca tuvieron nómina.
+ */
+function liberadosSinNomina(PDO $pdo): array
+{
+    $stmt = $pdo->prepare(
+        "SELECT x.id, x.nombre_completo, x.rut, x.nombre_cargo, x.liberado_at, x.seleccionado_por
+           FROM (
+                SELECT p.id, p.nombre_completo, p.rut, c.nombre_cargo,
+                       (SELECT MAX(t.fecha_hora) FROM trazabilidad_logs t
+                         WHERE t.postulacion_id = p.id
+                           AND t.accion LIKE 'Cambio de estado: % -> Contratado') AS liberado_at,
+                       (SELECT u.nombre FROM trazabilidad_logs t2
+                          JOIN usuarios u ON u.id = t2.usuario_id
+                         WHERE t2.postulacion_id = p.id
+                           AND t2.accion LIKE 'Cambio de estado: % -> Pre_aprobado_terreno'
+                         ORDER BY t2.fecha_hora ASC, t2.id ASC
+                         LIMIT 1) AS seleccionado_por
+                  FROM postulaciones p
+                  JOIN cargos c ON c.id = p.cargo_id
+                 WHERE p.estado IN ('Contratado', 'Proceso_completo')
+                   AND NOT EXISTS (
+                        SELECT 1 FROM trazabilidad_logs n
+                         WHERE n.postulacion_id = p.id AND n.accion = :accion_nomina
+                   )
+           ) x
+          WHERE x.liberado_at >= DATE_SUB(CURDATE(), INTERVAL 1 DAY)
+          ORDER BY x.liberado_at ASC, x.id ASC"
+    );
+    $stmt->execute(['accion_nomina' => ACCION_NOMINA_LIBERADOS]);
+    return $stmt->fetchAll();
+}
+
+/**
+ * Envía UN solo correo (tabla con todos los liberados recibidos) a cada
+ * rol que participa del proceso, y deja la marca en trazabilidad_logs de
+ * cada trabajador incluido -- pero solo si el correo salió al menos a un
+ * destinatario, para que un fallo de envío permita reintentar.
+ * Devuelve a cuántos destinatarios se les envió.
+ */
+function enviarNominaLiberados(PDO $pdo, array $liberados, ?int $usuarioId): int
+{
+    require_once __DIR__ . '/../mailer/Mailer.php';
+    if (!$liberados) {
+        return 0;
+    }
+
+    $stmt = $pdo->query(
+        "SELECT nombre, correo FROM usuarios
+          WHERE rol IN ('Jefe_Terreno', 'Capataz', 'Admin_Contrato', 'Jefe_Administrativo', 'Prevencionista', 'Jefe_Bodega')
+            AND activo = 1"
+    );
+    $destinatarios = [];
+    foreach ($stmt->fetchAll() as $u) {
+        $clave = strtolower(trim($u['correo']));
+        if ($clave !== '' && !isset($destinatarios[$clave])) {
+            $destinatarios[$clave] = $u;
+        }
+    }
+    if (!$destinatarios) {
+        return 0;
+    }
+
+    $esc = fn ($v) => htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8');
+    $filasHtml = '';
+    foreach (array_values($liberados) as $i => $l) {
+        $hora = !empty($l['liberado_at']) ? (new DateTime($l['liberado_at']))->format('H:i') : '-';
+        $fondo = $i % 2 === 0 ? '#ffffff' : '#f9fafb';
+        $celda = 'padding:9px 10px;border-bottom:1px solid #e5e7eb;font-size:13px;';
+        $filasHtml .= '<tr style="background:' . $fondo . '">'
+            . '<td style="' . $celda . 'color:#6b7280">' . ($i + 1) . '</td>'
+            . '<td style="' . $celda . 'font-weight:bold">' . $esc($l['nombre_completo']) . '</td>'
+            . '<td style="' . $celda . 'font-family:monospace">' . $esc($l['rut']) . '</td>'
+            . '<td style="' . $celda . '">' . $esc($l['nombre_cargo']) . '</td>'
+            . '<td style="' . $celda . '">' . $hora . '</td>'
+            . '<td style="' . $celda . '">' . $esc($l['seleccionado_por'] ?? '-') . '</td>'
+            . '</tr>';
+    }
+
+    $fecha = (new DateTime())->format('d-m-Y');
+    $total = count($liberados);
+    $obra = OBRA_NOMBRE;
+    $html = (function () use ($fecha, $total, $obra, $filasHtml) {
+        return require __DIR__ . '/../mailer/templates/nomina_liberados.php';
+    })();
+
+    $asunto = "Nómina de trabajadores liberados - {$fecha} ({$total}) - ICAFAL";
+    $enviados = 0;
+    foreach ($destinatarios as $d) {
+        if (Mailer::enviar($d['correo'], $d['nombre'], $asunto, $html)) {
+            $enviados++;
+        }
+    }
+
+    if ($enviados > 0) {
+        foreach ($liberados as $l) {
+            registrarLog($pdo, (int)$l['id'], $usuarioId, ACCION_NOMINA_LIBERADOS);
+        }
+    }
+    return $enviados;
+}
+
+/**
+ * v10.21 (pedido explícito del usuario, tras el piloto del 16-09): el día
+ * de contratación (8 am) la persona pasa PRIMERO por Portería, que ve en
+ * qué fase está (con su cédula) y "autoriza su paso a contratación". Ese
+ * paso (marca ACCION_INGRESO_CONTRATACION en trazabilidad_logs, sin
+ * columna nueva) le avisa al JAO y es lo que habilita su botón de firma
+ * (ver admin_general/listar.php y firmar_contrato.php).
+ */
+const ACCION_INGRESO_CONTRATACION = 'Portería autorizó el paso a contratación.';
+
+/**
+ * Para la pantalla de Portería: fase en lenguaje natural + si se puede
+ * autorizar su paso a contratación. Devuelve null si no existe ninguna
+ * postulación con ese RUT/documento. Solo expone nombre, RUT, cargo y fase.
+ */
+function faseParaPorteria(PDO $pdo, string $rutCrudo, string $rutNormalizado): ?array
+{
+    $stmt = $pdo->prepare(
+        'SELECT p.id, p.nombre_completo, p.rut, p.estado, p.identidad_verificada_at,
+                p.contrato_firmado_at, c.nombre_cargo,
+                (SELECT COUNT(*) FROM trazabilidad_logs t
+                  WHERE t.postulacion_id = p.id AND t.accion = :accion_irl) > 0 AS irl_realizada,
+                (SELECT COUNT(*) FROM trazabilidad_logs t2
+                  WHERE t2.postulacion_id = p.id AND t2.accion = :accion_paso) > 0 AS paso_autorizado
+           FROM postulaciones p
+           JOIN cargos c ON c.id = p.cargo_id
+          WHERE p.rut = :rut_crudo OR p.rut = :rut_norm
+          ORDER BY p.id DESC
+          LIMIT 1'
+    );
+    $stmt->execute([
+        'accion_irl' => ACCION_IRL_REALIZADA,
+        'accion_paso' => ACCION_INGRESO_CONTRATACION,
+        'rut_crudo' => $rutCrudo,
+        'rut_norm' => $rutNormalizado,
+    ]);
+    $p = $stmt->fetch();
+    if (!$p) {
+        return null;
+    }
+
+    $firmado = $p['contrato_firmado_at'] !== null;
+    $paso = (bool)$p['paso_autorizado'];
+    $irl = (bool)$p['irl_realizada'];
+
+    $fase = match (true) {
+        $p['estado'] === 'Pendiente' => 'Postulación recibida, todavía sin seleccionar por el Capataz',
+        $p['estado'] === 'Pre_aprobado_terreno' => 'Seleccionado, le falta completar sus datos y documentos (Etapa 2)',
+        $p['estado'] === 'Aprobado_admin' && $p['identidad_verificada_at'] === null => 'En revisión del Jefe Administrativo (verificación de documentos)',
+        $p['estado'] === 'Aprobado_admin' => 'Verificado por el JAO, le falta la inducción con Prevención',
+        $p['estado'] === 'Induccion_ok' && !$firmado && !$paso => 'LISTO PARA CONTRATACIÓN -- falta autorizar su paso',
+        $p['estado'] === 'Induccion_ok' && !$firmado => 'Paso ya autorizado, esperando la firma de contrato (JAO)',
+        $p['estado'] === 'Induccion_ok' && !$irl => 'Contrato firmado, esperando la IRL con Prevención',
+        $p['estado'] === 'Induccion_ok' => 'IRL realizada, esperando la entrega de su kit en Bodega',
+        in_array($p['estado'], ['Contratado', 'Proceso_completo'], true) => 'Contratación completada',
+        $p['estado'] === 'Rechazado' => 'Postulación rechazada',
+        default => (string)$p['estado'],
+    };
+
+    return [
+        'id' => (int)$p['id'],
+        'nombre_completo' => $p['nombre_completo'],
+        'rut' => $p['rut'],
+        'cargo' => $p['nombre_cargo'],
+        'fase' => $fase,
+        'puede_autorizar' => $p['estado'] === 'Induccion_ok' && !$firmado && !$paso,
+        'ya_autorizado' => $paso,
+    ];
+}
+
+/**
+ * Marca el paso de la persona a contratación (lo llama Portería, o el JAO
+ * manualmente si Portería no alcanzó). Debe llamarse dentro de una
+ * transacción. Lanza RuntimeException('mensaje|status') si no corresponde.
+ * $nota es un registro extra opcional en la bitácora (ej. "manual").
+ */
+function marcarPasoAContratacion(PDO $pdo, int $postulacionId, ?int $usuarioId, ?string $nota = null): void
+{
+    $stmt = $pdo->prepare(
+        'SELECT p.estado, p.contrato_firmado_at,
+                (SELECT COUNT(*) FROM trazabilidad_logs t
+                  WHERE t.postulacion_id = p.id AND t.accion = :accion) AS ya_autorizado
+           FROM postulaciones p
+          WHERE p.id = :id
+          FOR UPDATE'
+    );
+    $stmt->execute(['accion' => ACCION_INGRESO_CONTRATACION, 'id' => $postulacionId]);
+    $p = $stmt->fetch();
+
+    if (!$p) {
+        throw new RuntimeException('Postulación no encontrada.|404');
+    }
+    if ($p['estado'] !== 'Induccion_ok') {
+        throw new RuntimeException('Esta persona todavía no completa su inducción del día de postulación.|409');
+    }
+    if ($p['contrato_firmado_at'] !== null) {
+        throw new RuntimeException('Esta persona ya firmó su contrato.|409');
+    }
+    if ((int)$p['ya_autorizado'] > 0) {
+        throw new RuntimeException('El paso a contratación de esta persona ya estaba autorizado.|409');
+    }
+
+    if ($nota !== null) {
+        registrarLog($pdo, $postulacionId, $usuarioId, $nota);
+    }
+    registrarLog($pdo, $postulacionId, $usuarioId, ACCION_INGRESO_CONTRATACION);
+}
+
+/**
+ * Aviso al JAO apenas Portería autoriza el paso de alguien a contratación:
+ * ya le aparece disponible para firma de contrato en su panel.
+ */
+function notificarPasoContratacionAJao(PDO $pdo, int $postulacionId): void
+{
+    require_once __DIR__ . '/../mailer/Mailer.php';
+    $stmt = $pdo->query("SELECT nombre, correo FROM usuarios WHERE rol = 'Jefe_Administrativo' AND activo = 1");
+    $destinatarios = $stmt->fetchAll();
+    if (!$destinatarios) {
+        return;
+    }
+
+    $stmtPostulacion = $pdo->prepare(
+        'SELECT p.nombre_completo, p.rut, c.nombre_cargo
+           FROM postulaciones p
+           JOIN cargos c ON c.id = p.cargo_id
+          WHERE p.id = :id'
+    );
+    $stmtPostulacion->execute(['id' => $postulacionId]);
+    $postulacion = $stmtPostulacion->fetch();
+    if (!$postulacion) {
+        return;
+    }
+
+    $nombreCompleto = $postulacion['nombre_completo'];
+    $rut = $postulacion['rut'];
+    $cargo = $postulacion['nombre_cargo'];
+    $html = (function () use ($nombreCompleto, $rut, $cargo) {
+        return require __DIR__ . '/../mailer/templates/notificacion_paso_contratacion_jao.php';
+    })();
+
+    foreach ($destinatarios as $jao) {
+        Mailer::enviar($jao['correo'], $jao['nombre'], 'Postulante listo para firma de contrato - ICAFAL', $html);
+    }
+}

@@ -26,7 +26,7 @@ $rutNormalizado = normalizarRut($rutCrudo);
 
 $pdo = obtenerConexion();
 $stmt = $pdo->prepare(
-    'SELECT p.nombre_completo, p.rut, p.estado, c.nombre_cargo
+    'SELECT p.nombre_completo, p.rut, p.estado, p.identidad_verificada_at, c.nombre_cargo
        FROM postulaciones p
        JOIN cargos c ON c.id = p.cargo_id
       WHERE (p.rut = :rut_crudo OR p.rut = :rut_norm) AND p.codigo_seguimiento = :codigo
@@ -50,6 +50,12 @@ if ($autorizado) {
     $mensaje = in_array($postulacion['estado'], ['Contratado', 'Proceso_completo'], true)
         ? 'Proceso de contratación completado. Ingreso a la obra autorizado -- su Capataz o Jefe de Terreno lo viene a buscar.'
         : 'Ingreso permitido a la obra.';
+} elseif (in_array($postulacion['estado'], ['Aprobado_admin', 'Induccion_ok'], true) && $postulacion['identidad_verificada_at'] !== null) {
+    // v10.21: mismo caso que porteria/validar.php -- a las 8 am del día
+    // de contratación vuelve para firmar contrato, IRL y entrega de EPP;
+    // ya está en 'Induccion_ok' y antes aparecía "NO AUTORIZADO".
+    $autorizado = true;
+    $mensaje = 'Se presenta hoy para su proceso de contratación (firma de contrato, IRL y entrega de EPP) -- puede pasar a sala de espera.';
 }
 
 responderOk([

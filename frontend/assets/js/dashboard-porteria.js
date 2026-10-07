@@ -5,6 +5,64 @@
 
 let ULTIMA_CONSULTA = null;
 
+// --- v10.21: día de contratación (8 am) ----------------------------------
+// Portería busca por cédula, ve la fase y autoriza el paso a contratación;
+// eso le avisa al JAO y le habilita la firma de contrato.
+let RUT_CONTRATACION = '';
+
+function esc(valor) {
+  const d = document.createElement('div');
+  d.textContent = valor == null ? '' : String(valor);
+  return d.innerHTML;
+}
+
+document.getElementById('form-contratacion').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  await buscarContratacion(document.getElementById('rut-contratacion').value.trim());
+});
+
+async function buscarContratacion(rut) {
+  const btn = document.getElementById('btn-buscar-contratacion');
+  const cont = document.getElementById('resultado-contratacion');
+  btn.disabled = true;
+  btn.textContent = 'Buscando...';
+  cont.innerHTML = '';
+  try {
+    const d = await apiFetch(`/porteria/buscar_contratacion.php?rut=${encodeURIComponent(rut)}`);
+    RUT_CONTRATACION = rut;
+    cont.innerHTML = `
+      <div class="border rounded-xl p-4 ${d.puede_autorizar ? 'bg-green-50 border-green-300' : 'bg-gray-50 border-gray-200'}">
+        <p class="font-bold text-gray-900">${esc(d.nombre_completo)}</p>
+        <p class="text-sm text-gray-500 font-mono">${esc(d.rut)} · ${esc(d.cargo)}</p>
+        <p class="text-sm font-semibold mt-3 ${d.puede_autorizar ? 'text-green-700' : 'text-gray-700'}">${esc(d.fase)}</p>
+        ${d.puede_autorizar
+          ? `<button id="btn-autorizar-contratacion" onclick="autorizarContratacion()" class="w-full mt-4 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg py-3 text-base">Autorizar paso a contratación</button>`
+          : ''}
+      </div>`;
+  } catch (err) {
+    mostrarAlerta('alerta', err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Ver fase';
+  }
+}
+
+async function autorizarContratacion() {
+  if (!confirm('¿Autorizar el paso de esta persona a contratación? Se le avisará al JAO.')) return;
+  const btn = document.getElementById('btn-autorizar-contratacion');
+  btn.disabled = true;
+  btn.textContent = 'Autorizando...';
+  try {
+    const data = await apiFetch('/porteria/autorizar_contratacion.php', { method: 'POST', body: { rut: RUT_CONTRATACION } });
+    mostrarAlerta('alerta', data.mensaje, 'exito');
+    await buscarContratacion(RUT_CONTRATACION);
+  } catch (err) {
+    mostrarAlerta('alerta', err.message);
+    btn.disabled = false;
+    btn.textContent = 'Autorizar paso a contratación';
+  }
+}
+
 document.getElementById('form-consulta').addEventListener('submit', async (e) => {
   e.preventDefault();
   const btn = document.getElementById('btn-consultar');

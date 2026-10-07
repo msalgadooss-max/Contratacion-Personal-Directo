@@ -29,7 +29,9 @@ $stmt = $pdo->query(
             d.afp, d.afp_alerta_jao, d.isapre_fonasa, d.estudios, d.banco, d.tipo_cuenta, d.numero_cuenta,
             d.contacto_emergencia_nombre, d.contacto_emergencia_telefono,
             d.talla_calzado, d.talla_overol,
-            j.id AS datos_jao_id
+            j.id AS datos_jao_id,
+            (SELECT COUNT(*) FROM trazabilidad_logs tp
+              WHERE tp.postulacion_id = p.id AND tp.accion = ' . $pdo->quote(ACCION_INGRESO_CONTRATACION) . ') > 0 AS paso_contratacion_autorizado
        FROM postulaciones p
        JOIN cargos c ON c.id = p.cargo_id
        JOIN datos_contratacion d ON d.postulacion_id = p.id
@@ -80,7 +82,12 @@ foreach ($postulaciones as &$p) {
     $p['puede_verificar'] = $p['estado'] === 'Aprobado_admin'
         && $p['ingreso_faena_at'] !== null
         && $p['identidad_verificada_at'] === null;
+    // v10.21 (pedido explícito del usuario): con Prevención activa (flujo
+    // de dos días), el día de contratación Portería tiene que autorizar el
+    // paso de la persona antes de que se le habilite la firma.
+    $p['paso_contratacion_autorizado'] = (bool)$p['paso_contratacion_autorizado'];
     $p['puede_firmar'] = $p['estado'] === $estadoParaFirmar
+        && (!MODULO_PREVENCION_ACTIVO || $p['paso_contratacion_autorizado'])
         && $p['identidad_verificada_at'] !== null
         && !$tieneDocumentoObservado
         && $p['tiene_datos_jao'];

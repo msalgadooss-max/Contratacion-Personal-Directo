@@ -52,14 +52,18 @@ if ($autorizado) {
     $mensaje = in_array($postulacion['estado'], ['Contratado', 'Proceso_completo'], true)
         ? 'Proceso de contratación completado. Ingreso a la obra autorizado -- su Capataz o Jefe de Terreno lo viene a buscar.'
         : 'Ingreso permitido a la obra.';
-} elseif ($postulacion['estado'] === 'Aprobado_admin' && $postulacion['identidad_verificada_at'] !== null) {
+} elseif (in_array($postulacion['estado'], ['Aprobado_admin', 'Induccion_ok'], true) && $postulacion['identidad_verificada_at'] !== null) {
+    // v10.21: a las 8 am del día de contratación la persona ya está en
+    // 'Induccion_ok' (Prevención marcó su inducción el día anterior), no
+    // en 'Aprobado_admin' -- antes quedaba "NO AUTORIZADO" justo a la
+    // hora en que vuelve a firmar.
     // v10.14 (pedido explícito del usuario, item 18): día 2 -- ya se
     // presentó el día 1 (identidad verificada) y vuelve para su
     // proceso de contratación (IRL + entrega de EPP). Mismo QR que usó
     // el día 1, distinto mensaje: se le deja pasar igual, aunque el
     // trámite formal todavía no cierre.
     $autorizado = true;
-    $mensaje = 'Se presenta hoy para su proceso de contratación (IRL y entrega de EPP) -- puede pasar a sala de espera.';
+    $mensaje = 'Se presenta hoy para su proceso de contratación (firma de contrato, IRL y entrega de EPP) -- puede pasar a sala de espera.';
 }
 
 responderOk([

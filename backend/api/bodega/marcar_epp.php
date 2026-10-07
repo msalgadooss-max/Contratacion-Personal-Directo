@@ -60,6 +60,14 @@ try {
     if ($postulacion['contrato_firmado_at'] === null) {
         throw new RuntimeException('El JAO todavía no firma el contrato de esta persona.|409');
     }
+    // v10.21 (pedido explícito del usuario): además de la firma, Prevención
+    // tiene que haber registrado la IRL del día de contratación (segundo
+    // check, ver prevencion/marcar_irl.php) antes de entregar el kit.
+    $stmtIrl = $pdo->prepare('SELECT COUNT(*) FROM trazabilidad_logs WHERE postulacion_id = :id AND accion = :accion');
+    $stmtIrl->execute(['id' => $postulacionId, 'accion' => ACCION_IRL_REALIZADA]);
+    if ((int)$stmtIrl->fetchColumn() === 0) {
+        throw new RuntimeException('Prevención todavía no registra la IRL de esta persona.|409');
+    }
     // v10.14: el cupo ya se reservó/descontó al momento de la selección
     // del Capataz (ver terreno/aprobar.php), no corresponde volver a
     // exigirlo acá -- ver el mismo cambio en admin_general/firmar_contrato.php.
@@ -78,11 +86,11 @@ try {
     } catch (\Throwable $e) {
         error_log('notificarContratacionExitosa error: ' . $e->getMessage());
     }
-    try {
-        notificarLiberacionTrabajador($pdo, $postulacion);
-    } catch (\Throwable $e) {
-        error_log('notificarLiberacionTrabajador error: ' . $e->getMessage());
-    }
+    // v10.21 (pedido explícito del usuario, hallado en el piloto del
+    // 16-09): ya NO se avisa a Capataz/Jefe de Terreno trabajador por
+    // trabajador (notificarLiberacionTrabajador) -- eran decenas de
+    // correos sueltos. Bodega envía UNA nómina consolidada con todos los
+    // liberados, desde su panel (ver enviar_nomina.php).
 } catch (RuntimeException $e) {
     $pdo->rollBack();
     [$mensaje, $status] = explode('|', $e->getMessage());
@@ -93,4 +101,4 @@ try {
     responderError('No fue posible cerrar la contratación.', 500);
 }
 
-responderOk(['mensaje' => 'EPP entregado. Contratación cerrada -- avisa a Capataz o Jefe de Terreno para que lo vayan a buscar.']);
+responderOk(['mensaje' => 'EPP entregado. Contratación cerrada. Cuando termines el grupo, envía la nómina de liberados a Capataz y Jefe de Terreno.']);

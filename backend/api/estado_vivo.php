@@ -33,7 +33,11 @@ exigirMetodo('GET');
 
 $pdo = obtenerConexion();
 $stmt = $pdo->query(
-    "SELECT p.id, p.nombre_completo, p.estado, c.nombre_cargo,
+    "SELECT p.id, p.nombre_completo, p.estado, p.contrato_firmado_at, p.identidad_verificada_at, c.nombre_cargo,
+            (SELECT COUNT(*) FROM trazabilidad_logs t
+              WHERE t.postulacion_id = p.id AND t.accion = " . $pdo->quote(ACCION_IRL_REALIZADA) . ") > 0 AS irl_realizada,
+            (SELECT COUNT(*) FROM trazabilidad_logs tp
+              WHERE tp.postulacion_id = p.id AND tp.accion = " . $pdo->quote(ACCION_INGRESO_CONTRATACION) . ") > 0 AS paso_autorizado,
             (SELECT COUNT(*) FROM datos_contratacion d WHERE d.postulacion_id = p.id) > 0 AS etapa2_completada,
             (SELECT COUNT(*) FROM postulacion_documentos pd
               WHERE pd.postulacion_id = p.id AND pd.rechazado_at IS NOT NULL AND pd.resubido_at IS NULL) > 0 AS documento_observado
@@ -72,8 +76,19 @@ function faseVisual(array $p): string
         'Pre_aprobado_terreno' => $completo
             ? 'Datos completos, a punto de pasar a revisión del Jefe Administrativo'
             : 'Seleccionado, completando datos y documentos (Etapa 2)',
-        'Aprobado_admin' => 'En revisión Jefe Administrativo',
-        'Induccion_ok' => 'Inducción de seguridad realizada',
+        // v10.21: refleja los DOS días reales -- día de postulación (JAO
+        // verifica -> Prevención marca la inducción -> "preséntate mañana")
+        // y día de contratación a las 8 am (JAO firma -> Prevención marca
+        // la IRL -> Bodega entrega el kit).
+        'Aprobado_admin' => $p['identidad_verificada_at'] !== null
+            ? 'Identidad verificada, esperando la inducción de Prevención'
+            : 'En revisión Jefe Administrativo (verificación de documentos)',
+        'Induccion_ok' => match (true) {
+            $p['contrato_firmado_at'] === null && !(bool)$p['paso_autorizado'] => 'Inducción lista, vuelve a las 8 am (Portería debe autorizar su paso)',
+            $p['contrato_firmado_at'] === null => 'Paso autorizado, esperando la firma de contrato (JAO)',
+            !(bool)$p['irl_realizada'] => 'Contrato firmado, esperando la IRL con Prevención',
+            default => 'IRL realizada, esperando la entrega del kit en Bodega',
+        },
         'EPP_listo' => 'Kit de EPP listo, cierre final',
         'Contratado' => '✔ Contratado, esperando que lo vengan a buscar',
         'Proceso_completo' => '✔ Recibido en terreno -- proceso completo',
@@ -99,8 +114,15 @@ function rolPendiente(array $p): ?string
         // su Etapa 2, ningún rol interno tiene una acción pendiente acá
         // -- Admin_Contrato ya no autoriza uno por uno.
         'Pre_aprobado_terreno' => null,
-        'Aprobado_admin' => 'Jefe_Administrativo',
-        'Induccion_ok' => 'Prevencionista',
+        // v10.21: día de postulación: JAO verifica -> Prevención (inducción).
+        // Día de contratación: JAO firma -> Prevención (IRL) -> Bodega.
+        'Aprobado_admin' => $p['identidad_verificada_at'] !== null ? 'Prevencionista' : 'Jefe_Administrativo',
+        'Induccion_ok' => match (true) {
+            $p['contrato_firmado_at'] === null && !(bool)$p['paso_autorizado'] => 'Porteria',
+            $p['contrato_firmado_at'] === null => 'Jefe_Administrativo',
+            !(bool)$p['irl_realizada'] => 'Prevencionista',
+            default => 'Jefe_Bodega',
+        },
         'EPP_listo' => 'Jefe_Bodega',
         default => null,
     };

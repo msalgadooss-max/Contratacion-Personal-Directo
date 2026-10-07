@@ -130,8 +130,13 @@ responderOk([
         // autorizar postulación por postulación (ver terreno/aprobar.php
         // v10.13), así que esta condición nunca se cumplía. El equivalente
         // real hoy es haber llegado a 'Aprobado_admin' (o más allá).
+        // v10.21: solo se ofrece el link "Ver mis cursos" si hay al menos
+        // un curso activo en el catálogo -- con el catálogo vacío (los
+        // cursos de muestra desactivados antes del piloto con personas
+        // reales) llevaría a una pantalla vacía "0 de 0 cursos".
         'puede_ver_induccion' => MODULO_PREVENCION_ACTIVO
             && in_array($estadoActual, ['Aprobado_admin', 'Induccion_ok'], true)
-            && !$autorizadoIngreso,
+            && !$autorizadoIngreso
+            && (int)$pdo->query('SELECT COUNT(*) FROM cursos_induccion WHERE activo = 1')->fetchColumn() > 0,
     ],
 ]);

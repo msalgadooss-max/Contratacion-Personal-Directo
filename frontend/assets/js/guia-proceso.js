@@ -30,11 +30,11 @@ const GUIA_RESUMEN_GENERAL = `
       <div><p class="font-semibold text-gray-900">El postulante completa la Etapa 2</p>
       <p class="text-gray-600">Con el enlace recibido, carga sus datos de contratación y el resto de sus documentos (contrato, Fonasa/Isapre, AFP, etc.). Al terminar, recibe un correo con un QR para <b>presentarse en la obra</b>.</p></div></li>
     <li class="flex gap-3"><span class="shrink-0 w-6 h-6 rounded-full bg-gray-200 text-gray-700 text-xs font-bold flex items-center justify-center">6</span>
-      <div><p class="font-semibold text-gray-900">Día 1: se presenta en obra -- JAO verifica y Prevención hace la inducción</p>
-      <p class="text-gray-600">Portería confirma su ingreso con el QR. Recién ahí el JAO puede verificar que el RUT coincida con la cédula. El postulante ya venía viendo y rindiendo el catálogo de cursos de Prevención desde su celular; cuando Prevención aprobó todos, marca la inducción como realizada.</p></div></li>
+      <div><p class="font-semibold text-gray-900">Día 0: se presenta en obra -- JAO verifica y Prevención hace la inducción</p>
+      <p class="text-gray-600">Portería confirma su ingreso con el QR. Recién ahí el JAO puede verificar que el RUT coincida con la cédula y le da su check. Después Prevención hace su inducción y también le da su check -- ahí termina su día de postulación y el postulante recibe un correo: "preséntate mañana a las 8 am".</p></div></li>
     <li class="flex gap-3"><span class="shrink-0 w-6 h-6 rounded-full bg-gray-200 text-gray-700 text-xs font-bold flex items-center justify-center">7</span>
-      <div><p class="font-semibold text-gray-900">Día 2, 8am: JAO firma el contrato y Bodega entrega el EPP</p>
-      <p class="text-gray-600">El trabajador vuelve al otro día a firmar. Bodega ya sabe que viene y tiene su kit de EPP listo -- al entregarlo, el postulante queda <b>✔ Contratado</b> y se descuenta el cupo.</p></div></li>
+      <div><p class="font-semibold text-gray-900">Día 1, 8am: Portería autoriza, JAO firma, Prevención hace la IRL y Bodega entrega el EPP</p>
+      <p class="text-gray-600">El trabajador vuelve al otro día: Portería ve su fase por cédula y autoriza su paso a contratación (el JAO recibe el aviso), firma el contrato con el JAO, pasa con Prevención a la IRL (segundo check) y luego a Bodega por su kit. Al entregarlo, el postulante queda <b>✔ Contratado</b>, y Bodega envía una nómina con todos los liberados a Capataz, Jefe de Terreno y el resto del equipo.</p></div></li>
     <li class="flex gap-3"><span class="shrink-0 w-6 h-6 rounded-full bg-green-100 text-green-700 text-xs font-bold flex items-center justify-center">8</span>
       <div><p class="font-semibold text-gray-900">Cierre: Capataz/Jefe de Terreno lo van a buscar</p>
       <p class="text-gray-600">Con el EPP entregado, se avisa a Capataz y Jefe de Terreno para que lo busquen en sala de reuniones o Bodega. Al confirmar que lo recibieron, el proceso queda <b>✔ completo</b> de punta a punta.</p></div></li>
@@ -84,11 +84,11 @@ const GUIA_POR_ROL = {
   jao: {
     titulo: 'Guía de uso · Jefe Administrativo (JAO)',
     contenido: `
-      <p class="text-gray-700 mb-4">Desde el rediseño de la reunión con Ricardo (31-ago), tu parte quedó en <b>dos acciones separadas, en días distintos</b>: verificar identidad el día 1, y firmar el contrato el día 2. Ves a todos los que están en cualquiera de las dos etapas desde el comienzo -- lo que cambia es cuándo se te habilita cada botón.</p>
+      <p class="text-gray-700 mb-4">Desde el rediseño de la reunión con Ricardo (31-ago), tu parte quedó en <b>dos acciones separadas, en días distintos</b>: verificar identidad el día 0, y firmar el contrato el día 1. Ves a todos los que están en cualquiera de las dos etapas desde el comienzo -- lo que cambia es cuándo se te habilita cada botón.</p>
       <ul class="space-y-2.5 text-gray-700">
-        <li>• <b>Día 1 -- Verificar identidad:</b> el postulante ya completó la Etapa 2, pero el botón solo se habilita <u>después</u> de que Portería confirme que se presentó en la obra (con el QR que le llegó por correo). Compara el RUT declarado contra su cédula subida y confirma.</li>
+        <li>• <b>Día 0 -- Verificar identidad:</b> el postulante ya completó la Etapa 2, pero el botón solo se habilita <u>después</u> de que Portería confirme que se presentó en la obra (con el QR que le llegó por correo). Compara el RUT declarado contra su cédula subida y confirma.</li>
         <li>• <b>Observar un documento:</b> si algo está mal o ilegible, puedes rechazar ese documento puntual -- el postulante recibe un correo pidiéndole que lo vuelva a subir, sin afectar el resto de sus documentos ya aprobados.</li>
-        <li>• <b>Día 2, 8am -- Firmar Contrato:</b> se habilita recién cuando ya verificaste la identidad Y no queda ningún documento observado. Al firmar, <u>todavía no</u> se descuenta el cupo ni queda Contratado -- eso pasa cuando Bodega entrega el kit de EPP (que espera tu firma para poder entregarlo).</li>
+        <li>• <b>Día 1, 8am -- Firmar Contrato:</b> cuando Portería autoriza el paso de la persona a contratación te llega un aviso por correo y su tarjeta queda disponible (si Portería no alcanzó, puedes usar "Confirmar manualmente" en la tarjeta). Se habilita recién cuando ya verificaste la identidad, Prevención hizo su inducción, completaste los datos de nómina Y no queda ningún documento observado. Al firmar, la persona pasa con Prevención a la <b>IRL</b> y después a Bodega -- queda Contratado recién cuando Bodega entrega el kit de EPP.</li>
         <li>• <b>Pestaña "Contratados":</b> histórico de todos los que Bodega ya cerró (EPP entregado).</li>
         <li>• <b>Pestaña "Rechazados":</b> los que fueron rechazados en cualquier etapa anterior (Terreno o Administrador), solo para trazabilidad -- tú no rechazas desde aquí, eso ya pasó antes de llegar a ti.</li>
       </ul>`,
@@ -96,12 +96,11 @@ const GUIA_POR_ROL = {
   prevencion: {
     titulo: 'Guía de uso · Prevención de Riesgos',
     contenido: `
-      <p class="text-gray-700 mb-4">Tu parte es la <b>inducción de seguridad (charla ODI)</b> -- ves a cada postulante recién cuando el JAO ya verificó su identidad el día 1.</p>
+      <p class="text-gray-700 mb-4">Tienes <b>dos check, uno por día</b>. En ambos, marcas el casillero de la persona y confirmas (no se puede deshacer).</p>
       <ul class="space-y-2.5 text-gray-700">
-        <li>• El postulante ve y responde el catálogo de cursos desde su propio celular (video + evaluación de preguntas abiertas), normalmente mientras espera en la sala el día 1.</li>
-        <li>• <b>Revisa cada evaluación enviada</b> y apruébala o repruébala con un comentario -- si repruebas, el postulante ve tu comentario y puede reenviar su respuesta corregida.</li>
-        <li>• <b>Marcar Inducción ODI:</b> se habilita recién cuando TODOS los cursos activos están aprobados para esa persona. Al marcarla, la postulación queda lista para que el JAO firme el contrato al día siguiente, y Bodega ya recibe aviso con las tallas para preparar el kit de EPP con anticipación.</li>
-        <li>• No ves datos sensibles de la persona (AFP, banco, etc.) -- solo lo necesario para identificarla y hacer la charla.</li>
+        <li>• <b>1. Inducción -- día de postulación:</b> ves a cada persona apenas el JAO verifica su identidad. Al confirmar tu check termina su día: el postulante recibe el correo "preséntate mañana a las 8 am", y Bodega ya recibe el aviso con las tallas para preparar el kit con anticipación.</li>
+        <li>• <b>2. IRL -- día de contratación (8 am):</b> aparece en tu segunda lista apenas el JAO firma su contrato. Cuando hiciste la IRL, la marcas -- ahí la persona pasa a Bodega para la entrega del kit.</li>
+        <li>• No ves datos sensibles de la persona (AFP, banco, etc.) -- solo lo necesario para identificarla.</li>
       </ul>`,
   },
   bodega: {
@@ -109,9 +108,10 @@ const GUIA_POR_ROL = {
     contenido: `
       <p class="text-gray-700 mb-4">Tu parte es <b>entregar el kit de EPP</b> -- el paso que cierra el ciclo completo y deja a la persona ✔ Contratada.</p>
       <ul class="space-y-2.5 text-gray-700">
-        <li>• Apenas Prevención marca la inducción (día 1), te llega el aviso con el número de calzado y la talla de overol -- así preparas el kit con anticipación, antes de que la persona vuelva al día 2.</li>
-        <li>• <b>El botón de entrega se habilita recién cuando el JAO ya firmó el contrato</b> (día 2) -- antes de eso solo ves el aviso de "todavía no firma".</li>
-        <li>• Al confirmar la entrega, el cupo ya estaba reservado desde que el Capataz seleccionó a la persona -- tu acción deja el estado en <b>Contratado</b>, le avisa al postulante con su QR final de acceso, y le avisa a Capataz/Jefe de Terreno que ya pueden retirarlo de la sala de espera.</li>
+        <li>• Apenas Prevención marca la inducción (día de postulación), te llega el aviso con el número de calzado y la talla de overol -- así preparas el kit con anticipación, antes de que la persona vuelva al día siguiente.</li>
+        <li>• <b>El botón de entrega se habilita recién cuando el JAO ya firmó el contrato Y Prevención registró la IRL</b> (día 1, 8 am) -- antes de eso ves qué falta: "esperando firma de contrato" o "esperando IRL". Cuando se habilita, te llega el aviso "Entrega EPP ahora".</li>
+        <li>• Al confirmar la entrega, el cupo ya estaba reservado desde que el Capataz seleccionó a la persona -- tu acción deja el estado en <b>Contratado</b> y le avisa al postulante con su QR final de acceso.</li>
+        <li>• <b>Nómina de liberados:</b> arriba de la lista aparece una tabla con todos los que ya liberaste y todavía no avisaste. Cuando termines de entregar el grupo, aprieta <b>"Enviar nómina por correo"</b>: sale UN solo correo con la tabla a Jefe de Terreno, Capataces, Administrador de Contrato, JAO y Prevención (no un aviso por cada trabajador). Cada persona aparece una sola vez.</li>
       </ul>`,
   },
 };
@@ -192,16 +192,16 @@ const FLUJO_DIAGRAMA_HTML = `
     })}
     ${pasoFlujo(5, 'Portería confirma el ingreso con el QR', 'Lo deja pasar a la sala de espera -- ahí mismo, con su celular, completa sus datos y documentos.')}
     ${pasoFlujo(6, 'Postulante completa Etapa 2', 'Datos personales, previsionales, bancarios + documentos: cédula, certificado de AFP, de salud, de residencia y (si aplica) último finiquito. Al terminar, el JAO recibe el aviso de que ya está listo para revisión.')}
-    ${pasoFlujo(7, 'Día 1: JAO verifica identidad', 'Compara el RUT declarado contra la cédula subida, apenas Portería confirma que se presentó (QR de ingreso a faena). Desde su celular, el postulante ya puede ir viendo y rindiendo el catálogo de cursos de Prevención mientras espera.', {
+    ${pasoFlujo(7, 'Día 0: JAO verifica identidad', 'Compara el RUT declarado contra la cédula subida, apenas Portería confirma que se presentó (QR de ingreso a faena). Le da su check ("Coincide") y la persona pasa a Prevención.', {
       rama: ramaFlujo('El JAO observa un documento → el postulante recibe un correo pidiéndole que lo vuelva a subir, y vuelve a este mismo paso apenas lo corrige. El resto de lo ya aprobado no se pierde.', 'observacion'),
     })}
-    ${pasoFlujo(8, 'Día 1: Prevención hace la inducción (charla ODI)', 'Revisa las evaluaciones de cada curso que el postulante ya envió y las aprueba o reprueba (con comentario). Cuando TODOS los cursos activos están aprobados y el JAO ya verificó identidad, marca la inducción como realizada -- ahí el postulante recibe el correo: "preséntate mañana a las 8am para ser contratado y recibir tu kit de EPP".', {
-      rama: ramaFlujo('Reprueba un curso → el postulante ve el comentario y puede reenviar su evaluación corregida, sin perder los cursos ya aprobados.', 'observacion'),
-    })}
-    ${pasoFlujo(9, 'Día 2: se presenta con el mismo QR', 'Portería lo reconoce ("viene por su proceso de contratación") y lo deja pasar de nuevo a la sala de espera.')}
-    ${pasoFlujo(10, 'Día 2: JAO firma el Contrato', 'Se habilita recién cuando ya verificó identidad, Prevención ya hizo la inducción, Y no queda ningún documento observado. Al firmar, todavía no se descuenta cupo ni queda Contratado -- eso pasa cuando Bodega entrega el kit de EPP, que ya sabe de antemano las tallas y estaba esperando esta firma para poder entregarlo.')}
-    ${pasoFlujo(11, 'Día 2: Bodega entrega el kit de EPP -- cierre', 'Al entregarlo, el postulante queda ✔ Contratado (el cupo ya se había reservado antes, al momento de la selección del Capataz), recibe el QR final de acceso a la obra, y se avisa a Capataz/Jefe de Terreno que ya pueden retirarlo de la sala de espera.')}
-    ${pasoFlujo(12, 'Capataz o Jefe de Terreno confirman que lo retiraron', 'Lo van a buscar a la sala de espera y confirman en su panel ("Ya lo retiré"), en la pestaña Personal Contratado. Con eso el ciclo completo queda cerrado, desde la postulación hasta el primer día en su cuadrilla.', { ultimo: true })}
+    ${pasoFlujo(8, 'Día 0: Prevención hace la inducción (primer check)', 'Cuando el JAO ya verificó identidad, Prevención marca con un check que la inducción quedó realizada -- ahí termina el día de postulación y el postulante recibe el correo: "preséntate mañana a las 8 am para avanzar en tu proceso".')}
+    ${pasoFlujo(9, 'Día 1, 8 am: Portería autoriza su paso a contratación', 'La persona llega a Portería, que la busca por su cédula y ve en qué fase está. Si figura "lista para contratación", Portería autoriza su paso -- ahí el JAO recibe un aviso y a la persona le aparece disponible para firma de contrato en su panel. (Si Portería no alcanza, el JAO puede confirmarlo manualmente desde la tarjeta.)')}
+    ${pasoFlujo(10, 'Día 1: JAO firma el Contrato', 'Se habilita recién cuando Portería autorizó su paso, ya verificó identidad, Prevención hizo la inducción, completó los datos de nómina Y no queda ningún documento observado. Al firmar, la persona pasa con Prevención a la IRL.')}
+    ${pasoFlujo(11, 'Día 1: Prevención hace la IRL (segundo check)', 'Apenas el JAO firma, la persona aparece en la segunda lista de Prevención. Cuando la IRL quedó realizada, Prevención la marca -- ahí pasa a Bodega y Bodega recibe el aviso "Entrega EPP ahora".')}
+    ${pasoFlujo(12, 'Día 1: Bodega entrega el kit de EPP y libera', 'Se habilita recién cuando el JAO firmó Y Prevención registró la IRL. Al entregarlo, el postulante queda ✔ Contratado (el cupo ya se había reservado antes, al momento de la selección del Capataz) y recibe el QR final de acceso a la obra.')}
+    ${pasoFlujo(13, 'Bodega envía la nómina de liberados', 'Cuando termina de entregar el grupo, Bodega envía UN solo correo con la tabla de todos los trabajadores liberados (nombre, RUT, cargo, hora y quién los seleccionó) a Jefe de Terreno, Capataces, Administrador de Contrato, JAO y Prevención -- en vez de un aviso suelto por cada trabajador.')}
+    ${pasoFlujo(14, 'Capataz o Jefe de Terreno confirman que lo retiraron', 'Lo van a buscar a la sala de espera y confirman en su panel ("Ya lo retiré"), en la pestaña Personal Contratado. Con eso el ciclo completo queda cerrado, desde la postulación hasta el primer día en su cuadrilla.', { ultimo: true })}
   </div>`;
 
 function abrirFlujo() {

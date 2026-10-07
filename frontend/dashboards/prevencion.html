@@ -43,7 +43,7 @@
       <img src="../assets/img/logo-icafal.png" alt="ICAFAL" class="h-9">
       <div>
         <h1 class="font-bold text-gray-900">Dashboard Prevención de Riesgos</h1>
-        <p class="text-xs text-gray-500">Fase 4 · Inducción ODI</p>
+        <p class="text-xs text-gray-500">Fase 4 · Inducción e IRL</p>
       </div>
     </div>
     <div class="flex items-center gap-4">
@@ -58,6 +58,27 @@
   <main class="max-w-4xl mx-auto p-6">
     <div id="alerta"></div>
     <div id="estado-vivo"></div>
+    <!-- v10.21 (pedido explícito del usuario, tras el piloto del 16-09):
+         Prevención tiene DOS check, uno por día. -->
+    <h2 class="text-sm font-bold text-gray-900 mb-1">1. Inducción · día de postulación</h2>
+    <p class="text-xs text-gray-500 mb-3">Personas que el JAO ya verificó. Al confirmar, termina su día y reciben el correo "preséntate mañana a las 8 am".</p>
+    <div class="bg-white rounded-xl shadow-sm overflow-x-auto mb-8">
+      <table class="w-full text-sm">
+        <thead class="bg-gray-50 text-gray-500 text-left">
+          <tr>
+            <th class="px-4 py-3">RUT</th>
+            <th class="px-4 py-3">Nombre</th>
+            <th class="px-4 py-3">Cargo</th>
+            <th class="px-4 py-3 text-right">Confirmar</th>
+          </tr>
+        </thead>
+        <tbody id="tbody-postulaciones"></tbody>
+      </table>
+      <p id="vacio" class="text-center text-gray-400 text-sm py-8 hidden">No hay personas esperando la inducción.</p>
+    </div>
+
+    <h2 class="text-sm font-bold text-gray-900 mb-1">2. IRL · día de contratación</h2>
+    <p class="text-xs text-gray-500 mb-3">Personas que ya firmaron su contrato con el JAO. Al confirmar la IRL, pasan a Bodega para la entrega de su kit.</p>
     <div class="bg-white rounded-xl shadow-sm overflow-x-auto">
       <table class="w-full text-sm">
         <thead class="bg-gray-50 text-gray-500 text-left">
@@ -65,17 +86,14 @@
             <th class="px-4 py-3">RUT</th>
             <th class="px-4 py-3">Nombre</th>
             <th class="px-4 py-3">Cargo</th>
-            <th class="px-4 py-3">Cursos de Prevención</th>
-            <th class="px-4 py-3 text-right">Acción</th>
+            <th class="px-4 py-3 text-right">Confirmar</th>
           </tr>
         </thead>
-        <tbody id="tbody-postulaciones"></tbody>
+        <tbody id="tbody-irl"></tbody>
       </table>
-      <p id="vacio" class="text-center text-gray-400 text-sm py-10 hidden">No hay candidatos esperando inducción.</p>
+      <p id="vacio-irl" class="text-center text-gray-400 text-sm py-8 hidden">No hay personas esperando la IRL. Aparecen aquí apenas el JAO firma su contrato.</p>
     </div>
   </main>
-
-  <div id="cursos-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"></div>
 
   <script src="../assets/js/config.js"></script>
   <script src="../assets/js/api.js"></script>

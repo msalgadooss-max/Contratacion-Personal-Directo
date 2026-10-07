@@ -3,26 +3,24 @@
  * Fase 4 - Dashboard Experto en Prevención.
  * Ve candidatos que ya completaron sus datos privados, pero esta
  * consulta NO trae columnas de datos_contratacion: el prevencionista
- * solo necesita identificar a la persona para dictar la charla ODI,
- * no ver AFP/banco/etc.
+ * solo necesita identificar a la persona, no ver AFP/banco/etc.
  *
- * v7: candado -- solo se ven (y se puede actuar sobre) postulantes a
- * quienes el JAO YA verificó la identidad (día 1). Antes filtraba por
- * el estado 'Datos_completados', que en la práctica nunca se alcanzaba
- * (el flujo secuencial deja el estado en 'Aprobado_admin' hasta que
- * Prevención marca la IRL) -- este cambio corrige ese bug de paso, y de
- * paso agrega el candado que pidió Ricardo.
+ * Prevención tiene DOS check, en dos días distintos (pedido explícito
+ * del usuario, tras el piloto del 16-09):
  *
- * v9: reemplaza el conteo de "videos vistos" por el catálogo completo
- * de cursos -- cuántos aprobó, cuántos tiene pendientes de revisión
- * (ya envió su evaluación).
+ *   1) `postulaciones` -- DÍA DE POSTULACIÓN: después de que el JAO
+ *      verificó la identidad (identidad_verificada_at), Prevención marca
+ *      la inducción (marcar_induccion.php, estado Aprobado_admin ->
+ *      Induccion_ok). Ahí termina el día y el postulante recibe el
+ *      correo "preséntate mañana a las 8".
+ *   2) `irl_pendientes` -- DÍA DE CONTRATACIÓN (8 am): después de que el
+ *      JAO firmó el contrato (contrato_firmado_at), Prevención hace la
+ *      IRL y la marca (marcar_irl.php). Recién ahí Bodega puede
+ *      entregar el kit.
  *
- * v10.20 (pedido explícito del usuario): marcar_induccion.php ya NO
- * exige que todos los cursos estén Aprobados (no hay forma real de
- * rendirlos en este piloto) -- puede_marcar_induccion queda siempre en
- * true para cualquiera que aparezca en esta lista (ya pasó el candado
- * real, que es identidad_verificada_at). Los cursos siguen viéndose,
- * solo que ya no bloquean.
+ * v10.21: los cursos del catálogo (cursos_induccion) ya no se consultan
+ * ni se muestran -- quedan desactivados/ocultos por ahora (las tablas y
+ * endpoints siguen existiendo, por si se retoma la idea de las cápsulas).
  */
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../includes/auth.php';
@@ -33,23 +31,30 @@ exigirModuloActivo(MODULO_PREVENCION_ACTIVO, 'Prevención');
 exigirMetodo('GET');
 
 $pdo = obtenerConexion();
-$stmt = $pdo->query(
-    'SELECT p.id, p.rut, p.nombre_completo, c.nombre_cargo, p.actualizado_at,
-            (SELECT COUNT(*) FROM cursos_induccion WHERE activo = 1) AS cursos_total,
-            (SELECT COUNT(*) FROM postulacion_cursos pc
-               JOIN cursos_induccion ci ON ci.id = pc.curso_id AND ci.activo = 1
-              WHERE pc.postulacion_id = p.id AND pc.estado = "Aprobado") AS cursos_aprobados,
-            (SELECT COUNT(*) FROM postulacion_cursos pc
-               JOIN cursos_induccion ci ON ci.id = pc.curso_id AND ci.activo = 1
-              WHERE pc.postulacion_id = p.id AND pc.enviado_at IS NOT NULL AND pc.estado = "Pendiente") AS cursos_por_revisar
+
+$stmtInduccion = $pdo->query(
+    'SELECT p.id, p.rut, p.nombre_completo, c.nombre_cargo, p.actualizado_at
        FROM postulaciones p
        JOIN cargos c ON c.id = p.cargo_id
       WHERE p.estado = "Aprobado_admin" AND p.identidad_verificada_at IS NOT NULL
       ORDER BY p.actualizado_at ASC'
 );
-$postulaciones = array_map(function ($p) {
-    $p['puede_marcar_induccion'] = true;
-    return $p;
-}, $stmt->fetchAll());
 
-responderOk(['postulaciones' => $postulaciones]);
+$stmtIrl = $pdo->prepare(
+    'SELECT p.id, p.rut, p.nombre_completo, c.nombre_cargo, p.contrato_firmado_at
+       FROM postulaciones p
+       JOIN cargos c ON c.id = p.cargo_id
+      WHERE p.estado = "Induccion_ok"
+        AND p.contrato_firmado_at IS NOT NULL
+        AND NOT EXISTS (
+            SELECT 1 FROM trazabilidad_logs t
+             WHERE t.postulacion_id = p.id AND t.accion = :accion_irl
+        )
+      ORDER BY p.contrato_firmado_at ASC'
+);
+$stmtIrl->execute(['accion_irl' => ACCION_IRL_REALIZADA]);
+
+responderOk([
+    'postulaciones' => $stmtInduccion->fetchAll(),
+    'irl_pendientes' => $stmtIrl->fetchAll(),
+]);

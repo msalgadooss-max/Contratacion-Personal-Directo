@@ -50,7 +50,7 @@ if ($postulacion['estado'] !== 'Aprobado_admin') {
     responderError('La postulación no está en estado Aprobado_admin.', 409);
 }
 if ($postulacion['identidad_verificada_at'] === null) {
-    responderError('El JAO todavía no verifica la identidad de esta persona (día 1).', 409);
+    responderError('El JAO todavía no verifica la identidad de esta persona (día 0).', 409);
 }
 
 fijarUsuarioContextoBD($pdo, $usuario['id']);
@@ -59,6 +59,35 @@ $stmt = $pdo->prepare('UPDATE postulaciones SET estado = "Induccion_ok" WHERE id
 $stmt->execute(['id' => $postulacionId]);
 
 registrarLog($pdo, $postulacionId, $usuario['id'], 'Prevención registró la inducción ODI (charla presencial).');
+
+// v10.22: al marcar el check de inducción, todos los cursos activos del
+// catálogo quedan "Aprobado" para esta persona (la charla presencial los
+// cubre). Si ya había avance del postulante (visto/respuestas) se respeta;
+// los que ya estaban Aprobado no se tocan. Con el catálogo vacío o sin
+// cursos activos, no hace nada.
+try {
+    $stmtCursos = $pdo->prepare(
+        'INSERT INTO postulacion_cursos
+            (postulacion_id, curso_id, visto_at, enviado_at, estado, evaluado_at, evaluado_por, comentario_evaluador)
+         SELECT :pid, c.id, NOW(), NOW(), "Aprobado", NOW(), :uid, :comentario
+           FROM cursos_induccion c
+          WHERE c.activo = 1
+         ON DUPLICATE KEY UPDATE
+            visto_at = COALESCE(visto_at, VALUES(visto_at)),
+            enviado_at = COALESCE(enviado_at, VALUES(enviado_at)),
+            evaluado_at = IF(estado = "Aprobado", evaluado_at, NOW()),
+            evaluado_por = IF(estado = "Aprobado", evaluado_por, VALUES(evaluado_por)),
+            comentario_evaluador = IF(estado = "Aprobado", comentario_evaluador, VALUES(comentario_evaluador)),
+            estado = "Aprobado"'
+    );
+    $stmtCursos->execute([
+        'pid' => $postulacionId,
+        'uid' => $usuario['id'],
+        'comentario' => 'Aprobado por Prevención al registrar la inducción presencial (ODI).',
+    ]);
+} catch (\Throwable $e) {
+    error_log('marcar_induccion: aprobar cursos error: ' . $e->getMessage());
+}
 
 // v10.14: con Prevención activa, este es el verdadero cierre del día 1
 // (antes, con Prevención pausada, ese aviso salía apenas el JAO
