@@ -81,10 +81,10 @@ function faseVisual(array $p): string
         // y día de contratación a las 8 am (JAO firma -> Prevención marca
         // la IRL -> Bodega entrega el kit).
         'Aprobado_admin' => $p['identidad_verificada_at'] !== null
-            ? 'Identidad verificada, esperando la inducción de Prevención'
+            ? 'Identidad verificada, esperando la verificación de Prevención'
             : 'En revisión Jefe Administrativo (verificación de documentos)',
         'Induccion_ok' => match (true) {
-            $p['contrato_firmado_at'] === null && !(bool)$p['paso_autorizado'] => 'Inducción lista, vuelve a las 8 am (Portería debe autorizar su paso)',
+            $p['contrato_firmado_at'] === null && !(bool)$p['paso_autorizado'] => 'Día 0 listo: espera su llegada a la obra a las 8 am (Portería autoriza su paso)',
             $p['contrato_firmado_at'] === null => 'Paso autorizado, esperando la firma de contrato (JAO)',
             !(bool)$p['irl_realizada'] => 'Contrato firmado, esperando la IRL con Prevención',
             default => 'IRL realizada, esperando la entrega del kit en Bodega',
@@ -134,8 +134,43 @@ function rolPendiente(array $p): ?string
  * seguimiento.js::timelineHtml(), calculados aquí para no exponer otro
  * endpoint nuevo ni duplicar la consulta.
  */
+/**
+ * v10.24 (pedido explícito del usuario, 07-10): con Prevención activa, la
+ * línea de progreso refleja los DOS días reales. Antes, tras la inducción
+ * de Prevención (Día 0), el "paso siguiente" que mostraba era
+ * "Contratado -- EPP entregado", saltándose todo el Día 1 (llegada a la
+ * obra, firma de contrato y enrolamiento, IRL, entrega del kit).
+ * Cada paso es "completado" cuando YA se hizo; el primero sin completar es
+ * el paso actual (ver estado-vivo.js).
+ */
+function pasosProgresoDosDias(array $p): array
+{
+    $rango = [
+        'Pendiente' => 0, 'Pre_aprobado_terreno' => 1, 'Aprobado_admin' => 2,
+        'Induccion_ok' => 3, 'EPP_listo' => 4, 'Contratado' => 5, 'Proceso_completo' => 6,
+    ][$p['estado']] ?? 0;
+    $firmado = $p['contrato_firmado_at'] !== null;
+
+    return [
+        ['etiqueta' => 'Postulación recibida', 'completado' => true],
+        ['etiqueta' => 'Seleccionado por el Capataz', 'completado' => $rango >= 1],
+        ['etiqueta' => 'Datos completados por el postulante', 'completado' => (bool)$p['etapa2_completada'] || $rango >= 2],
+        ['etiqueta' => 'Día 0 · Verificación JAO', 'completado' => $p['identidad_verificada_at'] !== null || $rango >= 3],
+        ['etiqueta' => 'Día 0 · Verificación Prevención', 'completado' => $rango >= 3],
+        ['etiqueta' => 'Día 1 · Llegada a la obra (Portería)', 'completado' => (bool)$p['paso_autorizado'] || $firmado || $rango >= 4],
+        ['etiqueta' => 'Día 1 · Firma de contrato y enrolamiento (JAO)', 'completado' => $firmado || $rango >= 5],
+        ['etiqueta' => 'Día 1 · IRL (Prevención)', 'completado' => (bool)$p['irl_realizada'] || $rango >= 5],
+        ['etiqueta' => 'Día 1 · Entrega de kit EPP (Bodega)', 'completado' => $rango >= 5],
+        ['etiqueta' => 'Incorporado a su cuadrilla (Capataz)', 'completado' => $rango >= 6],
+    ];
+}
+
 function pasosProgreso(array $p): array
 {
+    if (MODULO_PREVENCION_ACTIVO) {
+        return pasosProgresoDosDias($p);
+    }
+
     $etiquetas = [
         'Pendiente' => 'Postulación recibida',
         'Pre_aprobado_terreno' => 'Seleccionado por el Capataz',

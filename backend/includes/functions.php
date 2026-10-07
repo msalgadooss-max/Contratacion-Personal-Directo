@@ -208,7 +208,7 @@ function intentarAvanzarAAprobadoAdmin(PDO $pdo, int $postulacionId): void
  * llama cuando es el propio postulante (sin sesion interna) quien pide
  * un enlace nuevo porque el correo original no le llego.
  */
-function otorgarAccesoEtapa2(PDO $pdo, int $postulacionId, ?int $usuarioId): void
+function otorgarAccesoEtapa2(PDO $pdo, int $postulacionId, ?int $usuarioId, bool $incluirQr = false): void
 {
     $stmt = $pdo->prepare('SELECT nombre_completo, correo FROM postulaciones WHERE id = :id');
     $stmt->execute(['id' => $postulacionId]);
@@ -231,6 +231,44 @@ function otorgarAccesoEtapa2(PDO $pdo, int $postulacionId, ?int $usuarioId): voi
     require_once __DIR__ . '/../mailer/Mailer.php';
     $urlFormularioPrivado = BASE_URL . '/frontend/public/completar.html?token=' . $token;
     $nombreCompleto = $postulacion['nombre_completo'];
+
+    // v10.24 (pedido explícito del usuario, 06-10): cuando la llama el
+    // Capataz (terreno/aprobar.php), el postulante recibe UN solo correo con
+    // el QR de Portería y el link de Etapa 2, en vez de dos seguidos. Si por
+    // cualquier motivo no se puede armar el QR, cae al correo de siempre
+    // (solo el link) -- el postulante nunca se queda sin su enlace.
+    if ($incluirQr) {
+        try {
+            $stmtQr = $pdo->prepare(
+                'SELECT p.rut, p.codigo_seguimiento, c.nombre_cargo
+                   FROM postulaciones p
+                   JOIN cargos c ON c.id = p.cargo_id
+                  WHERE p.id = :id'
+            );
+            $stmtQr->execute(['id' => $postulacionId]);
+            $datosQr = $stmtQr->fetch();
+            if ($datosQr) {
+                $urlValidacion = BASE_URL . '/frontend/public/ingreso_faena.html'
+                    . '?rut=' . urlencode($datosQr['rut'])
+                    . '&codigo=' . urlencode($datosQr['codigo_seguimiento']);
+                $qrImagenUrl = BASE_URL . '/backend/api/public/qr_imagen.php?u=' . urlencode($urlValidacion);
+                $cargo = $datosQr['nombre_cargo'];
+                $htmlCombinado = (function () use ($nombreCompleto, $cargo, $urlFormularioPrivado, $qrImagenUrl, $urlValidacion) {
+                    return require __DIR__ . '/../mailer/templates/seleccion_con_qr.php';
+                })();
+                Mailer::enviar(
+                    $postulacion['correo'],
+                    $nombreCompleto,
+                    '¡Buenas noticias! Preséntate en portería y completa tus datos - ICAFAL',
+                    $htmlCombinado
+                );
+                return;
+            }
+        } catch (\Throwable $e) {
+            error_log('otorgarAccesoEtapa2 correo combinado error: ' . $e->getMessage());
+        }
+    }
+
     $html = (function () use ($nombreCompleto, $urlFormularioPrivado) {
         return require __DIR__ . '/../mailer/templates/link_privado.php';
     })();
@@ -576,8 +614,8 @@ function traducirAccionLog(string $accion): string
 {
     if (preg_match('/^Cambio de estado: (\w+) -> (\w+)$/', $accion, $m)) {
         return match ($m[2]) {
-            'Pre_aprobado_terreno' => 'Fue pre-aprobado por el Jefe de Terreno.',
-            'Aprobado_admin' => 'Pasó a revisión del Jefe Administrativo (ya con datos completos y autorización del Administrador de Contrato).',
+            'Pre_aprobado_terreno' => 'Fue seleccionado en terreno por el Capataz.',
+            'Aprobado_admin' => 'Pasó a revisión del Jefe Administrativo (ya con sus datos y documentos completos).',
             'Induccion_ok' => 'Realizó la inducción de seguridad.',
             'EPP_listo' => 'Su kit de EPP quedó listo.',
             'Contratado' => '✔ Fue contratado.',

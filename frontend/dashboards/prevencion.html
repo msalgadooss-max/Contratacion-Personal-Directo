@@ -60,39 +60,55 @@
     <div id="estado-vivo"></div>
     <!-- v10.21 (pedido explícito del usuario, tras el piloto del 16-09):
          Prevención tiene DOS check, uno por día. -->
-    <h2 class="text-sm font-bold text-gray-900 mb-1">1. Inducción · día de postulación</h2>
-    <p class="text-xs text-gray-500 mb-3">Personas que el JAO ya verificó. Al confirmar, termina su día y reciben el correo "preséntate mañana a las 8 am".</p>
-    <div class="bg-white rounded-xl shadow-sm overflow-x-auto mb-8">
-      <table class="w-full text-sm">
-        <thead class="bg-gray-50 text-gray-500 text-left">
-          <tr>
-            <th class="px-4 py-3">RUT</th>
-            <th class="px-4 py-3">Nombre</th>
-            <th class="px-4 py-3">Cargo</th>
-            <th class="px-4 py-3 text-right">Confirmar</th>
-          </tr>
-        </thead>
-        <tbody id="tbody-postulaciones"></tbody>
-      </table>
-      <p id="vacio" class="text-center text-gray-400 text-sm py-8 hidden">No hay personas esperando la inducción.</p>
+    <!-- v10.24 (pedido explícito del usuario, 07-10): cada día en su propia
+         pestaña, con contador de pendientes. Día 0 = verificación; Día 1 =
+         contratación (IRL). -->
+    <div class="flex gap-1 border-b border-gray-200 mb-6" id="tabs">
+      <button data-tab="dia0" class="tab-btn px-4 py-2 text-sm font-semibold border-b-2 border-blue-600 text-blue-600">
+        Día 0 · Postulación <span id="cuenta-dia0" class="ml-1 text-xs font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">0</span>
+      </button>
+      <button data-tab="dia1" class="tab-btn px-4 py-2 text-sm font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700">
+        Día 1 · Contratación (IRL) <span id="cuenta-dia1" class="ml-1 text-xs font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">0</span>
+      </button>
     </div>
 
-    <h2 class="text-sm font-bold text-gray-900 mb-1">2. IRL · día de contratación</h2>
-    <p class="text-xs text-gray-500 mb-3">Personas que ya firmaron su contrato con el JAO. Al confirmar la IRL, pasan a Bodega para la entrega de su kit.</p>
-    <div class="bg-white rounded-xl shadow-sm overflow-x-auto">
-      <table class="w-full text-sm">
-        <thead class="bg-gray-50 text-gray-500 text-left">
-          <tr>
-            <th class="px-4 py-3">RUT</th>
-            <th class="px-4 py-3">Nombre</th>
-            <th class="px-4 py-3">Cargo</th>
-            <th class="px-4 py-3 text-right">Confirmar</th>
-          </tr>
-        </thead>
-        <tbody id="tbody-irl"></tbody>
-      </table>
-      <p id="vacio-irl" class="text-center text-gray-400 text-sm py-8 hidden">No hay personas esperando la IRL. Aparecen aquí apenas el JAO firma su contrato.</p>
-    </div>
+    <section id="panel-dia0" class="tab-panel">
+      <h2 class="text-sm font-bold text-gray-900 mb-1">Verificación · día de postulación</h2>
+      <p class="text-xs text-gray-500 mb-3">Personas que el JAO ya verificó. Al confirmar, termina su día y reciben el correo "preséntate mañana a las 8 am".</p>
+      <div class="bg-white rounded-xl shadow-sm overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead class="bg-gray-50 text-gray-500 text-left">
+            <tr>
+              <th class="px-4 py-3">RUT</th>
+              <th class="px-4 py-3">Nombre</th>
+              <th class="px-4 py-3">Cargo</th>
+              <th class="px-4 py-3 text-right">Confirmar</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-postulaciones"></tbody>
+        </table>
+        <p id="vacio" class="text-center text-gray-400 text-sm py-8 hidden">No hay personas esperando verificación.</p>
+      </div>
+    </section>
+
+    <section id="panel-dia1" class="tab-panel hidden">
+      <h2 class="text-sm font-bold text-gray-900 mb-1">IRL · día de contratación</h2>
+      <p class="text-xs text-gray-500 mb-3">Personas que ya firmaron su contrato con el JAO. Al confirmar la IRL, pasan a Bodega para la entrega de su kit.</p>
+      <div class="bg-white rounded-xl shadow-sm overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead class="bg-gray-50 text-gray-500 text-left">
+            <tr>
+              <th class="px-4 py-3">RUT</th>
+              <th class="px-4 py-3">Nombre</th>
+              <th class="px-4 py-3">Cargo</th>
+              <th class="px-4 py-3 text-right">Confirmar</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-irl"></tbody>
+        </table>
+        <p id="vacio-irl" class="text-center text-gray-400 text-sm py-8 hidden">No hay personas esperando la IRL. Aparecen aquí apenas el JAO firma su contrato.</p>
+      </div>
+    </section>
   </main>
 
   <script src="../assets/js/config.js"></script>

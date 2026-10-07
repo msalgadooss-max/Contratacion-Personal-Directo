@@ -79,8 +79,9 @@ foreach ($postulaciones as &$p) {
     // v9.2: en Etapa 1 del piloto (MODULO_PREVENCION_ACTIVO=false),
     // "Induccion_ok" nunca se alcanza -- basta con 'Aprobado_admin'.
     $estadoParaFirmar = MODULO_PREVENCION_ACTIVO ? 'Induccion_ok' : 'Aprobado_admin';
+    // v10.24: ya no depende de que Portería haya escaneado el QR (ver
+    // verificar_identidad.php).
     $p['puede_verificar'] = $p['estado'] === 'Aprobado_admin'
-        && $p['ingreso_faena_at'] !== null
         && $p['identidad_verificada_at'] === null;
     // v10.21 (pedido explícito del usuario): con Prevención activa (flujo
     // de dos días), el día de contratación Portería tiene que autorizar el

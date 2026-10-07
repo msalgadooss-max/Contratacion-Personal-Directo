@@ -14,7 +14,9 @@ const FASES_POSTULANTE = {
   Pendiente: '📋 Tu postulación está en revisión',
   Pre_aprobado_terreno: '📝 Completa tus datos para avanzar',
   Aprobado_admin: '🔍 Estamos revisando tus documentos',
-  Induccion_ok: '🔍 Estamos revisando tus documentos',
+  // v10.24: terminado su día de postulación (JAO y Prevención ya lo
+  // verificaron) -- antes seguía diciendo "revisando tus documentos".
+  Induccion_ok: '✅ Documentos revisados · Preséntate a las 08:00 en la obra, según te indicamos por correo',
 };
 
 const form = document.getElementById('form-seguimiento');

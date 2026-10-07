@@ -11,8 +11,9 @@ return <<<HTML
   <h2 style="margin:0 0 4px;color:#111827">Tallas para preparar los kits de EPP</h2>
   <p style="margin:0 0 16px;color:#6b7280;font-size:13px">{$obra} · {$fecha} {$hora} · {$textoTotal}</p>
   <p style="font-size:14px;line-height:1.5">
-    Estas personas completaron su postulación y se presentan a contratación.
-    Prepara el kit de EPP (calzado y overol) con las siguientes tallas:
+    Estas personas completaron su postulación y se presentarán
+    <b>mañana a las 8:00 am en la obra</b> para su contratación y la entrega
+    del kit de EPP. Prepara los kits (calzado y overol) con las siguientes tallas:
   </p>
   <table style="width:100%;border-collapse:collapse;margin:18px 0;border:1px solid #e5e7eb">
     <thead>

@@ -117,17 +117,12 @@ try {
     // v10.7: recién ahora el postulante recibe su primer correo para
     // seguir avanzando -- el link de Etapa 2 (datos personales + subir
     // documentos), para completarlo ahí mismo en la sala de espera.
-    otorgarAccesoEtapa2($pdo, $postulacionId, $usuario['id']);
-
-    // v10.9: y también el QR de "ingreso a faena" -- el que Portería
-    // escanea para dejarlo pasar a la sala de espera a llenar esos
-    // datos. Antes de esto no tenía ninguna forma de que Portería lo
-    // dejara entrar.
-    try {
-        notificarIngresoFaena($pdo, $postulacionId);
-    } catch (\Throwable $e) {
-        error_log('notificarIngresoFaena error: ' . $e->getMessage());
-    }
+    // v10.24 (pedido explícito del usuario, 06-10): el link de Etapa 2 y el
+    // QR de "ingreso a faena" (el que Portería escanea para dejarlo pasar a
+    // la sala de espera, v10.9) salen juntos en UN solo correo al postulante
+    // -- antes eran dos correos seguidos (otorgarAccesoEtapa2 + una llamada
+    // aparte a notificarIngresoFaena).
+    otorgarAccesoEtapa2($pdo, $postulacionId, $usuario['id'], true);
 
     // v10.13: aviso temprano al JAO ("viene en camino") -- el rol de
     // Admin_Contrato ya terminó su parte al aprobar los cupos, así que

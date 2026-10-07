@@ -59,7 +59,9 @@ $stmtLogs->execute(['id' => $postulacionId]);
 $logs = $stmtLogs->fetchAll();
 
 $etiquetasEstado = [
-    'Pre_aprobado_terreno' => 'Pre-aprobado por Jefe de Terreno',
+    // v10.24: quien selecciona hoy es el Capataz (el Jefe de Terreno es de
+    // solo lectura); el nombre real de la persona sale en "por ...".
+    'Pre_aprobado_terreno' => 'Seleccionado en terreno (Capataz)',
     'Aprobado_admin'       => 'En revisión Jefe Administrativo',
     'Induccion_ok'         => 'Inducción de seguridad realizada',
     'EPP_listo'            => 'Kit de EPP listo',
@@ -141,7 +143,7 @@ unset($h);
 $fechaTerreno = null;
 $fechaContratado = null;
 foreach ($hitos as $h) {
-    if ($h['etiqueta'] === 'Pre-aprobado por Jefe de Terreno' && $fechaTerreno === null) {
+    if ($h['etiqueta'] === 'Seleccionado en terreno (Capataz)' && $fechaTerreno === null) {
         $fechaTerreno = $h['fecha_hora'];
     }
     if ($h['etiqueta'] === 'Contratado') {

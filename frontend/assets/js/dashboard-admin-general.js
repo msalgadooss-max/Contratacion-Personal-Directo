@@ -249,15 +249,16 @@ function tarjeta(p) {
           ${p.tiene_datos_jao ? '<span class="text-xs text-green-700 bg-green-50 px-2 py-1 rounded-md font-medium">✓ Nómina completa</span>' : ''}
           ${p.identidad_verificada
             ? `<span class="text-xs text-green-700 bg-green-50 px-2 py-1 rounded-md font-medium" title="Verificado por ${p.identidad_verificada_por_nombre || ''}">✓ Identidad verificada</span>`
-            : (p.ingreso_faena_confirmado
-                ? `<span class="inline-flex gap-1">
+            : (p.puede_verificar
+                // v10.24: "Coincide / No coincide" siempre disponible una vez
+                // completada la Etapa 2 -- ya no depende de que Portería haya
+                // escaneado el QR (si no lo escaneó, solo se avisa en gris).
+                ? `<span class="inline-flex items-center gap-1.5 flex-wrap">
+                     ${p.ingreso_faena_confirmado ? '' : '<span class="text-[11px] text-gray-400" title="Portería no escaneó su QR de ingreso. No bloquea: al verificar queda registrado su ingreso.">sin QR en Portería</span>'}
                      <button class="bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold px-3 py-2 rounded-lg" onclick="verificarIdentidad(${p.id})">Coincide</button>
                      <button class="bg-red-100 hover:bg-red-200 text-red-700 text-xs font-semibold px-3 py-2 rounded-lg" onclick="noCoincideIdentidad(${p.id})">No coincide</button>
                    </span>`
-                : `<span class="inline-flex items-center gap-1.5">
-                     <span class="text-xs text-gray-400 bg-gray-50 px-2 py-1 rounded-md font-medium" title="Portería aún no confirma que llegó a faena">⏳ Esperando ingreso a faena</span>
-                     <button class="text-xs text-blue-600 underline" onclick="confirmarIngresoFaenaManual(${p.id})" title="Úsalo si la persona ya está físicamente acá pero Portería no alcanzó a escanear su QR">Confirmar manualmente</button>
-                   </span>`)}
+                : '')}
           ${MODULO_PREVENCION_ACTIVO && p.estado === 'Induccion_ok'
             ? (p.paso_contratacion_autorizado
                 ? '<span class="text-xs text-green-700 bg-green-50 px-2 py-1 rounded-md font-medium">✓ Paso autorizado por Portería</span>'

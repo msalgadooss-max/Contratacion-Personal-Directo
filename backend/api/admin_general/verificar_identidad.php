@@ -33,7 +33,7 @@ if ($postulacionId <= 0) {
 $pdo = obtenerConexion();
 
 $stmtCheck = $pdo->prepare(
-    'SELECT p.id, p.ingreso_faena_at,
+    'SELECT p.id, p.estado, p.ingreso_faena_at,
             (SELECT COUNT(*) FROM postulacion_documentos pd
               WHERE pd.postulacion_id = p.id AND pd.tipo = "cedula_identidad") AS tiene_cedula
        FROM postulaciones p
@@ -45,23 +45,32 @@ $postulacion = $stmtCheck->fetch();
 if (!$postulacion) {
     responderError('Postulación no encontrada.', 404);
 }
-// v7: candado nuevo -- no se puede verificar documentos hasta que
-// Portería confirmó que la persona se presentó en faena (ver
-// porteria/marcar_ingreso.php).
-if ($postulacion['ingreso_faena_at'] === null) {
-    responderError('Esta persona todavía no registra ingreso a faena en Portería.', 409);
+// v10.24 (pedido explícito del usuario, 07-10): ya NO se exige que
+// Portería haya escaneado el QR de ingreso (v7). Ese escaneo controla la
+// PUERTA; esto controla el PROCESO -- el JAO compara la cédula con la
+// persona frente a él. Con el candado, si el guardia no alcanzaba a
+// escanear, la persona quedaba sin dueño: el JAO no podía verificarla y
+// Prevención no la veía (cuello de botella del piloto del 16-09). El
+// ingreso sí se registra solo (más abajo) si todavía no constaba.
+if ($postulacion['estado'] !== 'Aprobado_admin') {
+    responderError('Esta persona todavía no completa su Etapa 2, o ya fue verificada.', 409);
 }
 if ((int)$postulacion['tiene_cedula'] === 0) {
     responderError('Esta postulación aún no tiene la foto/PDF de cédula subida.', 409);
 }
 
+fijarUsuarioContextoBD($pdo, $usuario['id']);
 $stmt = $pdo->prepare(
     'UPDATE postulaciones
-        SET identidad_verificada_at = NOW(), identidad_verificada_por = :uid
+        SET identidad_verificada_at = NOW(), identidad_verificada_por = :uid,
+            ingreso_faena_at = COALESCE(ingreso_faena_at, NOW())
       WHERE id = :id'
 );
 $stmt->execute(['uid' => $usuario['id'], 'id' => $postulacionId]);
 
+if ($postulacion['ingreso_faena_at'] === null) {
+    registrarLog($pdo, $postulacionId, $usuario['id'], 'Ingreso a faena registrado al verificar la identidad (Portería no había escaneado su QR).');
+}
 registrarLog($pdo, $postulacionId, $usuario['id'], 'Verificó manualmente que el RUT declarado coincide con la cédula subida.');
 
 if (!MODULO_PREVENCION_ACTIVO) {

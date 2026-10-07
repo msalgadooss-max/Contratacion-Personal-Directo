@@ -248,8 +248,8 @@ function renderTiemposHtml(data) {
     <div class="rounded-xl px-4 py-3 mb-5 text-sm font-semibold text-center ${data.proceso_en_curso ? 'bg-amber-50 text-amber-800 border border-amber-200' : 'bg-green-50 text-green-700 border border-green-200'}">
       ${data.duracion_total_desde_terreno
         ? (data.proceso_en_curso
-            ? `⏱ Lleva ${data.duracion_total_desde_terreno} desde que Terreno pre-aprobó (aún en curso)`
-            : `⏱ Tardó ${data.duracion_total_desde_terreno} desde que Terreno pre-aprobó hasta ${data.estado === 'Contratado' ? 'ser contratado' : 'este punto'}`)
+            ? `⏱ Lleva ${data.duracion_total_desde_terreno} desde que el Capataz lo seleccionó (aún en curso)`
+            : `⏱ Tardó ${data.duracion_total_desde_terreno} desde que el Capataz lo seleccionó hasta ${data.estado === 'Contratado' ? 'ser contratado' : 'este punto'}`)
         : 'Todavía no hay suficientes hitos para calcular una duración total.'}
     </div>
 
