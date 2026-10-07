@@ -165,6 +165,32 @@ function match(p) {
   return `<p class="inline-block mt-1.5 text-xs font-semibold px-2 py-1 rounded-full ${clases}">${texto}</p>`;
 }
 
+// v10.23: el CV (o la experiencia declarada si no tiene) va DEBAJO del nombre,
+// no en una columna a la derecha -- en un celular angosto esa columna le
+// quitaba espacio al RUT. La experiencia se muestra a la vista (antes solo
+// aparecía al pasar el mouse, que en un teléfono no existe).
+// En el celular la experiencia queda PLEGADA (solo una etiqueta chica que se
+// toca para abrir, para no ocupar pantalla); en escritorio, que sobra
+// espacio, aparece abierta. Lo que el Capataz abre o cierra se recuerda
+// aunque la lista se redibuje cada 15 s.
+const EXPERIENCIA_ABIERTA = {};
+function esEscritorio() { return window.matchMedia('(min-width: 640px)').matches; }
+function recordarExperiencia(id, abierta) { EXPERIENCIA_ABIERTA[id] = abierta; }
+
+function bloqueCv(p) {
+  if (p.tiene_cv) {
+    return `<a href="${API_BASE_URL}/terreno/ver_cv.php?postulacion_id=${p.id}" target="_blank" class="inline-block mt-2 text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-200 rounded-full px-3 py-1">📄 Ver CV</a>`;
+  }
+  if (p.experiencia_sin_cv) {
+    const abierta = p.id in EXPERIENCIA_ABIERTA ? EXPERIENCIA_ABIERTA[p.id] : esEscritorio();
+    return `<details class="mt-2" ${abierta ? 'open' : ''} ontoggle="recordarExperiencia(${p.id}, this.open)">
+      <summary class="inline-block cursor-pointer select-none text-xs font-semibold text-amber-800 bg-amber-50 border border-amber-200 rounded-full px-3 py-1" style="list-style:none">Sin CV · ver experiencia ▾</summary>
+      <p class="mt-1.5 text-xs bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-amber-900 break-words">${esc(p.experiencia_sin_cv)}</p>
+    </details>`;
+  }
+  return '<p class="mt-2 text-xs text-gray-400">Sin CV</p>';
+}
+
 async function cargarLista() {
   const cont = document.getElementById('lista-postulantes');
   const vacio = document.getElementById('vacio');
@@ -192,13 +218,7 @@ async function cargarLista() {
             <p class="nombre-postulante text-lg font-bold text-gray-800">${esc(p.nombre_completo)}</p>
             <p class="text-sm text-gray-500">${esc(p.comuna)}</p>
             ${match(p)}
-          </div>
-          <div class="shrink-0 text-right">
-            ${p.tiene_cv
-              ? `<a href="${API_BASE_URL}/terreno/ver_cv.php?postulacion_id=${p.id}" target="_blank" class="text-blue-600 font-medium underline text-sm">Ver CV</a>`
-              : (p.experiencia_sin_cv
-                  ? `<span class="text-xs text-amber-700 bg-amber-50 px-2 py-1 rounded cursor-help" title="${p.experiencia_sin_cv.replace(/"/g, '&quot;')}">Sin CV (ver experiencia) ⓘ</span>`
-                  : '<span class="text-gray-400 text-xs">Sin CV</span>')}
+            ${bloqueCv(p)}
           </div>
         </div>
         <div class="px-5 pb-5 space-y-3">
