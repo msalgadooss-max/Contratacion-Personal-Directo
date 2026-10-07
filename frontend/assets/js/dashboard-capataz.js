@@ -90,11 +90,38 @@ function renderZonasCargo() {
     return;
   }
   cont.innerHTML = CARGOS_CON_CUPO.map(c => `
-    <div class="cargo-zone rounded-xl border-2 border-dashed border-orange-200 bg-orange-50/60 p-4 flex flex-col items-center justify-center gap-1 text-center" data-cargo-id="${c.id}">
-      <span class="text-3xl leading-none">⛑️</span>
-      <p class="text-sm font-bold text-gray-800 leading-tight">${c.nombre_cargo}</p>
-      <p class="text-xs text-orange-700 font-semibold">${c.cupos_disponibles} cupo(s)</p>
+    <div class="cargo-zone rounded-xl border-2 border-dashed border-orange-300 bg-orange-50 px-3 py-2.5 flex items-center gap-2.5" data-cargo-id="${c.id}">
+      <span class="text-2xl leading-none">⛑️</span>
+      <div class="min-w-0">
+        <p class="text-sm font-bold text-gray-800 leading-tight truncate">${esc(c.nombre_cargo)}</p>
+        <p class="text-xs text-orange-700 font-semibold">${c.cupos_disponibles} cupo(s)</p>
+      </div>
     </div>`).join('');
+}
+
+// v10.23: escapa texto de la BD antes de meterlo en el HTML de las tarjetas.
+function esc(valor) {
+  const d = document.createElement('div');
+  d.textContent = valor == null ? '' : String(valor);
+  return d.innerHTML;
+}
+
+// v10.23: la ÚNICA tarjeta "activa" (con documentos marcados, lista para
+// arrastrar). Sobrevive al refresco automático de 15 s -- antes la lista se
+// volvía a dibujar y desmarcaba el check justo cuando el Capataz lo había
+// puesto.
+let ACTIVA_ID = null;
+
+function actualizarTituloZonas(nombre) {
+  const t = document.getElementById('zonas-titulo');
+  if (!t) return;
+  if (nombre) {
+    t.className = 'text-sm font-bold text-orange-700 mb-2';
+    t.innerHTML = `③ Arrastra a <span class="bg-orange-600 text-white px-2 py-0.5 rounded-full">${esc(nombre)}</span> hasta su cargo ↓`;
+  } else {
+    t.className = 'text-xs font-bold text-gray-500 mb-2 uppercase tracking-wide';
+    t.textContent = 'Cargos con cupo';
+  }
 }
 
 // --- v10.14: pestañas (Selección en terreno / Personal Contratado) --------
@@ -145,36 +172,51 @@ async function cargarLista() {
     const data = await apiFetch('/terreno/listar.php');
     if (!data.postulaciones.length) {
       cont.innerHTML = '';
+      cont.classList.remove('hay-activa');
+      ACTIVA_ID = null;
+      actualizarTituloZonas(null);
       vacio.classList.remove('hidden');
       return;
     }
     vacio.classList.add('hidden');
-    cont.innerHTML = data.postulaciones.map(p => `
-      <div class="postulante-card bg-white rounded-xl shadow-sm overflow-hidden" data-postulacion-id="${p.id}">
-        <label class="flex items-center gap-2 px-4 py-2.5 bg-amber-50 border-b border-amber-100 text-sm font-semibold text-amber-800 cursor-pointer">
-          <input type="checkbox" class="check-documentos w-4 h-4 accent-amber-600" onchange="toggleArrastre(${p.id}, this.checked)">
-          Trae sus documentos
-        </label>
-        <div class="drag-handle flex items-center justify-center gap-2 bg-gray-100 text-gray-300 text-xs font-bold tracking-wide py-2 border-b border-gray-100 select-none" data-habilitado="false" style="pointer-events:none">
-          <span class="text-base leading-none">⠿⠿⠿</span> MARCA DOCUMENTOS PARA ARRASTRAR
-        </div>
-        <div class="p-5">
-          <div class="flex items-start justify-between gap-4 flex-wrap">
-            <div>
-              <p class="text-2xl font-mono font-bold text-gray-900 tracking-wide">${celdaDocumento(p)}</p>
-              <p class="nombre-postulante text-base font-semibold text-gray-800">${p.nombre_completo}</p>
-              <p class="text-sm text-gray-500">${p.comuna}</p>
-              ${match(p)}
-            </div>
+    // v10.23: cada tarjeta lleva primero QUIÉN es (número + RUT + nombre) y
+    // después, dentro de la misma tarjeta, sus dos pasos: ① check, ② asa de
+    // arrastre. "No selecciona" queda chico y aparte, lejos del check de la
+    // tarjeta siguiente.
+    cont.innerHTML = data.postulaciones.map((p, i) => `
+      <div class="postulante-card bg-white rounded-2xl shadow-sm border-2 border-gray-200 overflow-hidden" data-postulacion-id="${p.id}">
+        <div class="flex items-start gap-4 p-5">
+          <div class="shrink-0 w-11 h-11 rounded-full bg-gray-900 text-white text-lg font-extrabold flex items-center justify-center" aria-label="Persona ${i + 1}">${i + 1}</div>
+          <div class="min-w-0 flex-1">
+            <p class="text-2xl font-mono font-bold text-gray-900 tracking-wide">${celdaDocumento(p)}</p>
+            <p class="nombre-postulante text-lg font-bold text-gray-800">${esc(p.nombre_completo)}</p>
+            <p class="text-sm text-gray-500">${esc(p.comuna)}</p>
+            ${match(p)}
+          </div>
+          <div class="shrink-0 text-right">
             ${p.tiene_cv
               ? `<a href="${API_BASE_URL}/terreno/ver_cv.php?postulacion_id=${p.id}" target="_blank" class="text-blue-600 font-medium underline text-sm">Ver CV</a>`
               : (p.experiencia_sin_cv
                   ? `<span class="text-xs text-amber-700 bg-amber-50 px-2 py-1 rounded cursor-help" title="${p.experiencia_sin_cv.replace(/"/g, '&quot;')}">Sin CV (ver experiencia) ⓘ</span>`
                   : '<span class="text-gray-400 text-xs">Sin CV</span>')}
           </div>
-          <button class="no-arrastrar w-full mt-4 bg-red-100 hover:bg-red-200 text-red-700 font-bold text-base rounded-lg py-3" onclick="noSeleccionar(${p.id})">
-            ✕ No selecciona
-          </button>
+        </div>
+        <div class="px-5 pb-5 space-y-3">
+          <label class="flex items-center gap-3 rounded-xl border-2 border-amber-300 bg-amber-50 px-4 py-3 cursor-pointer">
+            <input type="checkbox" class="check-documentos w-6 h-6 shrink-0 accent-amber-600" onchange="toggleArrastre(${p.id}, this.checked)">
+            <span>
+              <span class="block text-sm font-bold text-amber-900">① Trae sus documentos</span>
+              <span class="block text-xs font-medium text-amber-700">Compara el RUT de arriba con su cédula</span>
+            </span>
+          </label>
+          <div class="drag-handle flex items-center justify-center gap-2 rounded-xl border-2 border-dashed border-gray-300 bg-gray-100 text-gray-400 text-sm font-bold tracking-wide py-3 select-none" data-habilitado="false" style="pointer-events:none">
+            <span class="text-base leading-none">⠿⠿⠿</span> ② Primero marca ①
+          </div>
+          <div class="text-right pt-1">
+            <button class="no-arrastrar text-xs font-semibold text-red-600 hover:text-red-700 hover:underline px-2 py-1" onclick="noSeleccionar(${p.id})">
+              ✕ No selecciona a esta persona
+            </button>
+          </div>
         </div>
       </div>`).join('');
     cont.querySelectorAll('.postulante-card').forEach((card) => {
@@ -182,6 +224,18 @@ async function cargarLista() {
       const handle = card.querySelector('.drag-handle');
       if (handle) iniciarArrastre(handle, card, id);
     });
+    // Si había una tarjeta activa antes del refresco, se vuelve a activar.
+    const activaCard = ACTIVA_ID !== null
+      ? cont.querySelector(`.postulante-card[data-postulacion-id="${ACTIVA_ID}"]`)
+      : null;
+    if (activaCard) {
+      activaCard.querySelector('.check-documentos').checked = true;
+      toggleArrastre(ACTIVA_ID, true);
+    } else {
+      ACTIVA_ID = null;
+      cont.classList.remove('hay-activa');
+      actualizarTituloZonas(null);
+    }
   } catch (err) {
     mostrarAlerta('alerta', err.message);
   }
@@ -193,20 +247,40 @@ async function cargarLista() {
 function toggleArrastre(postulacionId, habilitado) {
   const card = document.querySelector(`.postulante-card[data-postulacion-id="${postulacionId}"]`);
   if (!card) return;
+  const lista = document.getElementById('lista-postulantes');
+
+  // v10.23: una sola tarjeta activa a la vez -- al marcar otra, la anterior
+  // se desmarca, para que nunca haya dos candidatas al arrastre.
+  if (habilitado) {
+    lista.querySelectorAll('.postulante-card.activa').forEach((otra) => {
+      if (otra !== card) {
+        otra.querySelector('.check-documentos').checked = false;
+        aplicarEstadoTarjeta(otra, false);
+      }
+    });
+    ACTIVA_ID = postulacionId;
+  } else if (ACTIVA_ID === postulacionId) {
+    ACTIVA_ID = null;
+  }
+  aplicarEstadoTarjeta(card, habilitado);
+  lista.classList.toggle('hay-activa', ACTIVA_ID !== null);
+  actualizarTituloZonas(habilitado ? card.querySelector('.nombre-postulante')?.textContent.trim() : null);
+}
+
+// Pinta una tarjeta como activa (check marcado, asa lista y pulsando) o
+// como inactiva (asa gris deshabilitada).
+function aplicarEstadoTarjeta(card, habilitado) {
   const handle = card.querySelector('.drag-handle');
   if (!handle) return;
+  card.classList.toggle('activa', habilitado);
   handle.dataset.habilitado = habilitado ? 'true' : 'false';
   handle.style.pointerEvents = habilitado ? 'auto' : 'none';
-  handle.classList.toggle('bg-gray-100', !habilitado);
-  handle.classList.toggle('text-gray-300', !habilitado);
-  handle.classList.toggle('bg-gray-50', habilitado);
-  handle.classList.toggle('text-gray-400', habilitado);
-  handle.classList.toggle('hover:bg-gray-100', habilitado);
-  handle.classList.toggle('cursor-grab', habilitado);
-  handle.classList.toggle('active:cursor-grabbing', habilitado);
+  handle.className = habilitado
+    ? 'drag-handle listo flex items-center justify-center gap-2 rounded-xl border-2 border-orange-700 bg-blue-600 text-white text-sm font-extrabold tracking-wide py-4 select-none cursor-grab active:cursor-grabbing'
+    : 'drag-handle flex items-center justify-center gap-2 rounded-xl border-2 border-dashed border-gray-300 bg-gray-100 text-gray-400 text-sm font-bold tracking-wide py-3 select-none';
   handle.innerHTML = habilitado
-    ? '<span class="text-base leading-none">⠿⠿⠿</span> ARRASTRA HACIA UN CARGO'
-    : '<span class="text-base leading-none">⠿⠿⠿</span> MARCA DOCUMENTOS PARA ARRASTRAR';
+    ? '<span class="text-lg leading-none">⠿⠿⠿</span> ② MANTÉN APRETADO Y ARRASTRA HACIA UN CARGO ↑'
+    : '<span class="text-base leading-none">⠿⠿⠿</span> ② Primero marca ①';
 }
 
 // v10.14 (pedido explícito del usuario: "no me aparece [deshacer]"): el
