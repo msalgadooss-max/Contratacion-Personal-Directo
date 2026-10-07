@@ -98,7 +98,7 @@ const GUIA_POR_ROL = {
     contenido: `
       <p class="text-gray-700 mb-4">Tienes <b>dos check, uno por día</b>. En ambos, marcas el casillero de la persona y confirmas (no se puede deshacer).</p>
       <ul class="space-y-2.5 text-gray-700">
-        <li>• <b>1. Inducción -- día de postulación:</b> ves a cada persona apenas el JAO verifica su identidad. Al confirmar tu check termina su día: el postulante recibe el correo "preséntate mañana a las 8 am", y Bodega ya recibe el aviso con las tallas para preparar el kit con anticipación.</li>
+        <li>• <b>1. Inducción -- día de postulación:</b> ves a cada persona apenas el JAO verifica su identidad. Al confirmar tu check termina su día: el postulante recibe el correo "preséntate mañana a las 8 am".</li>
         <li>• <b>2. IRL -- día de contratación (8 am):</b> aparece en tu segunda lista apenas el JAO firma su contrato. Cuando hiciste la IRL, la marcas -- ahí la persona pasa a Bodega para la entrega del kit.</li>
         <li>• No ves datos sensibles de la persona (AFP, banco, etc.) -- solo lo necesario para identificarla.</li>
       </ul>`,
@@ -108,7 +108,7 @@ const GUIA_POR_ROL = {
     contenido: `
       <p class="text-gray-700 mb-4">Tu parte es <b>entregar el kit de EPP</b> -- el paso que cierra el ciclo completo y deja a la persona ✔ Contratada.</p>
       <ul class="space-y-2.5 text-gray-700">
-        <li>• Apenas Prevención marca la inducción (día de postulación), te llega el aviso con el número de calzado y la talla de overol -- así preparas el kit con anticipación, antes de que la persona vuelva al día siguiente.</li>
+        <li>• Las tallas (calzado y overol) de quienes completan su postulación te llegan en <b>un solo correo</b>, que tú mismo envías con el botón "Enviar tallas por correo" de tu panel -- lo ideal es a las 14:00, cuando ya no entran más postulantes. Si alguien completa después, queda pendiente y sale en un envío aparte. Así preparas los kits con anticipación, antes de que las personas vuelvan al día siguiente.</li>
         <li>• <b>El botón de entrega se habilita recién cuando el JAO ya firmó el contrato Y Prevención registró la IRL</b> (día 1, 8 am) -- antes de eso ves qué falta: "esperando firma de contrato" o "esperando IRL". Cuando se habilita, te llega el aviso "Entrega EPP ahora".</li>
         <li>• Al confirmar la entrega, el cupo ya estaba reservado desde que el Capataz seleccionó a la persona -- tu acción deja el estado en <b>Contratado</b> y le avisa al postulante con su QR final de acceso.</li>
         <li>• <b>Nómina de liberados:</b> arriba de la lista aparece una tabla con todos los que ya liberaste y todavía no avisaste. Cuando termines de entregar el grupo, aprieta <b>"Enviar nómina por correo"</b>: sale UN solo correo con la tabla a Jefe de Terreno, Capataces, Administrador de Contrato, JAO y Prevención (no un aviso por cada trabajador). Cada persona aparece una sola vez.</li>

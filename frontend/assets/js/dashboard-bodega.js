@@ -26,6 +26,7 @@ async function cargarLista() {
   const vacio = document.getElementById('vacio');
   try {
     const data = await apiFetch('/bodega/listar.php');
+    renderTallas(data.tallas_pendientes || []);
     renderNomina(data.liberados_pendientes || []);
     if (!data.postulaciones.length) {
       tbody.innerHTML = '';
@@ -61,6 +62,89 @@ async function marcarEpp(id) {
     await cargarLista();
   } catch (err) {
     mostrarAlerta('alerta', err.message);
+  }
+}
+
+// --- v10.22: tallas de postulantes (un solo correo con tabla) -------------
+let TALLAS_PENDIENTES = 0;
+let TALLAS_LISTA = [];
+
+// Si el panel quedó abierto desde antes de las 14:00, la tarjeta se pone
+// roja sola al pasar la hora (sin esperar a que se recargue la lista).
+setInterval(() => { if (TALLAS_LISTA.length) renderTallas(TALLAS_LISTA); }, 60000);
+
+function renderTallas(personas) {
+  const cont = document.getElementById('tallas-pendientes');
+  TALLAS_LISTA = personas;
+  TALLAS_PENDIENTES = personas.length;
+  if (!personas.length) {
+    cont.classList.add('hidden');
+    cont.innerHTML = '';
+    return;
+  }
+  // Pasadas las 14:00 ya no deberían entrar más postulantes: si todavía hay
+  // tallas sin enviar, la tarjeta se pone roja para que no se olvide.
+  const pasadas14 = new Date().getHours() >= 14;
+  cont.className = pasadas14
+    ? 'bg-red-50 border-2 border-red-300 rounded-xl shadow-sm p-5 mb-6'
+    : 'bg-white rounded-xl shadow-sm p-5 mb-6';
+  const aviso14 = pasadas14
+    ? `<p class="text-sm font-bold text-red-700 mb-3">⏰ Ya pasaron las 14:00 y hay tallas sin enviar. Envía el correo ahora para que se prepare el kit de cada persona.</p>`
+    : '';
+  cont.innerHTML = `
+    ${aviso14}
+    <div class="flex items-start justify-between gap-4 flex-wrap">
+      <div>
+        <p class="text-sm font-bold text-gray-900">Tallas de postulantes
+          <span class="ml-2 text-xs font-semibold bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">${personas.length} sin enviar</span>
+        </p>
+        <p class="text-xs text-gray-500 mt-1 max-w-xl">Un solo correo a Bodega con esta tabla, en vez de uno por postulante. Lo ideal es enviarlo a las 14:00, cuando ya no entran más postulantes; si alguien completa después, queda aquí y sale en un envío aparte.</p>
+      </div>
+      <button id="btn-enviar-tallas" onclick="enviarTallas()" class="bg-gray-900 hover:bg-gray-800 text-white text-sm font-semibold px-4 py-2 rounded-lg disabled:opacity-50">
+        ✉ Enviar tallas por correo
+      </button>
+    </div>
+    <div class="overflow-x-auto mt-4">
+      <table class="w-full text-sm">
+        <thead class="bg-gray-50 text-gray-500 text-left">
+          <tr>
+            <th class="px-3 py-2">Nombre</th>
+            <th class="px-3 py-2">RUT</th>
+            <th class="px-3 py-2">Cargo</th>
+            <th class="px-3 py-2">Calzado</th>
+            <th class="px-3 py-2">Overol</th>
+            <th class="px-3 py-2">Completó</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${personas.map(p => `
+            <tr class="border-t">
+              <td class="px-3 py-2 font-medium">${esc(p.nombre_completo)}</td>
+              <td class="px-3 py-2 font-mono">${esc(p.rut)}</td>
+              <td class="px-3 py-2">${esc(p.nombre_cargo)}</td>
+              <td class="px-3 py-2">${esc(p.talla_calzado)}</td>
+              <td class="px-3 py-2">${esc(p.talla_overol)}</td>
+              <td class="px-3 py-2 text-gray-600">${horaCorta(p.completado_at)}</td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+async function enviarTallas() {
+  const n = TALLAS_PENDIENTES;
+  if (!confirm(`¿Enviar por correo las tallas de ${n} ${n === 1 ? 'postulante' : 'postulantes'}?`)) return;
+  const boton = document.getElementById('btn-enviar-tallas');
+  boton.disabled = true;
+  boton.textContent = 'Enviando...';
+  try {
+    const data = await apiFetch('/bodega/enviar_tallas.php', { method: 'POST', body: {} });
+    mostrarAlerta('alerta', data.mensaje, 'exito');
+    await cargarLista();
+  } catch (err) {
+    mostrarAlerta('alerta', err.message);
+    boton.disabled = false;
+    boton.textContent = '✉ Enviar tallas por correo';
   }
 }
 

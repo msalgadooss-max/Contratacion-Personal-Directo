@@ -49,7 +49,17 @@ $postulaciones = array_map(function ($p) {
     return $p;
 }, $stmt->fetchAll());
 
+// v10.22: las tallas pendientes son un extra del panel -- si esa consulta
+// fallara, el resto del panel (entrega de EPP, nómina) debe seguir andando.
+try {
+    $tallasPendientes = tallasSinEnviar($pdo);
+} catch (\Throwable $e) {
+    error_log('bodega/listar tallasSinEnviar error: ' . $e->getMessage());
+    $tallasPendientes = [];
+}
+
 responderOk([
     'postulaciones' => $postulaciones,
     'liberados_pendientes' => liberadosSinNomina($pdo),
+    'tallas_pendientes' => $tallasPendientes,
 ]);

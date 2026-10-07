@@ -489,7 +489,11 @@ function exigirCupoDiarioAprobaciones(PDO $pdo, int $usuarioId): void
 function notificarPrevencionYBodega(PDO $pdo, array $postulacion): void
 {
     require_once __DIR__ . '/../mailer/Mailer.php';
-    $stmt = $pdo->query("SELECT nombre, correo, rol FROM usuarios WHERE rol IN ('Prevencionista', 'Jefe_Bodega') AND activo = 1");
+    // v10.22 (pedido explícito del usuario, 06-10): Bodega YA NO recibe un
+    // correo por persona -- recibe uno solo con la tabla de tallas del día,
+    // que ella misma envía desde su panel (ver tallasSinEnviar() y
+    // bodega/enviar_tallas.php). Prevención conserva su aviso individual.
+    $stmt = $pdo->query("SELECT nombre, correo, rol FROM usuarios WHERE rol = 'Prevencionista' AND activo = 1");
     $destinatarios = $stmt->fetchAll();
     if (!$destinatarios) {
         return;
@@ -1001,6 +1005,109 @@ const ACCION_NOMINA_LIBERADOS = 'Incluido en la nómina de liberados enviada por
  * de datos viva.
  */
 const ACCION_IRL_REALIZADA = 'Prevención registró la IRL realizada.';
+
+/**
+ * v10.22 (pedido explícito del usuario, 06-10): Bodega recibe UN solo
+ * correo con la tabla de tallas de quienes completaron su Etapa 2 (día de
+ * postulación), en vez de un correo por postulante. Idealmente se envía a
+ * las 14:00, cuando ya no entran más postulantes; si alguien completa
+ * después, queda como pendiente y sale en el siguiente envío, aparte.
+ * Marca por postulante en trazabilidad_logs (sin columnas nuevas).
+ */
+const ACCION_TALLAS_ENVIADAS = 'Tallas incluidas en el correo consolidado a Bodega.';
+
+/**
+ * Personas con Etapa 2 completa (Aprobado_admin / Induccion_ok) hoy o ayer
+ * cuyas tallas todavía no fueron incluidas en un correo a Bodega.
+ */
+function tallasSinEnviar(PDO $pdo): array
+{
+    $stmt = $pdo->prepare(
+        "SELECT x.id, x.nombre_completo, x.rut, x.nombre_cargo, x.talla_calzado, x.talla_overol, x.completado_at
+           FROM (
+                SELECT p.id, p.nombre_completo, p.rut, c.nombre_cargo, d.talla_calzado, d.talla_overol,
+                       (SELECT MAX(t.fecha_hora) FROM trazabilidad_logs t
+                         WHERE t.postulacion_id = p.id
+                           AND t.accion LIKE 'Cambio de estado: % -> Aprobado_admin') AS completado_at
+                  FROM postulaciones p
+                  JOIN cargos c ON c.id = p.cargo_id
+                  JOIN datos_contratacion d ON d.postulacion_id = p.id
+                 WHERE p.estado IN ('Aprobado_admin', 'Induccion_ok')
+                   AND NOT EXISTS (
+                        SELECT 1 FROM trazabilidad_logs n
+                         WHERE n.postulacion_id = p.id AND n.accion = :accion_tallas
+                   )
+           ) x
+          WHERE x.completado_at >= DATE_SUB(CURDATE(), INTERVAL 1 DAY)
+          ORDER BY x.completado_at ASC, x.id ASC"
+    );
+    $stmt->execute(['accion_tallas' => ACCION_TALLAS_ENVIADAS]);
+    return $stmt->fetchAll();
+}
+
+/**
+ * Envía UN correo (tabla de tallas) a los Jefes de Bodega activos y marca a
+ * cada persona incluida -- solo si salió al menos a un destinatario, para
+ * poder reintentar si falla el envío. Devuelve a cuántos destinatarios se
+ * envió.
+ */
+function enviarTallasABodega(PDO $pdo, array $personas, ?int $usuarioId): int
+{
+    require_once __DIR__ . '/../mailer/Mailer.php';
+    if (!$personas) {
+        return 0;
+    }
+
+    $stmt = $pdo->query("SELECT nombre, correo FROM usuarios WHERE rol = 'Jefe_Bodega' AND activo = 1");
+    $destinatarios = [];
+    foreach ($stmt->fetchAll() as $u) {
+        $clave = strtolower(trim($u['correo']));
+        if ($clave !== '' && !isset($destinatarios[$clave])) {
+            $destinatarios[$clave] = $u;
+        }
+    }
+    if (!$destinatarios) {
+        return 0;
+    }
+
+    $esc = fn ($v) => htmlspecialchars((string)($v === null || $v === '' ? '-' : $v), ENT_QUOTES, 'UTF-8');
+    $filasHtml = '';
+    foreach (array_values($personas) as $i => $p) {
+        $fondo = $i % 2 === 0 ? '#ffffff' : '#f9fafb';
+        $celda = 'padding:9px 10px;border-bottom:1px solid #e5e7eb;font-size:13px;';
+        $filasHtml .= '<tr style="background:' . $fondo . '">'
+            . '<td style="' . $celda . 'color:#6b7280">' . ($i + 1) . '</td>'
+            . '<td style="' . $celda . 'font-weight:bold">' . $esc($p['nombre_completo']) . '</td>'
+            . '<td style="' . $celda . 'font-family:monospace">' . $esc($p['rut']) . '</td>'
+            . '<td style="' . $celda . '">' . $esc($p['nombre_cargo']) . '</td>'
+            . '<td style="' . $celda . 'font-weight:bold;text-align:center">' . $esc($p['talla_calzado']) . '</td>'
+            . '<td style="' . $celda . 'font-weight:bold;text-align:center">' . $esc($p['talla_overol']) . '</td>'
+            . '</tr>';
+    }
+
+    $fecha = (new DateTime())->format('d-m-Y');
+    $hora = (new DateTime())->format('H:i');
+    $total = count($personas);
+    $obra = OBRA_NOMBRE;
+    $html = (function () use ($fecha, $hora, $total, $obra, $filasHtml) {
+        return require __DIR__ . '/../mailer/templates/tallas_bodega.php';
+    })();
+
+    $asunto = "Tallas de postulantes para preparar kits de EPP - {$fecha} ({$total}) - ICAFAL";
+    $enviados = 0;
+    foreach ($destinatarios as $d) {
+        if (Mailer::enviar($d['correo'], $d['nombre'], $asunto, $html)) {
+            $enviados++;
+        }
+    }
+
+    if ($enviados > 0) {
+        foreach ($personas as $p) {
+            registrarLog($pdo, (int)$p['id'], $usuarioId, ACCION_TALLAS_ENVIADAS);
+        }
+    }
+    return $enviados;
+}
 
 /**
  * Trabajadores ya liberados por Bodega (Contratado / Proceso_completo) hoy
