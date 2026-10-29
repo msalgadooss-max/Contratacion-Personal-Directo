@@ -1,3 +1,13 @@
+// v10.25: escapado central de texto que viene de la BD (nombres, cargos, correos...)
+// antes de meterlo en innerHTML. Un postulante controla su nombre desde el
+// formulario público, así que NUNCA se debe insertar sin escapar.
+function esc(valor) {
+  // Escapa <, >, &, " y ' : seguro para el texto de la tarjeta Y para atributos HTML.
+  return (valor == null ? '' : String(valor))
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
 // v10.15 (pedido explícito del usuario): spinner compartido para
 // reemplazar los "Cargando..." de texto plano en listas/modales que
 // tardan un poco -- se usa desde varios dashboards (todos cargan este
@@ -76,7 +86,7 @@ async function cerrarSesion() {
  */
 function celdaDocumento(p) {
   if (p.tipo_documento && p.tipo_documento !== 'RUT') {
-    return `${p.rut} <span class="inline-block bg-amber-100 text-amber-700 text-[10px] font-bold px-1.5 py-0.5 rounded ml-1" title="Sin RUT chileno todavía">${p.tipo_documento}</span>`;
+    return `${esc(p.rut)} <span class="inline-block bg-amber-100 text-amber-700 text-[10px] font-bold px-1.5 py-0.5 rounded ml-1" title="Sin RUT chileno todavía">${esc(p.tipo_documento)}</span>`;
   }
   return p.rut;
 }
@@ -155,7 +165,7 @@ function pedirAprobacionCupo(cantidadPedida, nombreCargo) {
 
     modal.innerHTML = `
       <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6">
-        <h3 class="font-bold text-gray-900 mb-1">Aprobar cupos de "${nombreCargo}"</h3>
+        <h3 class="font-bold text-gray-900 mb-1">Aprobar cupos de "${esc(nombreCargo)}"</h3>
         <p class="text-xs text-gray-500 mb-4">Pidieron ${cantidadPedida}. Puedes abrir esa misma cantidad, o subirla/bajarla.</p>
         <label class="block text-xs font-medium text-gray-700 mb-1">Cantidad a abrir</label>
         <input id="input-cantidad-aprobar" type="number" min="1" value="${cantidadPedida}"
@@ -202,7 +212,7 @@ async function abrirDetalleTiempos(id) {
     const data = await apiFetch(`/admin_general/detalle_tiempos.php?postulacion_id=${id}`);
     cont.innerHTML = renderTiemposHtml(data);
   } catch (err) {
-    cont.innerHTML = `<p class="text-sm text-red-600 py-8 text-center">${err.message}</p>`;
+    cont.innerHTML = `<p class="text-sm text-red-600 py-8 text-center">${esc(err.message)}</p>`;
   }
 }
 
@@ -231,25 +241,25 @@ function renderTiemposHtml(data) {
         ${idx < data.hitos.length - 1 ? '<span class="w-px flex-1 bg-gray-200 my-0.5"></span>' : ''}
       </div>
       <div class="pb-4 flex-1">
-        <p class="text-sm font-semibold text-gray-900">${h.etiqueta}</p>
+        <p class="text-sm font-semibold text-gray-900">${esc(h.etiqueta)}</p>
         <p class="text-xs text-gray-500 font-mono">${fechaHoraLegible(h.fecha_hora)}</p>
-        ${h.quien ? `<p class="text-xs text-gray-400">por ${h.quien}</p>` : ''}
-        ${h.duracion_desde_anterior ? `<p class="text-xs text-blue-600 font-medium mt-0.5">⏱ +${h.duracion_desde_anterior} desde el paso anterior</p>` : ''}
+        ${h.quien ? `<p class="text-xs text-gray-400">por ${esc(h.quien)}</p>` : ''}
+        ${h.duracion_desde_anterior ? `<p class="text-xs text-blue-600 font-medium mt-0.5">⏱ +${esc(h.duracion_desde_anterior)} desde el paso anterior</p>` : ''}
       </div>
     </div>`).join('');
 
   return `
     <div class="mb-5">
       <p class="text-xs uppercase tracking-wide text-gray-400 font-semibold mb-1">Detalle de tiempos</p>
-      <h3 class="text-lg font-bold text-gray-900">${data.nombre_completo}</h3>
-      <p class="text-sm text-gray-500 font-mono">${data.rut} · ${data.cargo}</p>
+      <h3 class="text-lg font-bold text-gray-900">${esc(data.nombre_completo)}</h3>
+      <p class="text-sm text-gray-500 font-mono">${esc(data.rut)} · ${esc(data.cargo)}</p>
     </div>
 
     <div class="rounded-xl px-4 py-3 mb-5 text-sm font-semibold text-center ${data.proceso_en_curso ? 'bg-amber-50 text-amber-800 border border-amber-200' : 'bg-green-50 text-green-700 border border-green-200'}">
       ${data.duracion_total_desde_terreno
         ? (data.proceso_en_curso
-            ? `⏱ Lleva ${data.duracion_total_desde_terreno} desde que el Capataz lo seleccionó (aún en curso)`
-            : `⏱ Tardó ${data.duracion_total_desde_terreno} desde que el Capataz lo seleccionó hasta ${data.estado === 'Contratado' ? 'ser contratado' : 'este punto'}`)
+            ? `⏱ Lleva ${esc(data.duracion_total_desde_terreno)} desde que el Capataz lo seleccionó (aún en curso)`
+            : `⏱ Tardó ${esc(data.duracion_total_desde_terreno)} desde que el Capataz lo seleccionó hasta ${data.estado === 'Contratado' ? 'ser contratado' : 'este punto'}`)
         : 'Todavía no hay suficientes hitos para calcular una duración total.'}
     </div>
 

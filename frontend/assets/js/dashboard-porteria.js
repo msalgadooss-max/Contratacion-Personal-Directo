@@ -11,9 +11,10 @@ let ULTIMA_CONSULTA = null;
 let RUT_CONTRATACION = '';
 
 function esc(valor) {
-  const d = document.createElement('div');
-  d.textContent = valor == null ? '' : String(valor);
-  return d.innerHTML;
+  // Escapa <, >, &, " y ' : seguro para el texto de la tarjeta Y para atributos HTML.
+  return (valor == null ? '' : String(valor))
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
 document.getElementById('form-contratacion').addEventListener('submit', async (e) => {

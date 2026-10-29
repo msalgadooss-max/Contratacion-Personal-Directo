@@ -58,6 +58,12 @@
     const codigo = params.get('codigo') || '';
     const contenedor = document.getElementById('contenedor');
 
+    function esc(valor) {
+      return (valor == null ? '' : String(valor))
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
     async function verificar() {
       if (!rut || !codigo) {
         contenedor.innerHTML = '<p class="text-red-400 font-bold">Credencial incompleta.</p>';
@@ -68,16 +74,16 @@
         const autorizado = data.estado_acceso === 'AUTORIZADO';
         contenedor.innerHTML = `
           <div class="${autorizado ? 'bg-green-500' : 'bg-red-600'} rounded-2xl p-8 shadow-2xl">
-            <p class="text-white text-3xl font-extrabold mb-2">${data.estado_acceso}</p>
-            ${data.mensaje ? `<p class="text-white text-sm font-medium mb-4 opacity-90">${data.mensaje}</p>` : ''}
+            <p class="text-white text-3xl font-extrabold mb-2">${esc(data.estado_acceso)}</p>
+            ${data.mensaje ? `<p class="text-white text-sm font-medium mb-4 opacity-90">${esc(data.mensaje)}</p>` : ''}
             <div class="bg-white/10 rounded-xl p-4 text-left space-y-1 mt-2">
-              <p class="text-white text-sm"><span class="opacity-70">Nombre:</span> <strong>${data.nombre_completo}</strong></p>
-              <p class="text-white text-sm"><span class="opacity-70">RUT:</span> <strong>${data.rut}</strong></p>
-              <p class="text-white text-sm"><span class="opacity-70">Cargo:</span> <strong>${data.cargo}</strong></p>
+              <p class="text-white text-sm"><span class="opacity-70">Nombre:</span> <strong>${esc(data.nombre_completo)}</strong></p>
+              <p class="text-white text-sm"><span class="opacity-70">RUT:</span> <strong>${esc(data.rut)}</strong></p>
+              <p class="text-white text-sm"><span class="opacity-70">Cargo:</span> <strong>${esc(data.cargo)}</strong></p>
             </div>
           </div>`;
       } catch (err) {
-        contenedor.innerHTML = `<p class="text-red-400 font-bold">${err.message}</p>`;
+        contenedor.innerHTML = `<p class="text-red-400 font-bold">${esc(err.message)}</p>`;
       }
     }
     verificar();

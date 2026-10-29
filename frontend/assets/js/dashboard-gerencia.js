@@ -133,7 +133,7 @@ function renderTiempoPromedio(tiempo) {
     return;
   }
   el.textContent = tiempo.promedio_texto;
-  detalle.textContent = `${tiempo.muestras} contratación(es) · mín. ${tiempo.minimo_texto} · máx. ${tiempo.maximo_texto}`;
+  detalle.textContent = `${esc(tiempo.muestras)} contratación(es) · mín. ${esc(tiempo.minimo_texto)} · máx. ${esc(tiempo.maximo_texto)}`;
 }
 
 function renderChartDonutGerencia(conteo) {
@@ -167,8 +167,8 @@ async function cargarBitacora() {
     vacio.classList.add('hidden');
     lista.innerHTML = data.eventos.map(e => `
       <li class="text-sm border-b border-gray-100 pb-2 last:border-0 last:pb-0">
-        <span class="text-gray-900"><strong>${e.nombre_completo}</strong> (${e.nombre_cargo}): ${e.descripcion}</span>
-        <span class="block text-xs text-gray-400 mt-0.5">${e.autor} · ${new Date(e.fecha_hora).toLocaleString('es-CL')}</span>
+        <span class="text-gray-900"><strong>${esc(e.nombre_completo)}</strong> (${esc(e.nombre_cargo)}): ${esc(e.descripcion)}</span>
+        <span class="block text-xs text-gray-400 mt-0.5">${esc(e.autor)} · ${new Date(e.fecha_hora).toLocaleString('es-CL')}</span>
       </li>`).join('');
   } catch (err) {
     mostrarAlerta('alerta', err.message);
@@ -225,8 +225,8 @@ function renderCupos(cargos) {
     const pct = c.cupos_totales > 0 ? Math.round((ocupados / c.cupos_totales) * 100) : 0;
     return `
       <div class="border border-gray-200 rounded-lg p-3">
-        <p class="text-sm font-medium text-gray-800">${c.nombre_cargo}</p>
-        <p class="text-xs text-gray-500 mb-1">${ocupados} / ${c.cupos_totales} cupos ocupados</p>
+        <p class="text-sm font-medium text-gray-800">${esc(c.nombre_cargo)}</p>
+        <p class="text-xs text-gray-500 mb-1">${ocupados} / ${esc(c.cupos_totales)} cupos ocupados</p>
         <div class="w-full bg-gray-100 rounded-full h-2">
           <div class="bg-blue-600 h-2 rounded-full" style="width:${pct}%"></div>
         </div>
@@ -255,10 +255,10 @@ function renderTabla() {
 
   tbody.innerHTML = filas.map(p => `
     <tr class="border-t">
-      <td class="px-4 py-3 font-mono">${p.rut}</td>
-      <td class="px-4 py-3">${p.nombre_completo}</td>
-      <td class="px-4 py-3">${p.nombre_cargo}</td>
-      <td class="px-4 py-3">${p.comuna}</td>
+      <td class="px-4 py-3 font-mono">${esc(p.rut)}</td>
+      <td class="px-4 py-3">${esc(p.nombre_completo)}</td>
+      <td class="px-4 py-3">${esc(p.nombre_cargo)}</td>
+      <td class="px-4 py-3">${esc(p.comuna)}</td>
       <td class="px-4 py-3"><span class="px-2 py-1 rounded-full text-xs font-medium ${COLOR_ESTADO[p.estado] || 'bg-gray-100 text-gray-700'}">${ETIQUETAS_ESTADO[p.estado] || p.estado}</span></td>
       <td class="px-4 py-3 text-gray-500">${new Date(p.actualizado_at).toLocaleString('es-CL')}</td>
       <td class="px-4 py-3 text-right">

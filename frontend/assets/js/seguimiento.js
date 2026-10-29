@@ -112,7 +112,7 @@ form.addEventListener('submit', async (e) => {
     ULTIMO_CODIGO_CONSULTADO = data.postulacion.codigo_seguimiento || '';
     renderResultado(data.postulacion);
   } catch (err) {
-    alertaDiv.innerHTML = `<div class="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">${err.message}</div>`;
+    alertaDiv.innerHTML = `<div class="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">${esc(err.message)}</div>`;
   }
 });
 
@@ -127,10 +127,10 @@ async function reenviarEtapa2() {
       body: { rut: ULTIMO_RUT_CONSULTADO, codigo_seguimiento: ULTIMO_CODIGO_CONSULTADO },
     });
     zona.innerHTML = `
-      <p class="text-sm text-blue-800 mb-2">${data.mensaje}</p>
-      <a href="${data.url_etapa2}" class="inline-block bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2 rounded-lg">Continuar completando mis datos</a>`;
+      <p class="text-sm text-blue-800 mb-2">${esc(data.mensaje)}</p>
+      <a href="${esc(data.url_etapa2)}" class="inline-block bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2 rounded-lg">Continuar completando mis datos</a>`;
   } catch (err) {
-    zona.innerHTML = `<p class="text-sm text-red-600">${err.message}</p>`;
+    zona.innerHTML = `<p class="text-sm text-red-600">${esc(err.message)}</p>`;
   }
 }
 
@@ -139,9 +139,9 @@ function renderResultado(p) {
     resultadoDiv.innerHTML = `
       <div class="bg-blue-50 border border-blue-200 rounded-xl p-6 text-center">
         <p class="text-blue-700 font-bold text-lg">Estás en nuestro Banco de Postulantes</p>
-        <p class="text-sm text-gray-600 mt-1">${p.nombre_completo} · interés en ${p.cargo}</p>
+        <p class="text-sm text-gray-600 mt-1">${esc(p.nombre_completo)} · interés en ${esc(p.cargo)}</p>
         <p class="text-sm text-gray-600 mt-3">Ahora mismo no hay cupos para ese cargo. Te contactaremos apenas se abra uno.</p>
-        <p class="text-xs text-gray-400 mt-3">Tus datos se conservan hasta el ${p.retencion_hasta}.</p>
+        <p class="text-xs text-gray-400 mt-3">Tus datos se conservan hasta el ${esc(p.retencion_hasta)}.</p>
       </div>`;
     return;
   }
@@ -150,7 +150,7 @@ function renderResultado(p) {
     resultadoDiv.innerHTML = `
       <div class="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
         <p class="text-red-700 font-bold text-lg">Postulación no continúa en el proceso</p>
-        <p class="text-sm text-red-600 mt-1">${p.nombre_completo} · ${p.cargo}</p>
+        <p class="text-sm text-red-600 mt-1">${esc(p.nombre_completo)} · ${esc(p.cargo)}</p>
       </div>`;
     return;
   }
@@ -174,7 +174,7 @@ function renderResultado(p) {
       <div class="bg-green-500 rounded-xl p-6 text-center text-white shadow-lg">
         <p class="text-2xl font-extrabold">${titulo}</p>
         <p class="text-lg font-semibold mt-1">${subtitulo}</p>
-        <p class="text-sm mt-2 opacity-90">${p.nombre_completo} · ${p.cargo}</p>
+        <p class="text-sm mt-2 opacity-90">${esc(p.nombre_completo)} · ${esc(p.cargo)}</p>
         <div id="qr" class="bg-white inline-block p-3 rounded-lg mt-4"></div>
         <p class="text-xs mt-2 opacity-80">${pie}</p>
       </div>
@@ -195,7 +195,7 @@ function renderResultado(p) {
       bloqueEtapa2 = `
         <div class="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 mb-4">
           <p class="text-sm text-blue-800 font-medium mb-2">Avanza completando tus datos.</p>
-          <a href="${p.url_etapa2}" class="inline-block bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2 rounded-lg">Continuar completando mis datos</a>
+          <a href="${esc(p.url_etapa2)}" class="inline-block bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2 rounded-lg">Continuar completando mis datos</a>
         </div>`;
     } else {
       bloqueEtapa2 = `
@@ -216,8 +216,8 @@ function renderResultado(p) {
 
   resultadoDiv.innerHTML = `
     <div class="bg-white shadow-sm rounded-xl p-5">
-      <p class="font-bold text-gray-900">${p.nombre_completo}</p>
-      <p class="text-sm text-gray-500 mb-4">${p.cargo}</p>
+      <p class="font-bold text-gray-900">${esc(p.nombre_completo)}</p>
+      <p class="text-sm text-gray-500 mb-4">${esc(p.cargo)}</p>
       ${bloqueEtapa2}
       ${bloqueInduccion}
       ${p.documento_observado ? `

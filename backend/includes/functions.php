@@ -52,10 +52,15 @@ function exigirMetodo(string $metodo): void
     }
 }
 
-/** Sanitiza un string simple: recorta espacios y limita largo. */
+/**
+ * Sanitiza un string simple: quita "<" y ">" (v10.25: defensa en profundidad
+ * contra HTML inyectado desde formularios públicos -- el frontend ademas
+ * escapa todo lo que viene de la BD), recorta espacios y limita largo.
+ */
 function limpiarTexto(?string $valor, int $maxLargo = 255): string
 {
-    $valor = trim((string)$valor);
+    $valor = str_replace(['<', '>'], '', (string)$valor);
+    $valor = trim($valor);
     return mb_substr($valor, 0, $maxLargo);
 }
 

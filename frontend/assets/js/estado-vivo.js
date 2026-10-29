@@ -67,9 +67,9 @@ async function cargarEstadoVivo() {
     lista.innerHTML = data.trabajadores.map(t => `
       <div class="shrink-0 w-56 border rounded-lg px-3 py-2.5 cursor-pointer transition hover:shadow-md hover:-translate-y-0.5 ${t.contratado ? 'bg-green-50 border-green-200' : (t.pendiente_de_ti ? 'bg-amber-50 border-amber-300' : 'bg-gray-50 border-gray-200')}"
            onclick="abrirDetalleTrabajador(${t.id})">
-        <p class="text-sm font-semibold text-gray-900 truncate">${t.nombre_completo}</p>
-        <p class="text-xs text-gray-500 mb-1.5">${t.nombre_cargo}</p>
-        <p class="text-xs font-medium ${t.contratado ? 'text-green-700' : 'text-blue-700'}">${t.fase}</p>
+        <p class="text-sm font-semibold text-gray-900 truncate">${esc(t.nombre_completo)}</p>
+        <p class="text-xs text-gray-500 mb-1.5">${esc(t.nombre_cargo)}</p>
+        <p class="text-xs font-medium ${t.contratado ? 'text-green-700' : 'text-blue-700'}">${esc(t.fase)}</p>
         ${t.pendiente_de_ti ? '<p class="text-[11px] font-semibold text-amber-700 mt-1">👉 Pendiente en tu bandeja</p>' : ''}
       </div>`).join('');
 
@@ -153,7 +153,7 @@ function renderDetalleTrabajador(t) {
     return conector + `
       <div class="flex flex-col items-center text-center gap-2 shrink-0" style="width:${ANCHO_PASO}px">
         ${circulo}
-        <p class="text-[11px] leading-tight ${p.completado || esActual ? 'text-gray-800 font-medium' : 'text-gray-400'}">${p.etiqueta}</p>
+        <p class="text-[11px] leading-tight ${p.completado || esActual ? 'text-gray-800 font-medium' : 'text-gray-400'}">${esc(p.etiqueta)}</p>
       </div>`;
   }).join('');
 
@@ -165,8 +165,8 @@ function renderDetalleTrabajador(t) {
   cont.innerHTML = `
     <div class="mb-5">
       <p class="text-xs uppercase tracking-wide text-gray-400 font-semibold mb-1">Avance del proceso</p>
-      <h3 class="text-lg font-bold text-gray-900">${t.nombre_completo}</h3>
-      <p class="text-sm text-gray-500">${t.nombre_cargo}</p>
+      <h3 class="text-lg font-bold text-gray-900">${esc(t.nombre_completo)}</h3>
+      <p class="text-sm text-gray-500">${esc(t.nombre_cargo)}</p>
     </div>
 
     <div class="overflow-x-auto pb-2 -mx-2 px-2">
@@ -185,7 +185,7 @@ function renderDetalleTrabajador(t) {
     </div>
 
     <div class="mt-4 rounded-xl px-4 py-3 text-sm font-semibold text-center ${t.contratado ? 'bg-green-50 text-green-700' : 'bg-blue-50 text-blue-700'}">
-      ${t.fase}
+      ${esc(t.fase)}
     </div>
     ${t.pendiente_de_ti ? '<div class="mt-3 rounded-xl px-4 py-3 text-sm font-semibold text-center bg-amber-50 text-amber-800 border border-amber-200">👉 El postulante está pendiente en tu bandeja</div>' : ''}
     ${ESTADO_VIVO_MOSTRAR_DESHACER && t.estado === 'Pre_aprobado_terreno' ? `

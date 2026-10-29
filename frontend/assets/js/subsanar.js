@@ -21,12 +21,12 @@ async function cargar() {
     cargandoDiv.classList.add('hidden');
     form.classList.remove('hidden');
     form.innerHTML = `
-      <p class="text-sm text-gray-600">Hola <strong>${data.nombre_completo}</strong>, esto es lo que necesitamos que corrijas:</p>
+      <p class="text-sm text-gray-600">Hola <strong>${esc(data.nombre_completo)}</strong>, esto es lo que necesitamos que corrijas:</p>
       ${data.documentos.map(d => `
         <div class="border border-amber-200 bg-amber-50 rounded-lg p-4">
-          <p class="text-sm font-semibold text-amber-800">${d.etiqueta}</p>
-          <p class="text-xs text-amber-700 mt-1 mb-3">${d.motivo}</p>
-          <input type="file" name="${d.tipo}" accept="application/pdf,image/*"
+          <p class="text-sm font-semibold text-amber-800">${esc(d.etiqueta)}</p>
+          <p class="text-xs text-amber-700 mt-1 mb-3">${esc(d.motivo)}</p>
+          <input type="file" name="${esc(d.tipo)}" accept="application/pdf,image/*"
                  class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:bg-blue-50 file:text-blue-700 file:text-sm">
         </div>`).join('')}
       <button type="submit" id="btn-enviar"
@@ -53,9 +53,9 @@ form.addEventListener('submit', async (e) => {
     resultadoDiv.innerHTML = `
       <div class="text-green-600 text-4xl">✔</div>
       <h2 class="text-lg font-bold text-gray-900">¡Listo!</h2>
-      <p class="text-sm text-gray-600">${data.mensaje}</p>`;
+      <p class="text-sm text-gray-600">${esc(data.mensaje)}</p>`;
   } catch (err) {
-    alertaDiv.innerHTML = `<div class="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3 mb-4">${err.message}</div>`;
+    alertaDiv.innerHTML = `<div class="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3 mb-4">${esc(err.message)}</div>`;
     window.scrollTo({ top: 0, behavior: 'smooth' });
     btn.disabled = false;
     btn.textContent = 'Enviar corrección';

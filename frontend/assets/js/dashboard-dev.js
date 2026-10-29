@@ -75,14 +75,14 @@ async function cargarUsuarios() {
               class="flex items-center justify-between border border-gray-200 rounded-lg px-4 py-3 text-left hover:border-blue-400 hover:bg-blue-50 transition">
         <span>
           <span class="block text-sm font-semibold text-gray-900">${ETIQUETAS_ROL[u.rol] || u.rol}</span>
-          <span class="block text-xs text-gray-500">${u.nombre} · ${u.correo}</span>
+          <span class="block text-xs text-gray-500">${esc(u.nombre)} · ${esc(u.correo)}</span>
         </span>
         <span class="text-blue-600 text-xs font-semibold">Entrar →</span>
       </button>`).join('');
 
     const selectRol = document.getElementById('rol-qr');
     selectRol.innerHTML = data.usuarios.map(u =>
-      `<option value="${u.id}">${ETIQUETAS_ROL[u.rol] || u.rol} (${u.nombre})</option>`).join('');
+      `<option value="${u.id}">${ETIQUETAS_ROL[u.rol] || u.rol} (${esc(u.nombre)})</option>`).join('');
   } catch (err) {
     mostrarAlerta('alerta', err.message);
   }
@@ -133,7 +133,7 @@ document.getElementById('btn-generar-qr-rol').addEventListener('click', async ()
   try {
     const data = await apiFetch('/dev/generar_qr_acceso.php', { method: 'POST', body: { usuario_id: usuarioId } });
     document.getElementById('resultado-qr-rol').classList.remove('hidden');
-    document.getElementById('titulo-qr-rol').textContent = `${ETIQUETAS_ROL[data.rol] || data.rol} · ${data.nombre}`;
+    document.getElementById('titulo-qr-rol').textContent = `${ETIQUETAS_ROL[data.rol] || data.rol} · ${esc(data.nombre)}`;
     document.getElementById('url-qr-rol').textContent = data.url;
     document.getElementById('qr-rol').innerHTML = '';
     // eslint-disable-next-line no-undef

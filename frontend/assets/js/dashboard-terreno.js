@@ -82,14 +82,14 @@ async function cargarBanco() {
     tbody.innerHTML = data.postulaciones.map(p => `
       <tr class="border-t">
         <td class="px-4 py-3 font-mono">${celdaDocumento(p)}</td>
-        <td class="px-4 py-3">${p.nombre_completo}</td>
-        <td class="px-4 py-3">${p.comuna}</td>
-        <td class="px-4 py-3">${p.telefono}</td>
+        <td class="px-4 py-3">${esc(p.nombre_completo)}</td>
+        <td class="px-4 py-3">${esc(p.comuna)}</td>
+        <td class="px-4 py-3">${esc(p.telefono)}</td>
         <td class="px-4 py-3 text-gray-500">${new Date(p.creado_at).toLocaleString('es-CL')}</td>
         <td class="px-4 py-3">${p.tiene_cv
           ? `<a href="${API_BASE_URL}/terreno/ver_cv.php?postulacion_id=${p.id}" target="_blank" class="text-blue-600 font-medium underline">Ver CV</a>`
           : (p.experiencia_sin_cv
-              ? `<span class="text-xs text-amber-700 bg-amber-50 px-2 py-1 rounded cursor-help" title="${p.experiencia_sin_cv.replace(/"/g, '&quot;')}">Sin CV (ver experiencia) ⓘ</span>`
+              ? `<span class="text-xs text-amber-700 bg-amber-50 px-2 py-1 rounded cursor-help" title="${esc(p.experiencia_sin_cv)}">Sin CV (ver experiencia) ⓘ</span>`
               : '<span class="text-gray-400 text-xs">Sin CV</span>')}</td>
       </tr>`).join('');
   } catch (err) {
@@ -105,13 +105,13 @@ async function cargarCupos() {
     const data = await apiFetch('/terreno/cupos_listar.php');
     // v6.10: se agrega "Otro" al final para poder pedir cupos de un
     // cargo que todavía no existe en el catálogo.
-    select.innerHTML = data.cargos.map(c => `<option value="${c.id}">${c.nombre_cargo}</option>`).join('')
+    select.innerHTML = data.cargos.map(c => `<option value="${c.id}">${esc(c.nombre_cargo)}</option>`).join('')
       + '<option value="__otro__">➕ Otro (agregar cargo nuevo)</option>';
     tbody.innerHTML = data.cargos.map(c => `
       <tr class="border-t">
-        <td class="px-4 py-3">${c.nombre_cargo}</td>
-        <td class="px-4 py-3">${c.cupos_totales}</td>
-        <td class="px-4 py-3 font-semibold ${c.cupos_activos > 0 ? 'text-green-700' : 'text-gray-400'}">${c.cupos_activos}</td>
+        <td class="px-4 py-3">${esc(c.nombre_cargo)}</td>
+        <td class="px-4 py-3">${esc(c.cupos_totales)}</td>
+        <td class="px-4 py-3 font-semibold ${c.cupos_activos > 0 ? 'text-green-700' : 'text-gray-400'}">${esc(c.cupos_activos)}</td>
       </tr>`).join('');
   } catch (err) {
     mostrarAlerta('alerta', err.message);
@@ -141,10 +141,10 @@ async function cargarMisSolicitudes() {
     vacio.classList.add('hidden');
     tbody.innerHTML = data.solicitudes.map(s => `
       <tr class="border-t">
-        <td class="px-4 py-3">${s.nombre_cargo}${s.es_cargo_nuevo ? ' <span class="text-[10px] text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded font-semibold align-middle">🆕 nuevo</span>' : ''}</td>
-        <td class="px-4 py-3">${s.cantidad}</td>
+        <td class="px-4 py-3">${esc(s.nombre_cargo)}${s.es_cargo_nuevo ? ' <span class="text-[10px] text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded font-semibold align-middle">🆕 nuevo</span>' : ''}</td>
+        <td class="px-4 py-3">${esc(s.cantidad)}</td>
         <td class="px-4 py-3">${ETIQUETA_ESTADO_SOLICITUD[s.estado] || s.estado}
-          ${s.estado === 'Rechazada' && s.motivo_rechazo ? `<span class="block text-[11px] text-gray-400 mt-0.5">${s.motivo_rechazo}</span>` : ''}
+          ${s.estado === 'Rechazada' && s.motivo_rechazo ? `<span class="block text-[11px] text-gray-400 mt-0.5">${esc(s.motivo_rechazo)}</span>` : ''}
         </td>
         <td class="px-4 py-3 text-gray-500">${new Date(s.creado_at).toLocaleString('es-CL')}</td>
       </tr>`).join('');
@@ -263,7 +263,7 @@ async function cargarHistorico(vista) {
     const selectAprobadoPor = document.getElementById(`aprobado_por-${vista}`);
     if (selectAprobadoPor.options.length <= 1) {
       selectAprobadoPor.innerHTML = '<option value="">Todos</option>' +
-        data.jefes_terreno.map(u => `<option value="${u.id}">${u.nombre}</option>`).join('');
+        data.jefes_terreno.map(u => `<option value="${u.id}">${esc(u.nombre)}</option>`).join('');
       selectAprobadoPor.value = aprobadoPor;
     }
 
@@ -279,8 +279,8 @@ async function cargarHistorico(vista) {
       const aprobador = p.aprobado_por_nombre || '-';
       const filasComunes = `
         <td class="px-4 py-3 font-mono">${celdaDocumento(p)}</td>
-        <td class="px-4 py-3">${p.nombre_completo}</td>
-        <td class="px-4 py-3">${p.nombre_cargo}</td>`;
+        <td class="px-4 py-3">${esc(p.nombre_completo)}</td>
+        <td class="px-4 py-3">${esc(p.nombre_cargo)}</td>`;
       if (vista === 'en_proceso') {
         return `<tr class="border-t">${filasComunes}
           <td class="px-4 py-3">${ETIQUETAS_ETAPA[p.estado] || p.estado}</td>

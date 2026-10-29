@@ -89,8 +89,8 @@ async function cargarContratadosTab() {
       <tr class="border-t">
         <td class="px-4 py-3"><input type="checkbox" class="chk-carpeta" value="${p.id}"></td>
         <td class="px-4 py-3 font-mono">${celdaDocumento(p)}</td>
-        <td class="px-4 py-3">${p.nombre_completo}</td>
-        <td class="px-4 py-3">${p.nombre_cargo}</td>
+        <td class="px-4 py-3">${esc(p.nombre_completo)}</td>
+        <td class="px-4 py-3">${esc(p.nombre_cargo)}</td>
         <td class="px-4 py-3">${p.exportado_at ? `<span class="text-xs text-gray-500">${new Date(p.exportado_at).toLocaleDateString('es-CL')}</span>` : '<span class="text-xs text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded">pendiente</span>'}</td>
         <td class="px-4 py-3 text-right"><button class="text-xs font-semibold text-gray-700 underline" onclick="descargarCarpeta(${p.id})">📁 Descargar</button></td>
         <td class="px-4 py-3 text-right"><button class="text-xs font-semibold text-blue-600 underline" onclick="abrirDetalleTiempos(${p.id})">⏱ Ver tiempos</button></td>
@@ -114,9 +114,9 @@ async function cargarRechazadosTab() {
     tbody.innerHTML = data.postulaciones.map(p => `
       <tr class="border-t">
         <td class="px-4 py-3 font-mono">${celdaDocumento(p)}</td>
-        <td class="px-4 py-3">${p.nombre_completo}</td>
-        <td class="px-4 py-3">${p.nombre_cargo}</td>
-        <td class="px-4 py-3 text-gray-600">${p.motivo || '-'}</td>
+        <td class="px-4 py-3">${esc(p.nombre_completo)}</td>
+        <td class="px-4 py-3">${esc(p.nombre_cargo)}</td>
+        <td class="px-4 py-3 text-gray-600">${esc(p.motivo || '-')}</td>
         <td class="px-4 py-3 text-gray-500">${new Date(p.actualizado_at).toLocaleDateString('es-CL')}</td>
         <td class="px-4 py-3 text-right"><button class="text-xs font-semibold text-blue-600 underline" onclick="abrirDetalleTiempos(${p.id})">⏱ Ver tiempos</button></td>
       </tr>`).join('');
@@ -159,7 +159,7 @@ function enlacesDocumentos(p) {
     const puedeRechazar = tipo !== 'cv'; // el CV es de Etapa 1, no forma parte del rechazo de Etapa 2
     let badge = '';
     if (detalle && detalle.observado) {
-      badge = `<span class="text-[10px] text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded font-semibold" title="${detalle.motivo_rechazo}">⚠ observado</span>`;
+      badge = `<span class="text-[10px] text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded font-semibold" title="${esc(detalle.motivo_rechazo)}">⚠ observado</span>`;
     } else if (detalle && detalle.resubido) {
       badge = `<span class="text-[10px] text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded font-semibold">↺ corregido</span>`;
     }
@@ -241,14 +241,14 @@ function tarjeta(p) {
     <div class="bg-white rounded-xl shadow-sm p-5">
       <div class="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <p class="font-bold text-gray-900">${p.nombre_completo}</p>
-          <p class="text-sm text-gray-500 font-mono">${celdaDocumento(p)} · ${p.nombre_cargo}</p>
+          <p class="font-bold text-gray-900">${esc(p.nombre_completo)}</p>
+          <p class="text-sm text-gray-500 font-mono">${celdaDocumento(p)} · ${esc(p.nombre_cargo)}</p>
         </div>
         <div class="flex items-center gap-2 flex-wrap justify-end">
           <button class="text-xs font-semibold text-blue-600 underline" onclick="abrirDetalleTiempos(${p.id})">⏱ Ver tiempos</button>
           ${p.tiene_datos_jao ? '<span class="text-xs text-green-700 bg-green-50 px-2 py-1 rounded-md font-medium">✓ Nómina completa</span>' : ''}
           ${p.identidad_verificada
-            ? `<span class="text-xs text-green-700 bg-green-50 px-2 py-1 rounded-md font-medium" title="Verificado por ${p.identidad_verificada_por_nombre || ''}">✓ Identidad verificada</span>`
+            ? `<span class="text-xs text-green-700 bg-green-50 px-2 py-1 rounded-md font-medium" title="Verificado por ${esc(p.identidad_verificada_por_nombre || '')}">✓ Identidad verificada</span>`
             : (p.puede_verificar
                 // v10.24: "Coincide / No coincide" siempre disponible una vez
                 // completada la Etapa 2 -- ya no depende de que Portería haya
@@ -267,7 +267,7 @@ function tarjeta(p) {
                      <button class="text-xs text-blue-600 underline" onclick="confirmarPasoContratacionManual(${p.id})" title="Úsalo si la persona ya está contigo pero Portería no alcanzó a autorizar su paso">Confirmar manualmente</button>
                    </span>`)
             : ''}
-          <button class="bg-gray-800 hover:bg-gray-900 text-white text-xs font-semibold px-3 py-2 rounded-lg" onclick="toggleFormJao(${p.id}, '${(p.isapre_fonasa || '').replace(/'/g, "\\'")}')">
+          <button class="bg-gray-800 hover:bg-gray-900 text-white text-xs font-semibold px-3 py-2 rounded-lg" onclick="toggleFormJao(${p.id}, ${esc(JSON.stringify(String(p.isapre_fonasa || '')))})">
             ${p.tiene_datos_jao ? 'Editar datos de nómina' : 'Completar datos de nómina'}
           </button>
           <button class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-3 py-2 rounded-lg disabled:opacity-40"
@@ -278,7 +278,7 @@ function tarjeta(p) {
         </div>
       </div>
 
-      ${p.afp_alerta_jao ? `<p class="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2 mt-3">⚠ Esta persona declaró un régimen previsional antiguo ("${p.afp}"), no una AFP vigente. Verifica manualmente antes de finalizar.</p>` : ''}
+      ${p.afp_alerta_jao ? `<p class="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2 mt-3">⚠ Esta persona declaró un régimen previsional antiguo ("${esc(p.afp)}"), no una AFP vigente. Verifica manualmente antes de finalizar.</p>` : ''}
       ${p.tiene_documento_observado ? `<p class="text-xs text-red-700 bg-red-50 border border-red-200 rounded-md px-3 py-2 mt-3">⚠ Hay un documento observado esperando que el postulante lo corrija: no se puede firmar el contrato hasta entonces. El resto del proceso ya avanzado no se pierde.</p>` : ''}
       ${p.estado === 'Induccion_ok' && p.paso_contratacion_autorizado && !p.puede_firmar && !p.tiene_documento_observado ? `<p class="text-xs text-blue-700 bg-blue-50 border border-blue-200 rounded-md px-3 py-2 mt-3">Ya hizo la inducción de seguridad con Prevención. Falta completar la nómina para poder firmar el contrato.</p>` : ''}
       ${p.estado === 'Aprobado_admin' && !p.puede_firmar && !p.tiene_documento_observado
@@ -289,14 +289,14 @@ function tarjeta(p) {
       ${!MODULO_PREVENCION_ACTIVO && p.puede_firmar ? `<p class="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2 mt-3">Etapa 1 del piloto: al firmar, esta acción cierra la contratación directamente.</p>` : ''}
 
       <div class="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-1 text-sm mt-3 text-gray-700">
-        <p><span class="text-gray-400">AFP:</span> ${p.afp}</p>
-        <p><span class="text-gray-400">Salud:</span> ${p.isapre_fonasa}</p>
-        <p><span class="text-gray-400">Banco:</span> ${p.banco} (${p.tipo_cuenta})</p>
-        <p><span class="text-gray-400">N° cuenta:</span> ${p.numero_cuenta}</p>
-        <p><span class="text-gray-400">Nacionalidad:</span> ${p.nacionalidad}</p>
-        <p><span class="text-gray-400">Comuna:</span> ${p.comuna_etapa2}</p>
-        <p><span class="text-gray-400">Calzado:</span> ${p.talla_calzado}</p>
-        <p><span class="text-gray-400">Overol:</span> ${p.talla_overol}</p>
+        <p><span class="text-gray-400">AFP:</span> ${esc(p.afp)}</p>
+        <p><span class="text-gray-400">Salud:</span> ${esc(p.isapre_fonasa)}</p>
+        <p><span class="text-gray-400">Banco:</span> ${esc(p.banco)} (${esc(p.tipo_cuenta)})</p>
+        <p><span class="text-gray-400">N° cuenta:</span> ${esc(p.numero_cuenta)}</p>
+        <p><span class="text-gray-400">Nacionalidad:</span> ${esc(p.nacionalidad)}</p>
+        <p><span class="text-gray-400">Comuna:</span> ${esc(p.comuna_etapa2)}</p>
+        <p><span class="text-gray-400">Calzado:</span> ${esc(p.talla_calzado)}</p>
+        <p><span class="text-gray-400">Overol:</span> ${esc(p.talla_overol)}</p>
       </div>
 
       <div class="mt-3 flex flex-wrap gap-1.5">${enlacesDocumentos(p)}</div>
@@ -340,7 +340,7 @@ function formularioJao(id, isapreFonasa) {
   // quedan en blanco en el archivo, no hay nada que el JAO deba llenar.
   const tieneIsapre = isapreFonasa && isapreFonasa !== 'Fonasa';
   const camposIsapreHtml = tieneIsapre ? `
-      <div><label class="block text-xs text-gray-600 mb-1">Plan Isapre UF <span class="text-gray-400">(esta persona está en ${isapreFonasa})</span></label>
+      <div><label class="block text-xs text-gray-600 mb-1">Plan Isapre UF <span class="text-gray-400">(esta persona está en ${esc(isapreFonasa)})</span></label>
         <input id="jao-plan_isapre_uf-${id}" type="number" step="0.01" min="0" class="w-full border border-gray-300 rounded-lg px-2 py-1.5"></div>
       <div><label class="block text-xs text-gray-600 mb-1">Plan Isapre Pesos</label>
         <input id="jao-plan_isapre_pesos-${id}" type="number" step="1" min="0" class="w-full border border-gray-300 rounded-lg px-2 py-1.5"></div>` : '';
@@ -590,14 +590,14 @@ async function abrirModalExport() {
       <label class="flex items-center gap-3 border border-gray-200 rounded-lg px-3 py-2 text-sm cursor-pointer hover:bg-gray-50">
         <input type="checkbox" class="chk-export" value="${p.id}" ${p.exportado_at ? '' : 'checked'}>
         <span class="flex-1">
-          <span class="font-medium text-gray-900">${p.nombre_completo}</span>
-          <span class="text-gray-400 font-mono text-xs"> · ${p.rut}</span>
-          <span class="text-gray-500 text-xs"> · ${p.nombre_cargo}</span>
+          <span class="font-medium text-gray-900">${esc(p.nombre_completo)}</span>
+          <span class="text-gray-400 font-mono text-xs"> · ${esc(p.rut)}</span>
+          <span class="text-gray-500 text-xs"> · ${esc(p.nombre_cargo)}</span>
         </span>
         ${p.exportado_at ? '<span class="text-[10px] text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">ya exportado</span>' : '<span class="text-[10px] text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded">pendiente</span>'}
       </label>`).join('');
   } catch (err) {
-    cont.innerHTML = `<p class="text-sm text-red-500 py-4 text-center">${err.message}</p>`;
+    cont.innerHTML = `<p class="text-sm text-red-500 py-4 text-center">${esc(err.message)}</p>`;
   }
 }
 

@@ -41,7 +41,7 @@ async function cargarCursos() {
     });
     renderCatalogo(data);
   } catch (err) {
-    alertaDiv.innerHTML = `<div class="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">${err.message}</div>`;
+    alertaDiv.innerHTML = `<div class="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">${esc(err.message)}</div>`;
   }
 }
 
@@ -79,12 +79,12 @@ function renderCatalogo(data) {
 
   resultadoDiv.innerHTML = `
     <div class="bg-white shadow-sm rounded-xl p-4">
-      <p class="font-bold text-gray-900">${data.nombre_completo}</p>
+      <p class="font-bold text-gray-900">${esc(data.nombre_completo)}</p>
       <p class="text-sm ${aprobados === total ? 'text-green-600 font-semibold' : 'text-gray-500'}">${aprobados} de ${total} cursos aprobados</p>
     </div>
     ${categorias.map(g => `
       <div class="mt-5">
-        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">${g.categoria}</p>
+        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">${esc(g.categoria)}</p>
         <div class="space-y-4">${g.cursos.map(cursoHtml).join('')}</div>
       </div>`).join('')}
   `;
@@ -104,12 +104,12 @@ function cursoHtml(c) {
   return `
     <div class="bg-white shadow-sm rounded-xl p-4">
       <div class="flex items-center justify-between mb-2 gap-2">
-        <p class="font-semibold text-gray-900 text-sm">${c.titulo}${c.duracion_estimada ? ` <span class="text-gray-400 font-normal">· ${c.duracion_estimada}</span>` : ''}</p>
-        <span class="shrink-0 text-xs font-medium px-2 py-1 rounded-md ${badge.clase}">${badge.texto}</span>
+        <p class="font-semibold text-gray-900 text-sm">${esc(c.titulo)}${c.duracion_estimada ? ` <span class="text-gray-400 font-normal">· ${esc(c.duracion_estimada)}</span>` : ''}</p>
+        <span class="shrink-0 text-xs font-medium px-2 py-1 rounded-md ${badge.clase}">${esc(badge.texto)}</span>
       </div>
-      ${c.descripcion ? `<p class="text-xs text-gray-500 mb-2">${c.descripcion}</p>` : ''}
+      ${c.descripcion ? `<p class="text-xs text-gray-500 mb-2">${esc(c.descripcion)}</p>` : ''}
       <video controls class="w-full rounded-lg" onended="marcarVisto(${c.id})">
-        <source src="${c.url}" type="video/mp4">
+        <source src="${esc(c.url)}" type="video/mp4">
         Tu navegador no puede reproducir este video.
       </video>
       ${bloqueEvaluacion(c)}
@@ -118,7 +118,7 @@ function cursoHtml(c) {
 
 function bloqueEvaluacion(c) {
   if (c.estado === 'Aprobado') {
-    return `<div class="mt-3 bg-green-50 border border-green-200 rounded-lg px-3 py-2 text-xs text-green-700">Evaluación aprobada${c.comentario_evaluador ? ` -- "${c.comentario_evaluador}"` : ''}.</div>`;
+    return `<div class="mt-3 bg-green-50 border border-green-200 rounded-lg px-3 py-2 text-xs text-green-700">Evaluación aprobada${c.comentario_evaluador ? ` -- "${esc(c.comentario_evaluador)}"` : ''}.</div>`;
   }
   if (!c.visto) {
     return `<p class="mt-3 text-xs text-gray-400">Termina de ver el video para habilitar la evaluación.</p>`;
@@ -131,7 +131,7 @@ function bloqueEvaluacion(c) {
     <div class="mt-3 border-t border-gray-100 pt-3">
       ${c.estado === 'Reprobado' && c.comentario_evaluador ? `
         <div class="bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-xs text-red-700 mb-3">
-          Prevención te pidió corregir: "${c.comentario_evaluador}"
+          Prevención te pidió corregir: "${esc(c.comentario_evaluador)}"
         </div>` : ''}
       <p class="text-xs font-semibold text-gray-600 mb-2">Evaluación</p>
       <div class="space-y-2">
@@ -173,9 +173,9 @@ async function enviarEvaluacion(cursoId, totalPreguntas) {
       method: 'POST',
       body: { rut: ULTIMO_RUT, codigo_seguimiento: ULTIMO_CODIGO, curso_id: cursoId, respuestas },
     });
-    alertaDiv.innerHTML = `<div class="bg-green-50 border border-green-200 text-green-700 text-sm rounded-lg px-4 py-3">${data.mensaje}</div>`;
+    alertaDiv.innerHTML = `<div class="bg-green-50 border border-green-200 text-green-700 text-sm rounded-lg px-4 py-3">${esc(data.mensaje)}</div>`;
     await cargarCursos();
   } catch (err) {
-    alertaDiv.innerHTML = `<div class="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">${err.message}</div>`;
+    alertaDiv.innerHTML = `<div class="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">${esc(err.message)}</div>`;
   }
 }

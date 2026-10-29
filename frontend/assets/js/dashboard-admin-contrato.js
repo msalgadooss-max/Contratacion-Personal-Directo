@@ -65,9 +65,9 @@ async function cargarSolicitudesCupo() {
 
     tbody.innerHTML = data.solicitudes.map(s => `
       <tr class="border-t">
-        <td class="px-4 py-3">${s.nombre_cargo}${s.es_cargo_nuevo ? ' <span class="text-[10px] text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded font-semibold align-middle">🆕 cargo nuevo</span>' : ''}</td>
-        <td class="px-4 py-3 font-semibold">${s.cantidad}</td>
-        <td class="px-4 py-3">${s.solicitado_por_nombre || '-'}</td>
+        <td class="px-4 py-3">${esc(s.nombre_cargo)}${s.es_cargo_nuevo ? ' <span class="text-[10px] text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded font-semibold align-middle">🆕 cargo nuevo</span>' : ''}</td>
+        <td class="px-4 py-3 font-semibold">${esc(s.cantidad)}</td>
+        <td class="px-4 py-3">${esc(s.solicitado_por_nombre || '-')}</td>
         <td class="px-4 py-3 text-gray-500">${new Date(s.creado_at).toLocaleString('es-CL')}</td>
         <td class="px-4 py-3 text-right space-x-2">
           <button class="bg-green-600 hover:bg-green-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg" onclick="aprobarSolicitudCupo(${s.id})">Aprobar</button>
@@ -131,10 +131,10 @@ function renderEstadoProcesoTabla() {
   if (vacio) vacio.classList.add('hidden');
   tbody.innerHTML = trabajadores.map(t => `
     <tr class="border-t ${t.pendiente_de_ti ? 'bg-amber-50' : ''}">
-      <td class="px-4 py-3 font-medium text-gray-900">${t.nombre_completo}</td>
-      <td class="px-4 py-3">${t.nombre_cargo}</td>
+      <td class="px-4 py-3 font-medium text-gray-900">${esc(t.nombre_completo)}</td>
+      <td class="px-4 py-3">${esc(t.nombre_cargo)}</td>
       <td class="px-4 py-3">
-        <span class="text-xs font-medium ${t.contratado ? 'text-green-700' : 'text-blue-700'}">${t.fase}</span>
+        <span class="text-xs font-medium ${t.contratado ? 'text-green-700' : 'text-blue-700'}">${esc(t.fase)}</span>
         ${t.pendiente_de_ti ? '<span class="ml-2 text-[11px] font-semibold text-amber-700">👉 Pendiente en tu bandeja</span>' : ''}
       </td>
       <td class="px-4 py-3 text-right space-x-3">

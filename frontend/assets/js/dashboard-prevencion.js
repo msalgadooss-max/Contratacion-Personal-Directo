@@ -68,9 +68,10 @@ function actualizarTodo() {
 }
 
 function esc(valor) {
-  const d = document.createElement('div');
-  d.textContent = valor == null ? '' : String(valor);
-  return d.innerHTML;
+  // Escapa <, >, &, " y ' : seguro para el texto de la tarjeta Y para atributos HTML.
+  return (valor == null ? '' : String(valor))
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
 function filaConCheck(p, etiqueta, handler) {

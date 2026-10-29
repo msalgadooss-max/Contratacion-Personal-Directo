@@ -101,9 +101,10 @@ function renderZonasCargo() {
 
 // v10.23: escapa texto de la BD antes de meterlo en el HTML de las tarjetas.
 function esc(valor) {
-  const d = document.createElement('div');
-  d.textContent = valor == null ? '' : String(valor);
-  return d.innerHTML;
+  // Escapa <, >, &, " y ' : seguro para el texto de la tarjeta Y para atributos HTML.
+  return (valor == null ? '' : String(valor))
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
 // v10.23: la ÚNICA tarjeta "activa" (con documentos marcados, lista para

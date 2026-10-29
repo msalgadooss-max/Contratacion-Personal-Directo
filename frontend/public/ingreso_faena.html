@@ -61,15 +61,21 @@
     const codigo = params.get('codigo') || '';
     const contenedor = document.getElementById('contenedor');
 
+    function esc(valor) {
+      return (valor == null ? '' : String(valor))
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
     function tarjeta(color, titulo, subtitulo, data, botonHtml) {
       return `
         <div class="${color} rounded-2xl p-8 shadow-2xl">
           <p class="text-white text-2xl font-extrabold mb-2">${titulo}</p>
           ${subtitulo ? `<p class="text-white text-sm font-medium mb-4 opacity-90">${subtitulo}</p>` : ''}
           <div class="bg-white/10 rounded-xl p-4 text-left space-y-1 mt-2">
-            <p class="text-white text-sm"><span class="opacity-70">Nombre:</span> <strong>${data.nombre_completo}</strong></p>
-            <p class="text-white text-sm"><span class="opacity-70">RUT:</span> <strong>${data.rut}</strong></p>
-            <p class="text-white text-sm"><span class="opacity-70">Cargo:</span> <strong>${data.cargo}</strong></p>
+            <p class="text-white text-sm"><span class="opacity-70">Nombre:</span> <strong>${esc(data.nombre_completo)}</strong></p>
+            <p class="text-white text-sm"><span class="opacity-70">RUT:</span> <strong>${esc(data.rut)}</strong></p>
+            <p class="text-white text-sm"><span class="opacity-70">Cargo:</span> <strong>${esc(data.cargo)}</strong></p>
           </div>
           ${botonHtml || ''}
         </div>`;
@@ -82,7 +88,7 @@
         await apiFetch('/porteria/marcar_ingreso.php', { method: 'POST', body: { rut, codigo } });
         await cargar();
       } catch (err) {
-        contenedor.innerHTML = `<p class="text-red-400 font-bold">${err.message}</p>`;
+        contenedor.innerHTML = `<p class="text-red-400 font-bold">${esc(err.message)}</p>`;
       }
     }
     window.confirmar = confirmar;
@@ -103,7 +109,7 @@
           contenedor.innerHTML = tarjeta('bg-red-600', 'NO DISPONIBLE', 'Esta postulación todavía no está lista para ingresar a faena.', data);
         }
       } catch (err) {
-        contenedor.innerHTML = `<p class="text-red-400 font-bold">${err.message}</p>`;
+        contenedor.innerHTML = `<p class="text-red-400 font-bold">${esc(err.message)}</p>`;
       }
     }
     cargar();
