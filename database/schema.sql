@@ -372,6 +372,7 @@ CREATE TABLE postulacion_documentos (
                         'cedula_identidad',
                         'cedula_identidad_reverso',
                         'certificado_afp',
+                        'cotizaciones_afp',
                         'certificado_salud',
                         'ultimo_finiquito',
                         'certificado_residencia'
@@ -389,6 +390,38 @@ CREATE TABLE postulacion_documentos (
         FOREIGN KEY (rechazado_por) REFERENCES usuarios(id)
         ON DELETE SET NULL,
     UNIQUE KEY uq_postulacion_tipo (postulacion_id, tipo)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ---------------------------------------------------------------------
+-- Tabla: documentos_pendientes (v10.26)
+-- Un documento puede quedar "pendiente de entrega" u "opcional" SIN frenar
+-- el proceso: ni el JAO ni Bodega ni nadie se bloquea por esto (a
+-- diferencia de un documento RECHAZADO, que sí bloquea "Firmar Contrato"
+-- hasta que se corrige -- ver postulacion_documentos.rechazado_at).
+--   - condicion 'pendiente': se va a entregar después (queda a la vista
+--     del JAO hasta marcarlo 'entregado' = resuelto_at).
+--   - condicion 'opcional': para esta persona no se exige.
+--   - marcado_por NULL = lo declaró el propio postulante en el formulario
+--     de la Etapa 2 ("No lo tengo ahora").
+-- Cédula de identidad (frente) nunca puede quedar pendiente: es la base de
+-- la verificación de identidad.
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS documentos_pendientes (
+    id              INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    postulacion_id  INT UNSIGNED NOT NULL,
+    tipo            VARCHAR(40) NOT NULL,
+    condicion       ENUM('pendiente', 'opcional') NOT NULL DEFAULT 'pendiente',
+    nota            VARCHAR(255) NULL,
+    marcado_por     INT UNSIGNED NULL,
+    marcado_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    resuelto_at     DATETIME NULL,
+    CONSTRAINT fk_docpend_postulacion
+        FOREIGN KEY (postulacion_id) REFERENCES postulaciones(id)
+        ON DELETE CASCADE,
+    CONSTRAINT fk_docpend_usuario
+        FOREIGN KEY (marcado_por) REFERENCES usuarios(id)
+        ON DELETE SET NULL,
+    UNIQUE KEY uq_docpend_postulacion_tipo (postulacion_id, tipo)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ---------------------------------------------------------------------

@@ -64,7 +64,35 @@ if ($idsMostrados) {
         ];
     }
 }
+// v10.26: documentos "pendientes de entrega" u "opcionales" (no frenan
+// nada; ver marcar_documento.php). Se trae también el que ya se marcó
+// entregado para poder mostrarlo como resuelto.
+$pendientesPorPostulacion = [];
+if ($idsMostrados) {
+    $stmtPend = $pdo->prepare(
+        "SELECT dp.postulacion_id, dp.tipo, dp.condicion, dp.nota, dp.marcado_at, dp.resuelto_at,
+                u.nombre AS marcado_por_nombre
+           FROM documentos_pendientes dp
+           LEFT JOIN usuarios u ON u.id = dp.marcado_por
+          WHERE dp.postulacion_id IN ($in)"
+    );
+    $stmtPend->execute($idsMostrados);
+    foreach ($stmtPend->fetchAll() as $fila) {
+        $pendientesPorPostulacion[$fila['postulacion_id']][] = [
+            'tipo'            => $fila['tipo'],
+            'condicion'       => $fila['condicion'],
+            'nota'            => $fila['nota'],
+            'marcado_por'     => $fila['marcado_por_nombre'] ?? 'El postulante',
+            'entregado'       => $fila['resuelto_at'] !== null,
+        ];
+    }
+}
 foreach ($postulaciones as &$p) {
+    $p['documentos_marcados'] = $pendientesPorPostulacion[$p['id']] ?? [];
+    $p['tiene_pendientes'] = (bool)array_filter(
+        $p['documentos_marcados'],
+        fn ($m) => $m['condicion'] === 'pendiente' && !$m['entregado']
+    );
     $detalleDocs = $documentosPorPostulacion[$p['id']] ?? [];
     $p['documentos'] = array_column($detalleDocs, 'tipo');
     $p['documentos_detalle'] = $detalleDocs;

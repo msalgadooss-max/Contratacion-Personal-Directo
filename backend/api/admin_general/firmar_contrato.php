@@ -115,6 +115,22 @@ try {
     // otros cupos del mismo cargo se agotaron mientras tanto.
     $cierraAquiMismo = !MODULO_BODEGA_ACTIVO;
 
+    // v10.26: los documentos "pendientes de entrega" NO bloquean la firma,
+    // pero queda constancia de cuáles faltaban en el momento de firmar.
+    $stmtPend = $pdo->prepare(
+        "SELECT tipo FROM documentos_pendientes
+          WHERE postulacion_id = :id AND condicion = 'pendiente' AND resuelto_at IS NULL"
+    );
+    $stmtPend->execute(['id' => $postulacionId]);
+    $etiquetasDoc = etiquetasDocumentos();
+    $pendientesAlFirmar = array_map(
+        fn ($t) => $etiquetasDoc[$t] ?? $t,
+        $stmtPend->fetchAll(PDO::FETCH_COLUMN)
+    );
+    $notaPendientes = $pendientesAlFirmar
+        ? ' Documentos aún pendientes de entrega: ' . implode(', ', $pendientesAlFirmar) . '.'
+        : '';
+
     $nuevoEstado = $cierraAquiMismo ? 'Contratado' : $postulacion['estado'];
     $stmt = $pdo->prepare(
         'UPDATE postulaciones
@@ -128,8 +144,8 @@ try {
         $postulacionId,
         $usuario['id'],
         $cierraAquiMismo
-            ? 'Firmó el contrato (día 1). Etapa 1 del piloto: cierra la contratación directamente (Bodega todavía no participa en la app).'
-            : 'Firmó el contrato (día 1). Pasa a Prevención para la IRL y luego a Bodega para entrega de EPP.'
+            ? 'Firmó el contrato (día 1). Etapa 1 del piloto: cierra la contratación directamente (Bodega todavía no participa en la app).' . $notaPendientes
+            : 'Firmó el contrato (día 1). Pasa a Prevención para la IRL y luego a Bodega para entrega de EPP.' . $notaPendientes
     );
 
     $pdo->commit();

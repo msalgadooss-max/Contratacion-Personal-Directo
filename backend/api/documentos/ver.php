@@ -18,7 +18,7 @@ exigirMetodo('GET');
 
 $postulacionId = (int)($_GET['postulacion_id'] ?? 0);
 $tipo = (string)($_GET['tipo'] ?? '');
-$tiposValidos = ['cv', 'cedula_identidad', 'cedula_identidad_reverso', 'certificado_afp', 'certificado_salud', 'ultimo_finiquito', 'certificado_residencia'];
+$tiposValidos = ['cv', 'cedula_identidad', 'cedula_identidad_reverso', 'certificado_afp', 'cotizaciones_afp', 'certificado_salud', 'ultimo_finiquito', 'certificado_residencia'];
 
 if ($postulacionId <= 0 || !in_array($tipo, $tiposValidos, true)) {
     responderError('Parámetros inválidos.', 422);

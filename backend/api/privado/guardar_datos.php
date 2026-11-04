@@ -96,10 +96,20 @@ $tiposDocumento = [
     'cedula_identidad'          => ['campo' => 'cedula', 'etiqueta' => 'el frente de tu Cédula de Identidad', 'obligatorio' => true],
     'cedula_identidad_reverso'  => ['campo' => 'cedula_reverso', 'etiqueta' => 'el reverso de tu Cédula de Identidad', 'obligatorio' => true],
     'certificado_afp'           => ['campo' => 'certificado_afp', 'etiqueta' => 'tu Certificado de AFP', 'obligatorio' => true],
+    'cotizaciones_afp'          => ['campo' => 'cotizaciones_afp', 'etiqueta' => 'tus Últimas 12 cotizaciones AFP', 'obligatorio' => true],
     'certificado_salud'         => ['campo' => 'certificado_salud', 'etiqueta' => 'tu Certificado de Fonasa/Isapre', 'obligatorio' => true],
     'ultimo_finiquito'          => ['campo' => 'ultimo_finiquito', 'etiqueta' => 'tu Último Finiquito', 'obligatorio' => false],
     'certificado_residencia'    => ['campo' => 'certificado_residencia', 'etiqueta' => 'tu Certificado de Residencia', 'obligatorio' => true],
 ];
+
+// v10.26: "No lo tengo ahora" -- el postulante puede dejar un documento
+// obligatorio como pendiente de entrega para no quedar frenado en el
+// formulario (solo se puede una vez: el link es de un solo uso). Queda
+// registrado y a la vista del JAO (tabla documentos_pendientes); no
+// bloquea el avance. La cédula (frente y reverso) NO se puede dejar
+// pendiente: es la base de la verificación de identidad.
+$tiposNoPostergables = ['cedula_identidad', 'cedula_identidad_reverso'];
+$documentosPendientesDeclarados = [];
 
 $documentosAGuardar = [];
 try {
@@ -107,6 +117,12 @@ try {
         $archivo = $_FILES[$info['campo']] ?? [];
         $sinArchivo = ($archivo['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE;
         if ($sinArchivo && !$info['obligatorio']) {
+            continue;
+        }
+        if ($sinArchivo
+            && !in_array($tipo, $tiposNoPostergables, true)
+            && ($_POST['pendiente_' . $info['campo']] ?? '') === '1') {
+            $documentosPendientesDeclarados[] = $tipo;
             continue;
         }
         $documentosAGuardar[$tipo] = guardarArchivoSubido($archivo, 'documentos', $info['etiqueta']);
@@ -170,6 +186,20 @@ try {
 
     // Sin usuario logueado: la accion la origina el propio postulante.
     fijarUsuarioContextoBD($pdo, null);
+
+    if ($documentosPendientesDeclarados) {
+        $stmtPend = $pdo->prepare(
+            "INSERT INTO documentos_pendientes (postulacion_id, tipo, condicion, nota, marcado_por)
+             VALUES (:pid, :tipo, 'pendiente', 'El postulante indicó que no lo tiene ahora.', NULL)"
+        );
+        $etiquetasDoc = etiquetasDocumentos();
+        $nombresPend = [];
+        foreach ($documentosPendientesDeclarados as $tipo) {
+            $stmtPend->execute(['pid' => $postulacionId, 'tipo' => $tipo]);
+            $nombresPend[] = $etiquetasDoc[$tipo] ?? $tipo;
+        }
+        registrarLog($pdo, $postulacionId, null, 'Dejó pendiente de entrega: ' . implode(', ', $nombresPend) . '.');
+    }
 
     // v6.5: el token se invalida SIEMPRE (es de un solo uso), pero el
     // estado NO cambia aqui directamente -- en el flujo secuencial,

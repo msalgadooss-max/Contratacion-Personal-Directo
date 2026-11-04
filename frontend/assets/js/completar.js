@@ -38,6 +38,7 @@ const MAPA_TIPO_DOCUMENTO = {
   cedula: 'cedula_identidad',
   cedula_reverso: 'cedula_identidad_reverso',
   certificado_afp: 'certificado_afp',
+  cotizaciones_afp: 'cotizaciones_afp',
   certificado_salud: 'certificado_salud',
   certificado_residencia: 'certificado_residencia',
   ultimo_finiquito: 'ultimo_finiquito',
@@ -62,6 +63,7 @@ const DOCUMENTOS = [
   { id: 'cedula', etiqueta: 'Cédula de Identidad (frente)', obligatorio: true, ayuda: 'Que se lean claramente el RUT y tu nombre.', grupo: 'cedula', formato: 'tarjeta' },
   { id: 'cedula_reverso', etiqueta: 'Cédula de Identidad (reverso)', obligatorio: true, ayuda: 'El reverso también es obligatorio: trae datos que igual necesitamos.', grupo: 'cedula', formato: 'tarjeta' },
   { id: 'certificado_afp', etiqueta: 'Certificado de AFP', obligatorio: true, ayuda: 'Que se lea el nombre de la AFP completo.', formato: 'documento' },
+  { id: 'cotizaciones_afp', etiqueta: 'Últimas 12 cotizaciones AFP', obligatorio: true, ayuda: 'Se descargan desde la web de tu AFP. Que se vean los 12 últimos meses.', formato: 'documento' },
   { id: 'certificado_salud', etiqueta: 'Certificado de Fonasa/Isapre', obligatorio: true, ayuda: 'Que se lea el nombre completo de tu Isapre o "Fonasa".', formato: 'documento' },
   { id: 'certificado_residencia', etiqueta: 'Certificado de Residencia', obligatorio: true, ayuda: 'Que se lea completa tu dirección.', formato: 'documento' },
   { id: 'ultimo_finiquito', etiqueta: 'Último Finiquito', obligatorio: false, ayuda: 'Si nunca has trabajado antes, puedes omitirlo.', formato: 'documento' },
@@ -121,6 +123,11 @@ function campoDocumentoHtml(d) {
       <p id="preview-${d.id}" class="text-xs text-green-600 font-medium mt-1 hidden"></p>
       <p class="text-xs text-gray-400 mt-1">${d.ayuda}</p>
       <p id="hint-${d.id}" class="text-xs text-orange-600 mt-1 hidden"></p>
+      ${d.obligatorio && d.grupo !== 'cedula' ? `
+      <label class="mt-2 flex items-start gap-2 text-xs text-gray-600 cursor-pointer">
+        <input type="checkbox" id="pendiente-${d.id}" class="mt-0.5">
+        <span>No lo tengo ahora, lo entregaré después <span class="text-gray-400">(no frena tu postulación)</span></span>
+      </label>` : ''}
     </div>`;
 }
 
@@ -158,7 +165,22 @@ function renderCamposDocumentos() {
   });
 
   DOCUMENTOS.forEach(d => {
+    const chkPend = document.getElementById(`pendiente-${d.id}`);
+    if (chkPend) {
+      chkPend.addEventListener('change', () => {
+        const input = document.getElementById(d.id);
+        input.required = !chkPend.checked;
+        if (chkPend.checked) {
+          input.value = '';
+          document.getElementById(`preview-${d.id}`).classList.add('hidden');
+        }
+      });
+    }
     document.getElementById(d.id).addEventListener('change', async (e) => {
+      if (e.target.files[0] && chkPend) {
+        chkPend.checked = false;
+        e.target.required = d.obligatorio;
+      }
       const preview = document.getElementById(`preview-${d.id}`);
       let archivo = e.target.files[0];
       if (!archivo) {
@@ -479,6 +501,12 @@ function irAPaso(n) {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
+// v10.26: true si el postulante marcó "No lo tengo ahora" para ese documento.
+function documentoPendiente(d) {
+  const chk = document.getElementById(`pendiente-${d.id}`);
+  return !!(chk && chk.checked && !document.getElementById(d.id).files[0]);
+}
+
 function validarPaso(n) {
   const campos = CAMPOS_TEXTO_PASO[n] || [];
   for (const id of campos) {
@@ -492,7 +520,7 @@ function validarPaso(n) {
   }
   if (n === 3) {
     for (const d of DOCUMENTOS) {
-      if (d.obligatorio && !document.getElementById(d.id).files[0]) {
+      if (d.obligatorio && !document.getElementById(d.id).files[0] && !documentoPendiente(d)) {
         mostrarAlertaSuave(`Falta adjuntar "${d.etiqueta}".`);
         return false;
       }
@@ -532,8 +560,9 @@ function renderResumen() {
 
   const filasDocs = DOCUMENTOS.map(d => {
     const archivo = document.getElementById(d.id).files[0];
-    const texto = archivo ? `✓ ${archivo.name}` : (d.obligatorio ? '⚠ falta' : 'no adjuntado');
-    const color = archivo ? 'text-green-700' : (d.obligatorio ? 'text-red-600' : 'text-gray-400');
+    const pend = documentoPendiente(d);
+    const texto = archivo ? `✓ ${archivo.name}` : (pend ? '⏳ lo entregarás después' : (d.obligatorio ? '⚠ falta' : 'no adjuntado'));
+    const color = archivo ? 'text-green-700' : (pend ? 'text-purple-700' : (d.obligatorio ? 'text-red-600' : 'text-gray-400'));
     return `
       <div class="flex justify-between gap-3 py-1 text-sm border-b border-gray-100 last:border-0">
         <span class="text-gray-500">${d.etiqueta}</span>
@@ -690,6 +719,7 @@ form.addEventListener('submit', async (e) => {
   DOCUMENTOS.forEach(d => {
     const input = document.getElementById(d.id);
     if (input.files[0]) formData.append(d.id, input.files[0]);
+    else if (documentoPendiente(d)) formData.append(`pendiente_${d.id}`, '1');
   });
 
   try {

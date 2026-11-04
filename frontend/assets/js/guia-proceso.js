@@ -211,7 +211,7 @@ const FLUJO_DIAGRAMA_HTML = `
       rama: ramaFlujo('No selecciona → el postulante recibe un correo genérico con un motivo estandarizado, sin el motivo real completo. No sigue el proceso.'),
     })}
     ${pasoFlujo(5, 'Portería confirma el ingreso con el QR', 'Control de la puerta: lo deja pasar a la sala de espera -- ahí mismo, con su celular, completa sus datos y documentos. Si el escaneo no se alcanza a hacer, no detiene el proceso: el JAO puede verificar igual.')}
-    ${pasoFlujo(6, 'Postulante completa Etapa 2', 'Datos personales, previsionales, bancarios + documentos: cédula, certificado de AFP, de salud, de residencia y (si aplica) último finiquito. Al terminar, el JAO recibe el aviso de que ya está listo para revisión.')}
+    ${pasoFlujo(6, 'Postulante completa Etapa 2', 'Datos personales, previsionales, bancarios + documentos: cédula, certificado de AFP, últimas 12 cotizaciones AFP, certificado de salud, de residencia y (si aplica) último finiquito. Si algo no lo tiene a mano, lo deja como «pendiente de entrega» (y el JAO también puede dejar pendiente u opcional cualquier documento) sin frenar el proceso. Al terminar, el JAO recibe el aviso de que ya está listo para revisión.')}
     ${pasoFlujo(7, 'Día 0: JAO verifica identidad', 'Compara el RUT declarado contra la cédula subida, con la persona frente a él, apenas completa su Etapa 2 (no depende de que Portería haya escaneado su QR). Le da su check ("Coincide") y la persona pasa a Prevención.', {
       rama: ramaFlujo('El JAO observa un documento → el postulante recibe un correo pidiéndole que lo vuelva a subir, y vuelve a este mismo paso apenas lo corrige. El resto de lo ya aprobado no se pierde.', 'observacion'),
     })}

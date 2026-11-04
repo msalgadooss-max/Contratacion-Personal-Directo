@@ -602,6 +602,7 @@ function etiquetasDocumentos(): array
         'cedula_identidad'          => 'Cédula de Identidad (frente)',
         'cedula_identidad_reverso'  => 'Cédula de Identidad (reverso)',
         'certificado_afp'           => 'Certificado de AFP',
+        'cotizaciones_afp'          => 'Últimas 12 cotizaciones AFP',
         'certificado_salud'         => 'Certificado de Fonasa/Isapre',
         'ultimo_finiquito'          => 'Último Finiquito',
         'certificado_residencia'    => 'Certificado de Residencia',

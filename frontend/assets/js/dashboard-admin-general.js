@@ -8,6 +8,7 @@ const ETIQUETAS_DOC = {
   cedula_identidad: 'Cédula (frente)',
   cedula_identidad_reverso: 'Cédula (reverso)',
   certificado_afp: 'Certificado AFP',
+  cotizaciones_afp: 'Últimas 12 cotizaciones AFP',
   certificado_salud: 'Certificado Fonasa/Isapre',
   ultimo_finiquito: 'Último Finiquito',
   certificado_residencia: 'Certificado de Residencia',
@@ -151,25 +152,85 @@ function detalleDoc(p, tipo) {
   return (p.documentos_detalle || []).find(d => d.tipo === tipo);
 }
 
+// v10.26: orden fijo de los documentos de la Etapa 2. Se muestran SIEMPRE
+// todos (subidos o no) para que el JAO pueda dejar pendiente u opcional
+// el que falte sin frenar el proceso (a diferencia de rechazarlo, que
+// bloquea la firma del contrato hasta que se corrija).
+const TIPOS_DOC_ETAPA2 = [
+  'cedula_identidad', 'cedula_identidad_reverso', 'certificado_afp', 'cotizaciones_afp',
+  'certificado_salud', 'certificado_residencia', 'ultimo_finiquito',
+];
+const TIPOS_NO_POSTERGABLES = ['cedula_identidad', 'cedula_identidad_reverso'];
+
+function marcaDoc(p, tipo) {
+  return (p.documentos_marcados || []).find(m => m.tipo === tipo);
+}
+
 function enlacesDocumentos(p) {
-  const tipos = ['cv', ...p.documentos];
-  return tipos.map(tipo => {
-    const url = `${API_BASE_URL}/documentos/ver.php?postulacion_id=${p.id}&tipo=${tipo}`;
+  const piezas = ['cv', ...TIPOS_DOC_ETAPA2].map(tipo => {
+    const subido = tipo === 'cv' || p.documentos.includes(tipo);
     const detalle = detalleDoc(p, tipo);
-    const puedeRechazar = tipo !== 'cv'; // el CV es de Etapa 1, no forma parte del rechazo de Etapa 2
+    const marca = marcaDoc(p, tipo);
+    const url = `${API_BASE_URL}/documentos/ver.php?postulacion_id=${p.id}&tipo=${tipo}`;
+    const puedeRechazar = tipo !== 'cv' && subido; // el CV es de Etapa 1
+    const puedePostergar = tipo !== 'cv' && !TIPOS_NO_POSTERGABLES.includes(tipo);
+    const etiqueta = esc(ETIQUETAS_DOC[tipo] || tipo);
+
     let badge = '';
     if (detalle && detalle.observado) {
       badge = `<span class="text-[10px] text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded font-semibold" title="${esc(detalle.motivo_rechazo)}">⚠ observado</span>`;
     } else if (detalle && detalle.resubido) {
       badge = `<span class="text-[10px] text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded font-semibold">↺ corregido</span>`;
     }
-    return `
-      <span class="inline-flex items-center gap-1">
-        <a href="${url}" target="_blank" class="inline-block bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-medium px-2.5 py-1 rounded-md">${ETIQUETAS_DOC[tipo] || tipo}</a>
-        ${badge}
-        ${puedeRechazar && !(detalle && detalle.observado) ? `<button title="Rechazar este documento" class="text-[11px] text-red-500 hover:text-red-700 px-1" onclick="rechazarDocumento(${p.id}, '${tipo}')">✕</button>` : ''}
-      </span>`;
-  }).join(' ');
+
+    let marcaHtml = '';
+    if (marca && marca.entregado) {
+      marcaHtml = `<span class="text-[10px] text-green-700 bg-green-100 px-1.5 py-0.5 rounded font-semibold" title="Estaba pendiente y ya se entregó">✓ entregado</span>`;
+    } else if (marca) {
+      const txt = marca.condicion === 'pendiente' ? '⏳ pendiente de entrega' : '○ opcional';
+      const color = marca.condicion === 'pendiente' ? 'text-purple-700 bg-purple-100' : 'text-gray-600 bg-gray-100';
+      const titulo = `${marca.nota ? marca.nota + ' — ' : ''}Marcado por ${marca.marcado_por}. No frena el proceso.`;
+      marcaHtml = `<span class="text-[10px] ${color} px-1.5 py-0.5 rounded font-semibold" title="${esc(titulo)}">${txt}</span>`;
+      if (marca.condicion === 'pendiente') {
+        marcaHtml += `<button title="Ya lo entregó" class="text-[11px] text-green-700 hover:text-green-900 px-1" onclick="marcarDocumento(${p.id}, '${tipo}', 'entregado')">✓</button>`;
+      }
+      marcaHtml += `<button title="Quitar la marca" class="text-[11px] text-gray-400 hover:text-gray-600 px-1" onclick="marcarDocumento(${p.id}, '${tipo}', 'quitar')">↺</button>`;
+    }
+
+    const acciones = [];
+    if (puedeRechazar && !(detalle && detalle.observado)) {
+      acciones.push(`<button title="Rechazar este documento (frena la firma hasta que se corrija)" class="text-[11px] text-red-500 hover:text-red-700 px-1" onclick="rechazarDocumento(${p.id}, '${tipo}')">✕</button>`);
+    }
+    if (puedePostergar && !marca) {
+      acciones.push(`<button title="Dejar pendiente de entrega (no frena el proceso)" class="text-[11px] text-purple-600 hover:text-purple-800 px-1" onclick="marcarDocumento(${p.id}, '${tipo}', 'pendiente')">⏳</button>`);
+      acciones.push(`<button title="Marcar como opcional para esta persona (no frena el proceso)" class="text-[11px] text-gray-500 hover:text-gray-700 px-1" onclick="marcarDocumento(${p.id}, '${tipo}', 'opcional')">○</button>`);
+    }
+
+    const chip = subido
+      ? `<a href="${url}" target="_blank" class="inline-block bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-medium px-2.5 py-1 rounded-md">${etiqueta}</a>`
+      : (tipo === 'ultimo_finiquito' && !marca
+          ? `<span class="inline-block bg-gray-50 text-gray-400 text-xs px-2.5 py-1 rounded-md" title="Es opcional: si nunca trabajó antes no lo tiene">${etiqueta} · no adjunto</span>`
+          : `<span class="inline-block bg-gray-100 text-gray-500 text-xs px-2.5 py-1 rounded-md line-through decoration-gray-300">${etiqueta}</span>${!marca ? '<span class="text-[10px] text-red-600 bg-red-50 px-1.5 py-0.5 rounded font-semibold">falta</span>' : ''}`);
+
+    return `<span class="inline-flex items-center gap-1">${chip}${badge}${marcaHtml}${acciones.join('')}</span>`;
+  });
+  return piezas.join(' ');
+}
+
+async function marcarDocumento(id, tipo, accion) {
+  let nota = '';
+  if (accion === 'pendiente' || accion === 'opcional') {
+    const ingreso = prompt(`"${ETIQUETAS_DOC[tipo] || tipo}": nota opcional (por ejemplo, para cuándo lo trae). Puedes dejarla en blanco. Esto NO frena el proceso.`, '');
+    if (ingreso === null) return;
+    nota = ingreso.trim();
+  }
+  try {
+    const data = await apiFetch('/admin_general/marcar_documento.php', { method: 'POST', body: { postulacion_id: id, tipo_documento: tipo, accion, nota } });
+    mostrarAlerta('alerta', data.mensaje, 'exito');
+    await cargarLista();
+  } catch (err) {
+    mostrarAlerta('alerta', err.message);
+  }
 }
 
 async function rechazarDocumento(id, tipo) {
@@ -278,6 +339,7 @@ function tarjeta(p) {
         </div>
       </div>
 
+      ${p.tiene_pendientes ? `<p class="text-xs text-purple-700 bg-purple-50 border border-purple-200 rounded-md px-3 py-2 mt-3">⏳ Documentos pendientes de entrega: ${esc((p.documentos_marcados || []).filter(m => m.condicion === 'pendiente' && !m.entregado).map(m => ETIQUETAS_DOC[m.tipo] || m.tipo).join(', '))}. No impiden firmar el contrato; recuerda cobrarlos y marcarlos como entregados (✓).</p>` : ''}
       ${p.afp_alerta_jao ? `<p class="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2 mt-3">⚠ Esta persona declaró un régimen previsional antiguo ("${esc(p.afp)}"), no una AFP vigente. Verifica manualmente antes de finalizar.</p>` : ''}
       ${p.tiene_documento_observado ? `<p class="text-xs text-red-700 bg-red-50 border border-red-200 rounded-md px-3 py-2 mt-3">⚠ Hay un documento observado esperando que el postulante lo corrija: no se puede firmar el contrato hasta entonces. El resto del proceso ya avanzado no se pierde.</p>` : ''}
       ${p.estado === 'Induccion_ok' && p.paso_contratacion_autorizado && !p.puede_firmar && !p.tiene_documento_observado ? `<p class="text-xs text-blue-700 bg-blue-50 border border-blue-200 rounded-md px-3 py-2 mt-3">Ya hizo la inducción de seguridad con Prevención. Falta completar la nómina para poder firmar el contrato.</p>` : ''}
