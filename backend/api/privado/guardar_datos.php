@@ -62,6 +62,21 @@ $campos = [
     'talla_overol'                 => limpiarTexto($_POST['talla_overol'] ?? '', 10),
 ];
 
+// v10.29: formato de tallas y teléfono de contacto (las tallas le llegan a
+// Bodega para armar el kit de EPP, no pueden venir como texto libre).
+if (($v = normalizarTallaCalzado($campos['talla_calzado'])) === null) {
+    responderError('La talla de calzado no es válida: escribe un número entre 34 y 50 (por ejemplo 42).', 422);
+}
+$campos['talla_calzado'] = $v;
+if (($v = normalizarTallaOverol($campos['talla_overol'])) === null) {
+    responderError('La talla de overol no es válida: usa S, M, L, XL, XXL o su número (por ejemplo L o 48).', 422);
+}
+$campos['talla_overol'] = $v;
+if (($v = normalizarTelefono($campos['contacto_emergencia_telefono'])) === null) {
+    responderError('El teléfono del contacto de emergencia no es válido: escribe solo números (por ejemplo +56912345678).', 422);
+}
+$campos['contacto_emergencia_telefono'] = $v;
+
 foreach ($campos as $nombreCampo => $valor) {
     if ($valor === '') {
         responderError("El campo '$nombreCampo' es obligatorio.", 422);

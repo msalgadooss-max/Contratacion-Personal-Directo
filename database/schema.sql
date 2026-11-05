@@ -183,7 +183,10 @@ CREATE TABLE solicitudes_cupo (
 CREATE TABLE postulaciones (
     id                          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     tipo_documento              ENUM('RUT', 'Otro') NOT NULL DEFAULT 'RUT',
-    rut                         VARCHAR(20) NOT NULL UNIQUE,
+    -- v10.29: el RUT ya NO es UNIQUE: una misma persona puede tener varias
+    -- postulaciones a lo largo del tiempo (recontratación = un ciclo nuevo,
+    -- ver public/postular.php, que solo bloquea si hay UN ciclo EN CURSO).
+    rut                         VARCHAR(20) NOT NULL,
     nombre_completo             VARCHAR(200) NOT NULL,
     nombre                      VARCHAR(100) NOT NULL DEFAULT '',
     apellido                    VARCHAR(100) NOT NULL DEFAULT '',
@@ -304,6 +307,7 @@ CREATE TABLE postulaciones (
     CONSTRAINT fk_postulacion_referido_por
         FOREIGN KEY (referido_por_id) REFERENCES usuarios(id)
         ON DELETE SET NULL,
+    INDEX idx_postulaciones_rut (rut),
     INDEX idx_postulaciones_estado (estado),
     INDEX idx_postulaciones_token (token_privado),
     INDEX idx_postulaciones_token_subsanacion (token_subsanacion)

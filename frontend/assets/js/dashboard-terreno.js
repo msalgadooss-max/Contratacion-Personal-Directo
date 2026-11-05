@@ -18,6 +18,7 @@
   await cargarHistorico('en_proceso');
   await cargarBanco();
   iniciarEstadoVivo();
+  iniciarAvisoRetiro();
 })();
 
 function actualizarTodo() {

@@ -134,6 +134,67 @@ async function reenviarEtapa2() {
   }
 }
 
+// v10.29 (pedido explícito del usuario): bloques extra del seguimiento --
+// (1) documentos que le faltan al postulante, con la opción de subirlos desde
+// aquí (útil si postula a distancia), y (2) la encuesta de satisfacción una
+// vez terminada la Etapa 2.
+function bloquesExtra(p) {
+  const pend = p.documentos_pendientes || [];
+  const bloquePend = pend.length ? `
+    <div class="bg-purple-50 border border-purple-200 rounded-lg px-4 py-3 mb-4" id="zona-pendientes">
+      <p class="text-sm font-semibold text-purple-900 mb-1">⏳ Te falta entregar ${pend.length === 1 ? 'este documento' : 'estos documentos'}</p>
+      <p class="text-xs text-purple-800 mb-3">No frena tu proceso. Súbelos aquí apenas los tengas (PDF, JPG o PNG, hasta 8 MB cada uno).</p>
+      <form id="form-pendientes" class="space-y-3">
+        ${pend.map(d => `
+          <div>
+            <label class="block text-sm text-gray-800 mb-1">${esc(d.etiqueta)}</label>
+            <input type="file" name="${esc(d.tipo)}" accept="application/pdf,image/jpeg,image/png"
+                   class="block w-full text-sm text-gray-700 file:mr-3 file:rounded-lg file:border-0 file:bg-purple-600 file:px-3 file:py-2 file:text-white file:font-semibold">
+          </div>`).join('')}
+        <button type="submit" class="bg-purple-700 hover:bg-purple-800 text-white text-sm font-semibold px-4 py-2 rounded-lg">Enviar documentos</button>
+      </form>
+    </div>` : '';
+  const bloqueEncuesta = p.etapa2_completada ? `
+    <div class="bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 mb-4">
+      <p class="text-sm font-semibold text-gray-900">¿Nos cuentas cómo te fue? (1 minuto)</p>
+      <p class="text-xs text-gray-600 mt-1">Es anónima y nos ayuda a mejorar el proceso.</p>
+      <a href="encuesta.html" class="inline-block mt-2 bg-gray-900 hover:bg-gray-800 text-white text-sm font-semibold px-4 py-2 rounded-lg">Responder la encuesta</a>
+    </div>` : '';
+  return bloquePend + bloqueEncuesta;
+}
+
+function activarFormPendientes() {
+  const formPend = document.getElementById('form-pendientes');
+  if (!formPend) return;
+  formPend.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const datos = new FormData();
+    datos.append('rut', ULTIMO_RUT_CONSULTADO);
+    datos.append('correo', document.getElementById('correo').value.trim());
+    let hayArchivo = false;
+    formPend.querySelectorAll('input[type="file"]').forEach((inp) => {
+      if (inp.files[0]) { datos.append(inp.name, inp.files[0]); hayArchivo = true; }
+    });
+    if (!hayArchivo) {
+      alertaDiv.innerHTML = '<div class="bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-lg px-4 py-3">Elige al menos un archivo para enviar.</div>';
+      return;
+    }
+    const boton = formPend.querySelector('button[type="submit"]');
+    boton.disabled = true;
+    boton.textContent = 'Enviando...';
+    try {
+      const r = await apiFetchFormData('/public/pendientes_enviar.php', datos);
+      alertaDiv.innerHTML = `<div class="bg-green-50 border border-green-200 text-green-800 text-sm rounded-lg px-4 py-3">${esc(r.mensaje)}</div>`;
+      // Vuelve a consultar para refrescar la lista de lo que aún falta.
+      form.requestSubmit();
+    } catch (err) {
+      alertaDiv.innerHTML = `<div class="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">${esc(err.message)}</div>`;
+      boton.disabled = false;
+      boton.textContent = 'Enviar documentos';
+    }
+  });
+}
+
 function renderResultado(p) {
   if (p.en_banco) {
     resultadoDiv.innerHTML = `
@@ -184,6 +245,11 @@ function renderResultado(p) {
     const urlValidacion = `${window.location.origin}${window.location.pathname.replace('seguimiento.html', 'porteria_resultado.html')}?rut=${encodeURIComponent(p.rut)}&codigo=${encodeURIComponent(p.codigo_seguimiento)}`;
     // eslint-disable-next-line no-undef
     new QRCode(document.getElementById('qr'), { text: urlValidacion, width: 160, height: 160 });
+    const extra = bloquesExtra(p);
+    if (extra) {
+      resultadoDiv.insertAdjacentHTML('beforeend', `<div class="bg-white shadow-sm rounded-xl p-5 mt-4">${extra}</div>`);
+      activarFormPendientes();
+    }
     return;
   }
 
@@ -224,8 +290,10 @@ function renderResultado(p) {
         <div class="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 mb-4 text-sm text-amber-800">
           ⚠ Hay una observación en uno de tus documentos. Revisa tu correo para ver el detalle y el link para corregirlo.
         </div>` : ''}
+      ${bloquesExtra(p)}
       ${faseHtml(p)}
     </div>`;
+  activarFormPendientes();
 }
 
 // v10.14 (pedido explícito del usuario, item 13): una sola fase breve y

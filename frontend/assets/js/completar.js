@@ -518,6 +518,27 @@ function validarPaso(n) {
       return false;
     }
   }
+  if (n === 2) {
+    // v10.29: formato de tallas y teléfono (mismas reglas que el servidor).
+    const calzado = document.getElementById('talla_calzado').value.trim().replace(',', '.');
+    if (!/^(3[4-9]|4[0-9]|50)(\.5)?$/.test(calzado)) {
+      document.getElementById('talla_calzado').focus();
+      mostrarAlertaSuave('Talla de calzado: escribe un número entre 34 y 50 (por ejemplo 42).');
+      return false;
+    }
+    const overol = document.getElementById('talla_overol').value.trim().toUpperCase().replace(/[\s-]/g, '');
+    if (!/^(XS|S|M|L|XL|XXL|XXXL|2XL|3XL|3[4-9]|[4-6][0-9]|70)$/.test(overol)) {
+      document.getElementById('talla_overol').focus();
+      mostrarAlertaSuave('Talla de overol: usa S, M, L, XL, XXL o su número (por ejemplo L o 48).');
+      return false;
+    }
+    const tel = document.getElementById('contacto_emergencia_telefono').value.replace(/[\s\-.()]/g, '');
+    if (!/^\+?\d{8,15}$/.test(tel)) {
+      document.getElementById('contacto_emergencia_telefono').focus();
+      mostrarAlertaSuave('El teléfono de emergencia debe tener solo números (por ejemplo +56912345678).');
+      return false;
+    }
+  }
   if (n === 3) {
     for (const d of DOCUMENTOS) {
       if (d.obligatorio && !document.getElementById(d.id).files[0] && !documentoPendiente(d)) {
@@ -715,6 +736,8 @@ form.addEventListener('submit', async (e) => {
 
   const formData = new FormData();
   formData.append('token', token);
+  // v10.29: qué documentos quedan por entregar (para avisarlo en la pantalla final).
+  const pendientesEtiquetas = DOCUMENTOS.filter(d => documentoPendiente(d)).map(d => d.etiqueta);
   camposTexto.forEach(id => formData.append(id, document.getElementById(id).value));
   DOCUMENTOS.forEach(d => {
     const input = document.getElementById(d.id);
@@ -732,7 +755,19 @@ form.addEventListener('submit', async (e) => {
     resultadoDiv.innerHTML = `
       <div class="text-green-600 text-4xl">✔</div>
       <h2 class="text-lg font-bold text-gray-900 mt-2">¡Datos guardados!</h2>
-      <p class="text-sm text-gray-600 mt-1">Tu proceso continúa. Puedes revisar tu avance en el módulo de seguimiento.</p>`;
+      <p class="text-sm text-gray-600 mt-1">Tu proceso continúa. Puedes revisar tu avance en el módulo de seguimiento.</p>
+      ${pendientesEtiquetas.length ? `
+        <div class="mt-4 text-left bg-purple-50 border border-purple-200 rounded-lg px-4 py-3">
+          <p class="text-sm font-semibold text-purple-900">⏳ Te falta entregar:</p>
+          <ul class="list-disc pl-5 text-sm text-purple-900 mt-1">${pendientesEtiquetas.map(e => `<li>${e}</li>`).join('')}</ul>
+          <p class="text-xs text-purple-800 mt-2">No frena tu proceso. Cuando los tengas, súbelos desde el módulo de seguimiento con tu RUT y tu correo.</p>
+          <a href="seguimiento.html" class="inline-block mt-2 text-sm font-semibold text-purple-900 underline">Ir a mi seguimiento</a>
+        </div>` : ''}
+      <div class="mt-5 text-left bg-gray-50 border border-gray-200 rounded-lg px-4 py-3">
+        <p class="text-sm font-semibold text-gray-900">¿Nos cuentas cómo te fue? (1 minuto)</p>
+        <p class="text-xs text-gray-600 mt-1">Es anónima y nos ayuda a mejorar el proceso para quienes vienen después.</p>
+        <a href="encuesta.html" class="inline-block mt-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2 rounded-lg">Responder la encuesta</a>
+      </div>`;
   } catch (err) {
     mostrarError(err.message);
     window.scrollTo({ top: 0, behavior: 'smooth' });

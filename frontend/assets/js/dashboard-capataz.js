@@ -45,6 +45,7 @@ let USUARIO_ACTUAL = null;
   await cargarLista();
   configurarTabs();
   iniciarEstadoVivo();
+  iniciarAvisoRetiro();
   setInterval(() => {
     if (ARRASTRANDO) return;
     if (TAB_ACTIVA === 'seleccion') { cargarCargosConCupo(); cargarLista(); }

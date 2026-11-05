@@ -79,8 +79,14 @@ function renderTallas(personas) {
   TALLAS_LISTA = personas;
   TALLAS_PENDIENTES = personas.length;
   if (!personas.length) {
-    cont.classList.add('hidden');
-    cont.innerHTML = '';
+    // v10.29: aunque no haya tallas sin enviar, se puede bajar el Excel con
+    // todo el personal que sigue en proceso.
+    cont.className = 'bg-white rounded-xl shadow-sm p-4 mb-6 flex flex-wrap items-center justify-between gap-3';
+    cont.innerHTML = `
+      <p class="text-sm text-gray-600">No hay tallas pendientes de envío.</p>
+      <button onclick="descargarTallasExcel(true)" class="border border-gray-300 hover:bg-gray-50 text-gray-800 text-sm font-semibold px-4 py-2 rounded-lg">
+        📥 Descargar Excel de todo el personal en proceso
+      </button>`;
     return;
   }
   // Pasadas las 14:00 ya no deberían entrar más postulantes: si todavía hay
@@ -101,9 +107,14 @@ function renderTallas(personas) {
         </p>
         <p class="text-xs text-gray-500 mt-1 max-w-xl">Un solo correo a Bodega con esta tabla, en vez de uno por postulante. Lo ideal es enviarlo a las 14:00, cuando ya no entran más postulantes; si alguien completa después, queda aquí y sale en un envío aparte.</p>
       </div>
-      <button id="btn-enviar-tallas" onclick="enviarTallas()" class="bg-gray-900 hover:bg-gray-800 text-white text-sm font-semibold px-4 py-2 rounded-lg disabled:opacity-50">
-        ✉ Enviar tallas por correo
-      </button>
+      <div class="flex flex-wrap gap-2">
+        <button onclick="descargarTallasExcel()" class="border border-gray-300 hover:bg-gray-50 text-gray-800 text-sm font-semibold px-4 py-2 rounded-lg">
+          📥 Descargar Excel
+        </button>
+        <button id="btn-enviar-tallas" onclick="enviarTallas()" class="bg-gray-900 hover:bg-gray-800 text-white text-sm font-semibold px-4 py-2 rounded-lg disabled:opacity-50">
+          ✉ Enviar tallas por correo
+        </button>
+      </div>
     </div>
     <div class="overflow-x-auto mt-4">
       <table class="w-full text-sm">
@@ -130,6 +141,25 @@ function renderTallas(personas) {
         </tbody>
       </table>
     </div>`;
+}
+
+// v10.29 (pedido explícito del usuario): las tallas también se pueden bajar en
+// Excel (con un resumen de cuántos kits hay de cada medida), sin depender del correo.
+async function descargarTallasExcel(todos = false) {
+  try {
+    const res = await apiFetch('/bodega/exportar_tallas_excel.php' + (todos ? '?todos=1' : ''));
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'tallas_bodega.xlsx';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+  } catch (err) {
+    mostrarAlerta('alerta', err.message || 'No fue posible descargar el Excel.');
+  }
 }
 
 async function enviarTallas() {

@@ -716,7 +716,7 @@ function carpetaBasePostulantes(): string
  */
 function generarCarpetaDocumentosPersonales(PDO $pdo, int $postulacionId): void
 {
-    $stmt = $pdo->prepare('SELECT id, nombre, apellido, segundo_apellido, cv_ruta_archivo FROM postulaciones WHERE id = :id');
+    $stmt = $pdo->prepare('SELECT id, nombre, apellido, segundo_apellido, nombre_completo, rut, cv_ruta_archivo, experiencia_sin_cv FROM postulaciones WHERE id = :id');
     $stmt->execute(['id' => $postulacionId]);
     $p = $stmt->fetch();
     if (!$p) {
@@ -763,6 +763,15 @@ function generarCarpetaDocumentosPersonales(PDO $pdo, int $postulacionId): void
             $extensionCv = pathinfo($origenCv, PATHINFO_EXTENSION);
             copy($origenCv, $rutaDocsPersonales . '/CV.' . $extensionCv);
         }
+    } elseif (!empty($p['experiencia_sin_cv'])) {
+        // v10.29 (pedido explícito del usuario): sin CV adjunto, se arma un PDF
+        // con portada "Experiencia laboral" + nombre + RUT + la experiencia que
+        // la persona escribió, para que su carpeta siempre tenga un CV.pdf.
+        require_once __DIR__ . '/pdf_simple.php';
+        file_put_contents(
+            $rutaDocsPersonales . '/CV.pdf',
+            generarPdfExperiencia($p['nombre_completo'], $p['rut'], $p['experiencia_sin_cv'], OBRA_NOMBRE)
+        );
     }
 }
 
@@ -931,7 +940,7 @@ function guardarArchivoSubido(array $archivo, string $subcarpeta, string $etique
     $finfo = new finfo(FILEINFO_MIME_TYPE);
     $mime = $finfo->file($archivo['tmp_name']);
     if (!isset($permitidos[$mime])) {
-        throw new RuntimeException('Formato no permitido. Sube tu CV en PDF, JPG o PNG.');
+        throw new RuntimeException('Formato no permitido para ' . $etiquetaCampo . '. Súbelo en PDF, JPG o PNG.');
     }
 
     $carpetaBase = __DIR__ . '/../uploads/' . $subcarpeta;
@@ -1465,4 +1474,39 @@ function responderBloqueoIntentos(): never
         'Demasiados intentos fallidos. Espera ' . INTENTOS_VENTANA_MINUTOS . ' minutos e inténtalo de nuevo.',
         429
     );
+}
+
+/**
+ * v10.29 - Validación de formato de datos que antes entraban como texto libre.
+ * Cada función devuelve el valor normalizado, o null si no es válido.
+ */
+function normalizarTelefono(string $t): ?string
+{
+    $t = preg_replace('/[\s\-\.\(\)]/', '', $t);
+    if (!preg_match('/^\+?\d{8,15}$/', $t)) {
+        return null;
+    }
+    if (preg_match('/^9\d{8}$/', $t)) {
+        return '+56' . $t; // celular chileno escrito sin prefijo
+    }
+    if (preg_match('/^569\d{8}$/', $t)) {
+        return '+' . $t;
+    }
+    return $t;
+}
+
+function normalizarTallaCalzado(string $t): ?string
+{
+    $t = str_replace(',', '.', trim($t));
+    return preg_match('/^(3[4-9]|4[0-9]|50)(\.5)?$/', $t) ? $t : null;
+}
+
+function normalizarTallaOverol(string $t): ?string
+{
+    $t = strtoupper(str_replace([' ', '-'], '', trim($t)));
+    $t = ['2XL' => 'XXL', '3XL' => 'XXXL'][$t] ?? $t;
+    if (preg_match('/^(XS|S|M|L|XL|XXL|XXXL)$/', $t)) {
+        return $t;
+    }
+    return preg_match('/^(3[4-9]|[4-6][0-9]|70)$/', $t) ? $t : null;
 }

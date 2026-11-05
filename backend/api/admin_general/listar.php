@@ -30,6 +30,13 @@ $stmt = $pdo->query(
             d.contacto_emergencia_nombre, d.contacto_emergencia_telefono,
             d.talla_calzado, d.talla_overol,
             j.id AS datos_jao_id,
+            (SELECT j2.codigo_ficha FROM postulaciones p2
+               JOIN datos_jao j2 ON j2.postulacion_id = p2.id
+              WHERE p2.rut = p.rut AND p2.id <> p.id
+              ORDER BY p2.creado_at DESC, p2.id DESC LIMIT 1) AS ficha_anterior,
+            (SELECT COUNT(*) FROM postulaciones p3
+              WHERE p3.rut = p.rut AND p3.id <> p.id
+                AND p3.estado IN (\'Contratado\', \'Proceso_completo\')) > 0 AS recontratado,
             (SELECT COUNT(*) FROM trazabilidad_logs tp
               WHERE tp.postulacion_id = p.id AND tp.accion = ' . $pdo->quote(ACCION_INGRESO_CONTRATACION) . ') > 0 AS paso_contratacion_autorizado
        FROM postulaciones p
@@ -99,6 +106,7 @@ foreach ($postulaciones as &$p) {
     $tieneDocumentoObservado = (bool)array_filter($detalleDocs, fn ($d) => $d['observado']);
     $p['tiene_documento_observado'] = $tieneDocumentoObservado;
     $p['tiene_datos_jao'] = $p['datos_jao_id'] !== null;
+    $p['recontratado'] = (bool)$p['recontratado'];
     $p['afp_alerta_jao'] = (bool)$p['afp_alerta_jao'];
     $p['identidad_verificada'] = $p['identidad_verificada_at'] !== null;
     $p['ingreso_faena_confirmado'] = $p['ingreso_faena_at'] !== null;

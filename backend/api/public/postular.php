@@ -59,6 +59,7 @@ if ($apellido === '')                        $errores[] = 'Apellido es obligator
 if ($segundoApellido === '')                 $errores[] = 'Segundo apellido es obligatorio.';
 if ($nombre === '')                          $errores[] = 'Nombre es obligatorio.';
 if ($telefono === '')                        $errores[] = 'Teléfono es obligatorio.';
+elseif (normalizarTelefono($telefono) === null) $errores[] = 'Teléfono inválido: escribe solo números (por ejemplo +56912345678).';
 if (!$correo)                                $errores[] = 'Correo inválido.';
 if (!$consentimiento)                        $errores[] = 'Debe aceptar el tratamiento de datos personales (Ley 19.628).';
 
@@ -66,6 +67,7 @@ if ($errores) {
     responderError(implode(' ', $errores), 422);
 }
 
+$telefono = normalizarTelefono($telefono);
 $numeroDocumento = normalizarDocumento($tipoDocumento, $numeroDocumento);
 $nombreCompleto = trim($nombre . ' ' . $apellido . ' ' . $segundoApellido);
 

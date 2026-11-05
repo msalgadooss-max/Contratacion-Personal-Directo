@@ -307,6 +307,7 @@ function tarjeta(p) {
         </div>
         <div class="flex items-center gap-2 flex-wrap justify-end">
           <button class="text-xs font-semibold text-blue-600 underline" onclick="abrirDetalleTiempos(${p.id})">⏱ Ver tiempos</button>
+          ${p.recontratado ? '<span class="text-xs text-purple-700 bg-purple-50 px-2 py-1 rounded-md font-medium" title="Esta persona ya trabajó antes en la empresa">♻ Recontratado</span>' : ''}
           ${p.tiene_datos_jao ? '<span class="text-xs text-green-700 bg-green-50 px-2 py-1 rounded-md font-medium">✓ Nómina completa</span>' : ''}
           ${p.identidad_verificada
             ? `<span class="text-xs text-green-700 bg-green-50 px-2 py-1 rounded-md font-medium" title="Verificado por ${esc(p.identidad_verificada_por_nombre || '')}">✓ Identidad verificada</span>`
@@ -328,7 +329,7 @@ function tarjeta(p) {
                      <button class="text-xs text-blue-600 underline" onclick="confirmarPasoContratacionManual(${p.id})" title="Úsalo si la persona ya está contigo pero Portería no alcanzó a autorizar su paso">Confirmar manualmente</button>
                    </span>`)
             : ''}
-          <button class="bg-gray-800 hover:bg-gray-900 text-white text-xs font-semibold px-3 py-2 rounded-lg" onclick="toggleFormJao(${p.id}, ${esc(JSON.stringify(String(p.isapre_fonasa || '')))})">
+          <button class="bg-gray-800 hover:bg-gray-900 text-white text-xs font-semibold px-3 py-2 rounded-lg" onclick="toggleFormJao(${p.id}, ${esc(JSON.stringify(String(p.isapre_fonasa || '')))}, ${esc(JSON.stringify(String(p.ficha_anterior || '')))})">
             ${p.tiene_datos_jao ? 'Editar datos de nómina' : 'Completar datos de nómina'}
           </button>
           <button class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-3 py-2 rounded-lg disabled:opacity-40"
@@ -367,7 +368,7 @@ function tarjeta(p) {
     </div>`;
 }
 
-function toggleFormJao(id, isapreFonasa) {
+function toggleFormJao(id, isapreFonasa, fichaAnterior) {
   const cont = document.getElementById(`form-jao-${id}`);
   if (!cont.classList.contains('hidden')) {
     cont.classList.add('hidden');
@@ -377,6 +378,16 @@ function toggleFormJao(id, isapreFonasa) {
   cont.classList.remove('hidden');
   cont.innerHTML = formularioJao(id, isapreFonasa);
   activarAutocompletadoFechasJao(id);
+  // v10.29: si la persona ya trabajó antes, su código de ficha anterior viene
+  // prellenado (el JAO puede cambiarlo): así la ficha acompaña al trabajador
+  // entre contrataciones.
+  if (fichaAnterior) {
+    const input = document.getElementById(`jao-codigo_ficha-${id}`);
+    if (input && !input.value) {
+      input.value = fichaAnterior;
+      input.insertAdjacentHTML('afterend', '<p class="text-[11px] text-amber-700 mt-1">♻ Ficha de su contratación anterior: revísala.</p>');
+    }
+  }
 }
 
 // v10.14 (pedido explícito del usuario): "que con la fecha inicio del

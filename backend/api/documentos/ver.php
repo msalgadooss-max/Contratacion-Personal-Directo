@@ -27,6 +27,20 @@ if ($postulacionId <= 0 || !in_array($tipo, $tiposValidos, true)) {
 $pdo = obtenerConexion();
 
 if ($tipo === 'cv') {
+    // v10.29: si la persona no subió CV pero contó su experiencia, se sirve un
+    // PDF generado en el momento (portada + nombre + RUT + experiencia).
+    $stmtCv = $pdo->prepare('SELECT cv_ruta_archivo, experiencia_sin_cv, nombre_completo, rut FROM postulaciones WHERE id = :id');
+    $stmtCv->execute(['id' => $postulacionId]);
+    $filaCv = $stmtCv->fetch();
+    if ($filaCv && !$filaCv['cv_ruta_archivo'] && !empty($filaCv['experiencia_sin_cv'])) {
+        require_once __DIR__ . '/../../includes/pdf_simple.php';
+        $pdfGenerado = generarPdfExperiencia($filaCv['nombre_completo'], $filaCv['rut'], $filaCv['experiencia_sin_cv'], OBRA_NOMBRE);
+        header('Content-Type: application/pdf');
+        header('Content-Disposition: inline; filename="cv-experiencia-postulacion-' . $postulacionId . '.pdf"');
+        header('Content-Length: ' . strlen($pdfGenerado));
+        echo $pdfGenerado;
+        exit;
+    }
     $stmt = $pdo->prepare('SELECT cv_ruta_archivo AS ruta FROM postulaciones WHERE id = :id');
 } else {
     $stmt = $pdo->prepare('SELECT ruta_archivo AS ruta FROM postulacion_documentos WHERE postulacion_id = :id AND tipo = :tipo');

@@ -233,3 +233,52 @@ async function deshacerSeleccion(id) {
     if (btn) { btn.disabled = false; btn.textContent = '↩ Deshacer selección (me equivoqué de cargo)'; }
   }
 }
+
+// --- v10.29 (pedido explícito del usuario): aviso EN LA PLATAFORMA al Capataz
+// y al Jefe de Terreno cuando alguien ya terminó su contratación y hay que ir a
+// buscarlo (antes solo se enteraban abriendo "Personal Contratado" o por el
+// correo de nómina). Muestra una franja verde arriba y un contador rojo en la
+// pestaña "Personal Contratado", y se refresca solo cada 15 segundos.
+// Requiere un <div id="aviso-retiro"></div> y la función global cambiarTab().
+let AVISO_RETIRO_ANTERIOR = 0;
+function iniciarAvisoRetiro() {
+  const cont = document.getElementById('aviso-retiro');
+  if (!cont) return;
+  async function cargar() {
+    try {
+      const d = await apiFetch('/terreno/recepcion_listar.php');
+      const lista = d.postulaciones || [];
+      const n = lista.length;
+      document.querySelectorAll('[data-tab="contratados"]').forEach((b) => {
+        let marca = b.querySelector('.badge-retiro');
+        if (n) {
+          if (!marca) {
+            marca = document.createElement('span');
+            marca.className = 'badge-retiro ml-1.5 inline-block bg-red-600 text-white text-[11px] font-bold rounded-full px-1.5 py-0.5';
+            b.appendChild(marca);
+          }
+          marca.textContent = n;
+        } else if (marca) {
+          marca.remove();
+        }
+      });
+      if (!n) {
+        cont.innerHTML = '';
+      } else {
+        const nombres = lista.slice(0, 3).map(p => esc(p.nombre_completo)).join(', ') + (n > 3 ? ` y ${n - 3} más` : '');
+        cont.innerHTML = `
+          <div class="bg-green-600 text-white rounded-xl px-4 py-3 mb-4 flex flex-wrap items-center justify-between gap-2">
+            <div class="min-w-0">
+              <p class="text-sm font-bold">👉 ${n} ${n === 1 ? 'persona lista' : 'personas listas'} para ir a buscar</p>
+              <p class="text-xs opacity-90 truncate">${nombres}</p>
+            </div>
+            <button onclick="cambiarTab('contratados')" class="bg-white text-green-700 text-sm font-bold px-3 py-1.5 rounded-lg shrink-0">Ver</button>
+          </div>`;
+        if (n > AVISO_RETIRO_ANTERIOR && navigator.vibrate) navigator.vibrate(200);
+      }
+      AVISO_RETIRO_ANTERIOR = n;
+    } catch (e) { /* sin aviso: no es crítico */ }
+  }
+  cargar();
+  setInterval(cargar, 15000);
+}

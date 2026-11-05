@@ -55,6 +55,7 @@ $stmt = $pdo->prepare(
        FROM postulaciones p
        JOIN cargos c ON c.id = p.cargo_id
       WHERE (p.rut = :doc_crudo OR p.rut = :doc_rut) AND LOWER(p.correo) = LOWER(:correo)
+      ORDER BY p.creado_at DESC, p.id DESC
       LIMIT 1'
 );
 $stmt->execute(['doc_crudo' => $documentoCrudo, 'doc_rut' => $documentoRut, 'correo' => $correo]);
@@ -94,8 +95,23 @@ $tokenVigente = $postulacion['token_privado'] !== null
     && $postulacion['token_expira_at'] !== null
     && strtotime($postulacion['token_expira_at']) > time();
 
+// v10.29: documentos que el postulante dejó pendientes ("No lo tengo ahora")
+// o que el JAO marcó como pendientes de entrega, y que todavía no llegan.
+// Se los ofrece subir desde aquí (ver pendientes_enviar.php).
+$stmtPend = $pdo->prepare(
+    "SELECT tipo FROM documentos_pendientes
+      WHERE postulacion_id = :id AND condicion = 'pendiente' AND resuelto_at IS NULL"
+);
+$stmtPend->execute(['id' => $postulacion['id']]);
+$etiquetasDoc = etiquetasDocumentos();
+$documentosPendientes = array_map(
+    fn ($t) => ['tipo' => $t, 'etiqueta' => $etiquetasDoc[$t] ?? $t],
+    $stmtPend->fetchAll(PDO::FETCH_COLUMN)
+);
+
 responderOk([
     'postulacion' => [
+        'documentos_pendientes' => $documentosPendientes,
         'nombre_completo'    => $postulacion['nombre_completo'],
         'rut'                => $postulacion['rut'],
         'cargo'              => $postulacion['nombre_cargo'],

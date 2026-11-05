@@ -225,7 +225,10 @@ $resultado = array_map(function ($p) use ($usuario) {
         'pasos' => pasosProgreso($p),
         // v6: true si el rol que está mirando el widget es justo el que
         // tiene que actuar ahora sobre esta persona.
-        'pendiente_de_ti' => rolPendiente($p) === $usuario['rol'],
+        // v10.29: una persona ya contratada que todavía nadie fue a buscar queda
+        // "pendiente" para el Capataz y el Jefe de Terreno (antes nadie).
+        'pendiente_de_ti' => rolPendiente($p) === $usuario['rol']
+            || ($p['estado'] === 'Contratado' && in_array($usuario['rol'], ['Capataz', 'Jefe_Terreno'], true)),
     ];
 }, $filas);
 
