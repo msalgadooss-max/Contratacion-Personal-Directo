@@ -23,13 +23,18 @@ if (!MODULO_PREVENCION_ACTIVO) {
 if (!MODULO_BODEGA_ACTIVO) {
     $rolesExcluidos[] = "'Jefe_Bodega'";
 }
+// v10.27: para cambiar claves se necesitan TODOS los usuarios activos
+// (también Desarrollador y los roles de módulos aún apagados).
+if (($_GET['todos'] ?? '') === '1') {
+    $rolesExcluidos = ["'__ninguno__'"];
+}
 
 $pdo = obtenerConexion();
 $stmt = $pdo->query(
     "SELECT id, nombre, correo, rol
        FROM usuarios
       WHERE activo = 1 AND rol NOT IN (" . implode(',', $rolesExcluidos) . ")
-      ORDER BY FIELD(rol, 'Jefe_Terreno','Capataz','Admin_Contrato','Jefe_Administrativo','Prevencionista','Jefe_Bodega','Porteria','Gerencia'), nombre"
+      ORDER BY FIELD(rol, 'Desarrollador','Jefe_Terreno','Capataz','Admin_Contrato','Jefe_Administrativo','Prevencionista','Jefe_Bodega','Porteria','Gerencia'), nombre"
 );
 
 responderOk(['usuarios' => $stmt->fetchAll()]);

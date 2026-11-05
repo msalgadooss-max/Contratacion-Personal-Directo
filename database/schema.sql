@@ -776,3 +776,16 @@ INSERT INTO cargos (nombre_cargo, cupos_totales, cupos_activos, activo) VALUES
 INSERT INTO usuarios (nombre, correo, password, rol) VALUES
     ('Administrador General', 'admin@icafal.cl',
      '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Jefe_Administrativo');
+
+-- ---------------------------------------------------------------------
+-- Tabla: intentos_fallidos (v10.27)
+-- Límite de intentos (10 en 15 minutos) para login y consultas públicas.
+-- tipo = 'login' (clave = correo) | 'documento' (clave = RUT consultado).
+-- ---------------------------------------------------------------------
+CREATE TABLE intentos_fallidos (
+    id         BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    tipo       VARCHAR(20)  NOT NULL,
+    clave      VARCHAR(190) NOT NULL,
+    creado_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    KEY idx_intentos (tipo, clave, creado_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

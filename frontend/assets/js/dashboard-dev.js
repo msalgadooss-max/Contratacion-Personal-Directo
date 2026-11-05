@@ -31,6 +31,7 @@ const ETIQUETAS_ROL = {
   const usuario = await protegerDashboard('Desarrollador');
   if (!usuario) return;
   await cargarUsuarios();
+  cargarUsuariosClaves();
   configurarTabs();
   mostrarQr();
   mostrarQrEncuesta();
@@ -138,6 +139,50 @@ document.getElementById('btn-generar-qr-rol').addEventListener('click', async ()
     document.getElementById('qr-rol').innerHTML = '';
     // eslint-disable-next-line no-undef
     new QRCode(document.getElementById('qr-rol'), { text: data.url, width: 200, height: 200 });
+  } catch (err) {
+    mostrarAlerta('alerta', err.message);
+  }
+});
+
+// --- v10.27: cambio de claves de usuarios internos ---------------------------
+async function cargarUsuariosClaves() {
+  const select = document.getElementById('clave-usuario');
+  try {
+    const data = await apiFetch('/dev/listar_usuarios.php?todos=1');
+    select.innerHTML = data.usuarios.map(u =>
+      `<option value="${u.id}">${ETIQUETAS_ROL[u.rol] || u.rol} (${esc(u.nombre)} · ${esc(u.correo)})</option>`).join('');
+  } catch (err) {
+    mostrarAlerta('alerta', err.message);
+  }
+}
+
+function generarClaveAleatoria() {
+  // Sin caracteres confusos (0/O, 1/l/I) para poder dictarla por teléfono.
+  const letras = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const bytes = new Uint32Array(10);
+  window.crypto.getRandomValues(bytes);
+  return Array.from(bytes, b => letras[b % letras.length]).join('');
+}
+
+document.getElementById('btn-clave-generar').addEventListener('click', () => {
+  document.getElementById('clave-nueva').value = generarClaveAleatoria();
+});
+
+document.getElementById('btn-clave-guardar').addEventListener('click', async () => {
+  const usuarioId = Number(document.getElementById('clave-usuario').value);
+  const clave = document.getElementById('clave-nueva').value;
+  if (!usuarioId) return;
+  if (clave.length < 8) {
+    mostrarAlerta('alerta', 'La clave nueva debe tener al menos 8 caracteres.');
+    return;
+  }
+  try {
+    const data = await apiFetch('/dev/cambiar_password.php', {
+      method: 'POST',
+      body: { usuario_id: usuarioId, password_nueva: clave },
+    });
+    mostrarAlerta('alerta', data.mensaje, 'exito');
+    document.getElementById('clave-nueva').value = '';
   } catch (err) {
     mostrarAlerta('alerta', err.message);
   }

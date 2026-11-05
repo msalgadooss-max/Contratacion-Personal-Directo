@@ -1402,3 +1402,67 @@ function notificarPasoContratacionAJao(PDO $pdo, int $postulacionId): void
         Mailer::enviar($jao['correo'], $jao['nombre'], 'Postulante listo para firma de contrato - ICAFAL', $html);
     }
 }
+
+/**
+ * v10.27 - Límite de intentos fallidos (login y consultas públicas).
+ *
+ * Se cuenta por "clave" y no por IP: detrás del proxy de Render la IP del
+ * cliente se puede falsear, y en la obra muchas personas comparten la
+ * misma red. Para el login la clave es el correo; para seguimiento y
+ * "recuperar mis datos" es el documento consultado -- así quien intenta
+ * adivinar el correo/código de UNA persona se frena a los 10 intentos.
+ *
+ * A prueba de fallos: si la tabla todavía no existe (migración sin
+ * correr) o la consulta falla, NO se bloquea a nadie -- el límite es una
+ * protección extra, nunca debe tumbar el ingreso.
+ */
+const INTENTOS_MAXIMOS = 10;
+const INTENTOS_VENTANA_MINUTOS = 15;
+
+function intentosBloqueado(PDO $pdo, string $tipo, string $clave): bool
+{
+    try {
+        $stmt = $pdo->prepare(
+            'SELECT COUNT(*) FROM intentos_fallidos
+              WHERE tipo = :tipo AND clave = :clave
+                AND creado_at > DATE_SUB(NOW(), INTERVAL ' . INTENTOS_VENTANA_MINUTOS . ' MINUTE)'
+        );
+        $stmt->execute(['tipo' => $tipo, 'clave' => mb_substr($clave, 0, 190)]);
+        return (int)$stmt->fetchColumn() >= INTENTOS_MAXIMOS;
+    } catch (Throwable $e) {
+        error_log('intentosBloqueado: ' . $e->getMessage());
+        return false;
+    }
+}
+
+function registrarIntentoFallido(PDO $pdo, string $tipo, string $clave): void
+{
+    try {
+        $stmt = $pdo->prepare('INSERT INTO intentos_fallidos (tipo, clave) VALUES (:tipo, :clave)');
+        $stmt->execute(['tipo' => $tipo, 'clave' => mb_substr($clave, 0, 190)]);
+        // Limpieza ocasional de filas viejas para que la tabla no crezca.
+        if (random_int(1, 50) === 1) {
+            $pdo->exec('DELETE FROM intentos_fallidos WHERE creado_at < DATE_SUB(NOW(), INTERVAL 1 DAY)');
+        }
+    } catch (Throwable $e) {
+        error_log('registrarIntentoFallido: ' . $e->getMessage());
+    }
+}
+
+function limpiarIntentosFallidos(PDO $pdo, string $tipo, string $clave): void
+{
+    try {
+        $stmt = $pdo->prepare('DELETE FROM intentos_fallidos WHERE tipo = :tipo AND clave = :clave');
+        $stmt->execute(['tipo' => $tipo, 'clave' => mb_substr($clave, 0, 190)]);
+    } catch (Throwable $e) {
+        error_log('limpiarIntentosFallidos: ' . $e->getMessage());
+    }
+}
+
+function responderBloqueoIntentos(): never
+{
+    responderError(
+        'Demasiados intentos fallidos. Espera ' . INTENTOS_VENTANA_MINUTOS . ' minutos e inténtalo de nuevo.',
+        429
+    );
+}

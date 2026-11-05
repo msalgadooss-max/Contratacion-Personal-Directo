@@ -80,6 +80,24 @@
       </div>
     </section>
 
+    <!-- v10.27: cambio de claves de los usuarios internos -->
+    <section class="bg-white rounded-xl shadow-sm p-5 mb-6">
+      <h2 class="text-sm font-semibold text-gray-700 mb-1">Claves de los usuarios</h2>
+      <p class="text-xs text-gray-500 mb-4">Cambia la clave de cualquier usuario interno (incluida la tuya). Mínimo 8 caracteres. Anota la clave nueva antes de guardar: no se vuelve a mostrar.</p>
+      <div class="flex flex-wrap items-end gap-3">
+        <div class="flex-1 min-w-[220px]">
+          <label class="block text-xs text-gray-600 mb-1">Usuario</label>
+          <select id="clave-usuario" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"><option value="">Cargando...</option></select>
+        </div>
+        <div class="flex-1 min-w-[200px]">
+          <label class="block text-xs text-gray-600 mb-1">Clave nueva</label>
+          <input id="clave-nueva" type="text" autocomplete="off" minlength="8" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono">
+        </div>
+        <button type="button" id="btn-clave-generar" class="border border-gray-300 hover:bg-gray-50 text-gray-700 text-sm font-semibold px-3 py-2 rounded-lg">Generar</button>
+        <button type="button" id="btn-clave-guardar" class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2 rounded-lg">Cambiar clave</button>
+      </div>
+    </section>
+
     <!-- QR / enlace -->
     <section class="bg-white rounded-xl shadow-sm p-5">
       <div class="flex gap-1 border-b border-gray-200 mb-4" id="tabs">

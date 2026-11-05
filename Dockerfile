@@ -57,6 +57,10 @@ RUN { \
         echo '    <FilesMatch "\.(js|css|html)$">'; \
         echo '        Header set Cache-Control "no-cache, must-revalidate"'; \
         echo '    </FilesMatch>'; \
+        echo '    Header always set X-Content-Type-Options "nosniff"'; \
+        echo '    Header always set X-Frame-Options "SAMEORIGIN"'; \
+        echo '    Header always set Referrer-Policy "strict-origin-when-cross-origin"'; \
+        echo '    Header always set Strict-Transport-Security "max-age=15552000"'; \
         echo '    ErrorLog ${APACHE_LOG_DIR}/error.log'; \
         echo '    CustomLog ${APACHE_LOG_DIR}/access.log combined'; \
         echo '</VirtualHost>'; \

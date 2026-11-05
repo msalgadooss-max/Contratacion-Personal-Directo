@@ -31,6 +31,12 @@ if ($documentoCrudo === '' || !$correo) {
 $documentoRut = normalizarRut($documentoCrudo);
 
 $pdo = obtenerConexion();
+
+// v10.27: mismo límite que seguimiento.php (10 intentos fallidos / 15 min).
+if (intentosBloqueado($pdo, 'documento', $documentoRut)) {
+    responderBloqueoIntentos();
+}
+
 $stmt = $pdo->prepare(
     'SELECT p.id, p.tipo_documento, p.nombre, p.apellido, p.segundo_apellido, p.telefono, p.correo,
             p.cv_ruta_archivo, p.creado_at, c.nombre_cargo
@@ -44,6 +50,7 @@ $stmt->execute(['doc_crudo' => $documentoCrudo, 'doc_rut' => $documentoRut, 'cor
 $postulacion = $stmt->fetch();
 
 if (!$postulacion) {
+    registrarIntentoFallido($pdo, 'documento', $documentoRut);
     // Respuesta "ok" con encontrado=false (no un 404): que alguien no
     // tenga postulaciones anteriores es un caso normal y esperado, no un
     // error -- el frontend simplemente deja el formulario en blanco.

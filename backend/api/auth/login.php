@@ -15,14 +15,23 @@ if ($correo === '' || $password === '') {
 }
 
 $pdo = obtenerConexion();
+
+// v10.27: máximo 10 intentos fallidos por correo cada 15 minutos.
+$claveIntentos = mb_strtolower($correo);
+if (intentosBloqueado($pdo, 'login', $claveIntentos)) {
+    responderBloqueoIntentos();
+}
+
 $stmt = $pdo->prepare('SELECT id, nombre, correo, password, rol, activo FROM usuarios WHERE correo = :correo LIMIT 1');
 $stmt->execute(['correo' => $correo]);
 $usuario = $stmt->fetch();
 
 // Mensaje generico en ambos casos de fallo: evita revelar si el correo existe.
 if (!$usuario || !$usuario['activo'] || !password_verify($password, $usuario['password'])) {
+    registrarIntentoFallido($pdo, 'login', $claveIntentos);
     responderError('Credenciales incorrectas.', 401);
 }
+limpiarIntentosFallidos($pdo, 'login', $claveIntentos);
 
 // Regenerar el id de sesion en cada login (previene session fixation).
 session_regenerate_id(true);

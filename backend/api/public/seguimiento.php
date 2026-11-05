@@ -38,6 +38,13 @@ if ($documentoCrudo === '' || !$correo) {
 $documentoRut = normalizarRut($documentoCrudo);
 
 $pdo = obtenerConexion();
+
+// v10.27: máximo 10 intentos fallidos por documento cada 15 minutos
+// (evita adivinar el correo de una persona probando uno tras otro).
+if (intentosBloqueado($pdo, 'documento', $documentoRut)) {
+    responderBloqueoIntentos();
+}
+
 $stmt = $pdo->prepare(
     'SELECT p.id, p.nombre_completo, p.rut, p.estado, p.codigo_seguimiento, p.creado_at, p.admin_autorizado_at,
             p.token_privado, p.token_expira_at,
@@ -54,6 +61,7 @@ $stmt->execute(['doc_crudo' => $documentoCrudo, 'doc_rut' => $documentoRut, 'cor
 $postulacion = $stmt->fetch();
 
 if (!$postulacion) {
+    registrarIntentoFallido($pdo, 'documento', $documentoRut);
     responderError('No se encontró una postulación con esos datos.', 404);
 }
 

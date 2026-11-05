@@ -19,7 +19,10 @@ function iniciarSesionSegura(): void
     session_set_cookie_params([
         'lifetime' => 0,
         'path'     => '/',
-        'secure'   => !empty($_SERVER['HTTPS']),
+        // v10.27: detrás del proxy de Render PHP ve HTTP plano; el
+        // protocolo real llega en X-Forwarded-Proto.
+        'secure'   => !empty($_SERVER['HTTPS'])
+            || strtolower($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https',
         'httponly' => true,
         'samesite' => 'Lax',
     ]);

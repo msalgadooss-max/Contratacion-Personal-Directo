@@ -28,6 +28,12 @@ if ($documentoCrudo === '' || $codigo === '') {
 $documentoRut = normalizarRut($documentoCrudo);
 
 $pdo = obtenerConexion();
+
+// v10.27: mismo límite que seguimiento.php (10 intentos fallidos / 15 min).
+if (intentosBloqueado($pdo, 'documento', $documentoRut)) {
+    responderBloqueoIntentos();
+}
+
 $stmt = $pdo->prepare(
     'SELECT id, estado,
             (SELECT COUNT(*) FROM datos_contratacion d WHERE d.postulacion_id = postulaciones.id) > 0 AS etapa2_completada
@@ -39,6 +45,7 @@ $stmt->execute(['doc_crudo' => $documentoCrudo, 'doc_rut' => $documentoRut, 'cod
 $postulacion = $stmt->fetch();
 
 if (!$postulacion) {
+    registrarIntentoFallido($pdo, 'documento', $documentoRut);
     responderError('No se encontró una postulación con esos datos.', 404);
 }
 // v10.7: ya no depende de admin_autorizado_at (dato interno) -- basta
