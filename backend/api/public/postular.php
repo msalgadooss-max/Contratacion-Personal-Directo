@@ -89,6 +89,42 @@ if ($capatazEsperadoId > 0) {
     $capatazEsperadoId = null;
 }
 
+// v10.28 (pedido explícito del usuario): referidos. Si la persona llegó por
+// el enlace de un Capataz o de un Jefe de Terreno (?ref=<id> en el
+// formulario), queda anotado quién la invitó. Con un enlace de Capataz, la
+// persona queda asignada a ESE Capataz (solo él la verá para seleccionarla);
+// con un enlace de Jefe de Terreno vale el Capataz que haya elegido (que,
+// si el Jefe de Terreno tiene equipo, debe ser de su equipo).
+$referidoPorId = (int)($_POST['referido_por_id'] ?? 0);
+if ($referidoPorId > 0) {
+    $stmtRef = $pdo->prepare(
+        "SELECT id, rol FROM usuarios WHERE id = :id AND activo = 1 AND rol IN ('Capataz', 'Jefe_Terreno')"
+    );
+    $stmtRef->execute(['id' => $referidoPorId]);
+    $referente = $stmtRef->fetch();
+    if (!$referente) {
+        $referidoPorId = null;
+    } elseif ($referente['rol'] === 'Capataz') {
+        $capatazEsperadoId = (int)$referente['id'];
+    } elseif ($capatazEsperadoId) {
+        $stmtEquipo = $pdo->prepare(
+            "SELECT COUNT(*) FROM usuarios WHERE rol = 'Capataz' AND activo = 1 AND jefe_terreno_id = :jt"
+        );
+        $stmtEquipo->execute(['jt' => $referente['id']]);
+        if ((int)$stmtEquipo->fetchColumn() > 0) {
+            $stmtEnEquipo = $pdo->prepare(
+                "SELECT COUNT(*) FROM usuarios WHERE id = :id AND jefe_terreno_id = :jt"
+            );
+            $stmtEnEquipo->execute(['id' => $capatazEsperadoId, 'jt' => $referente['id']]);
+            if ((int)$stmtEnEquipo->fetchColumn() === 0) {
+                $capatazEsperadoId = null; // no es de su equipo: queda sin Capataz asignado
+            }
+        }
+    }
+} else {
+    $referidoPorId = null;
+}
+
 // v10.5: ya no se le pide cargo al postulante -- nace apuntando al
 // cargo interno "Por asignar" (nunca visible para el, ver comentario de
 // cabecera) y siempre en estado 'Pendiente'. El Capataz reemplaza este
@@ -195,11 +231,11 @@ $stmt = $pdo->prepare(
         (tipo_documento, rut, nombre_completo, nombre, apellido, segundo_apellido,
          telefono, correo, region, comuna, cargo_id, obra,
          codigo_seguimiento, estado, consentimiento_ley19628, cv_ruta_archivo, experiencia_sin_cv,
-         capataz_esperado_id)
+         capataz_esperado_id, referido_por_id)
      VALUES
         (:tipo_documento, :rut, :nombre_completo, :nombre, :apellido, :segundo_apellido,
          :telefono, :correo, :region, :comuna, :cargo_id, :obra,
-         :codigo, :estado, 1, :cv_ruta, :experiencia_sin_cv, :capataz_esperado_id)'
+         :codigo, :estado, 1, :cv_ruta, :experiencia_sin_cv, :capataz_esperado_id, :referido_por_id)'
 );
 $stmt->execute([
     'tipo_documento'   => $tipoDocumento,
@@ -221,6 +257,7 @@ $stmt->execute([
     'cv_ruta'          => $cvRuta,
     'experiencia_sin_cv' => $experienciaSinCv,
     'capataz_esperado_id' => $capatazEsperadoId,
+    'referido_por_id' => $referidoPorId,
 ]);
 
 $postulacionId = (int)$pdo->lastInsertId();

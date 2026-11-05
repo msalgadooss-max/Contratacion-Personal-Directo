@@ -32,6 +32,8 @@ const ETIQUETAS_ROL = {
   if (!usuario) return;
   await cargarUsuarios();
   cargarUsuariosClaves();
+  cargarTiempos();
+  document.getElementById('tiempos-dias').addEventListener('change', cargarTiempos);
   configurarTabs();
   mostrarQr();
   mostrarQrEncuesta();
@@ -143,6 +145,74 @@ document.getElementById('btn-generar-qr-rol').addEventListener('click', async ()
     mostrarAlerta('alerta', err.message);
   }
 });
+
+// --- v10.28: tiempos por rol y etapa -----------------------------------------
+function formatearDuracion(segundos) {
+  if (segundos === null || segundos === undefined) return '—';
+  if (segundos < 60) return `${segundos} s`;
+  const d = Math.floor(segundos / 86400);
+  const h = Math.floor((segundos % 86400) / 3600);
+  const m = Math.floor((segundos % 3600) / 60);
+  if (d > 0) return `${d} d ${h} h`;
+  if (h > 0) return `${h} h ${m} min`;
+  return `${m} min`;
+}
+
+async function cargarTiempos() {
+  const dias = document.getElementById('tiempos-dias').value;
+  const resumen = document.getElementById('tiempos-resumen');
+  try {
+    const data = await apiFetch(`/dev/tiempos_resumen.php?dias=${encodeURIComponent(dias)}`);
+    const total = data.proceso_completo;
+    resumen.innerHTML = `${data.postulaciones_consideradas} postulaciones consideradas · Proceso completo (selección → retiro): ` +
+      (total.n ? `<strong class="text-gray-800">${formatearDuracion(total.mediana)}</strong> de mediana (${total.n} casos)` : 'todavía sin casos terminados');
+
+    document.getElementById('tiempos-etapas').innerHTML = `
+      <table class="w-full text-sm">
+        <thead><tr class="text-left text-xs text-gray-500 border-b border-gray-200">
+          <th class="py-2 pr-3 font-semibold">Etapa</th><th class="py-2 pr-3 font-semibold">Rol</th>
+          <th class="py-2 pr-3 font-semibold text-right">Mediana</th><th class="py-2 pr-3 font-semibold text-right">Promedio</th>
+          <th class="py-2 pr-3 font-semibold text-right">Más rápido / más lento</th><th class="py-2 pr-3 font-semibold text-right">Casos</th>
+          <th class="py-2 font-semibold text-right">Esperando ahora</th>
+        </tr></thead>
+        <tbody>${data.etapas.map(e => `
+          <tr class="border-b border-gray-100 align-top">
+            <td class="py-2 pr-3 font-medium text-gray-800">${esc(e.nombre)}</td>
+            <td class="py-2 pr-3 text-gray-600">${esc(e.rol)}</td>
+            <td class="py-2 pr-3 text-right font-semibold text-gray-900 whitespace-nowrap">${formatearDuracion(e.completadas.mediana)}</td>
+            <td class="py-2 pr-3 text-right text-gray-600 whitespace-nowrap">${formatearDuracion(e.completadas.promedio)}</td>
+            <td class="py-2 pr-3 text-right text-gray-500 whitespace-nowrap">${formatearDuracion(e.completadas.minimo)} / ${formatearDuracion(e.completadas.maximo)}</td>
+            <td class="py-2 pr-3 text-right text-gray-600">${e.completadas.n}</td>
+            <td class="py-2 text-right whitespace-nowrap">${e.en_espera.n
+              ? `<span class="inline-block bg-amber-100 text-amber-800 text-xs font-semibold px-2 py-0.5 rounded-full">${e.en_espera.n} · la más antigua ${formatearDuracion(e.en_espera.mas_antigua)}</span>`
+              : '<span class="text-gray-400">—</span>'}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>`;
+
+    const filasUsuarios = data.etapas.flatMap(e => e.por_usuario.map(u => ({ etapa: e.nombre, ...u })));
+    document.getElementById('tiempos-usuarios').innerHTML = filasUsuarios.length ? `
+      <h3 class="text-xs font-semibold text-gray-700 mb-2">Detalle por persona</h3>
+      <div class="overflow-x-auto"><table class="w-full text-sm">
+        <thead><tr class="text-left text-xs text-gray-500 border-b border-gray-200">
+          <th class="py-2 pr-3 font-semibold">Persona</th><th class="py-2 pr-3 font-semibold">Etapa</th>
+          <th class="py-2 pr-3 font-semibold text-right">Mediana</th><th class="py-2 pr-3 font-semibold text-right">Promedio</th>
+          <th class="py-2 font-semibold text-right">Casos</th>
+        </tr></thead>
+        <tbody>${filasUsuarios.map(u => `
+          <tr class="border-b border-gray-100">
+            <td class="py-2 pr-3 text-gray-800">${esc(u.usuario)}</td>
+            <td class="py-2 pr-3 text-gray-600">${esc(u.etapa)}</td>
+            <td class="py-2 pr-3 text-right font-semibold text-gray-900 whitespace-nowrap">${formatearDuracion(u.mediana)}</td>
+            <td class="py-2 pr-3 text-right text-gray-600 whitespace-nowrap">${formatearDuracion(u.promedio)}</td>
+            <td class="py-2 text-right text-gray-600">${u.n}</td>
+          </tr>`).join('')}
+        </tbody></table></div>` : '';
+  } catch (err) {
+    resumen.textContent = '';
+    mostrarAlerta('alerta', err.message);
+  }
+}
 
 // --- v10.27: cambio de claves de usuarios internos ---------------------------
 async function cargarUsuariosClaves() {

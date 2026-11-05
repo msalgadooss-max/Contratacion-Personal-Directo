@@ -32,23 +32,35 @@ function iniciarEstadoVivo() {
   if (!cont) return;
 
   cont.innerHTML = `
-    <div class="bg-white rounded-xl shadow-sm p-4 mb-6">
-      <div class="flex items-center gap-2 mb-3">
-        <span class="relative flex h-2.5 w-2.5">
+    <!-- v10.28: en celular arranca CERRADO (una sola línea) para no empujar
+         hacia abajo la selección de personas; en pantalla grande sigue
+         abierto como siempre. Es un <details>: el refresco automático solo
+         cambia la lista de adentro, así que no pierde si está abierto o no. -->
+    <details id="estado-vivo-details" class="bg-white rounded-xl shadow-sm p-4 mb-6">
+      <summary class="flex items-center gap-2 cursor-pointer list-none">
+        <span class="relative flex h-2.5 w-2.5 shrink-0">
           <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
           <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
         </span>
         <p class="text-sm font-semibold text-gray-800">Estado en vivo</p>
-        <span class="text-xs text-gray-400">se actualiza solo · toca a alguien para ver su avance</span>
-      </div>
-      <div id="estado-vivo-lista" class="flex gap-3 overflow-x-auto pb-1"></div>
-    </div>
+        <span id="estado-vivo-contador" class="text-xs font-semibold bg-gray-100 text-gray-600 rounded-full px-2 py-0.5 hidden"></span>
+        <span class="text-xs text-gray-400 hidden sm:inline">se actualiza solo · toca a alguien para ver su avance</span>
+        <span class="ml-auto text-xs text-gray-400 sm:hidden">ver / ocultar</span>
+      </summary>
+      <div id="estado-vivo-lista" class="flex gap-3 overflow-x-auto pb-1 mt-3"></div>
+    </details>
     <div id="estado-vivo-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onclick="if(event.target===this) cerrarDetalleTrabajador()">
       <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-6 relative">
         <button onclick="cerrarDetalleTrabajador()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-xl leading-none">✕</button>
         <div id="estado-vivo-modal-contenido"></div>
       </div>
     </div>`;
+
+  // Abierto por defecto solo en pantallas anchas (ver comentario arriba).
+  const detalles = document.getElementById('estado-vivo-details');
+  if (detalles && window.matchMedia('(min-width: 640px)').matches) {
+    detalles.open = true;
+  }
 
   cargarEstadoVivo();
   setInterval(cargarEstadoVivo, 10000);
@@ -60,6 +72,11 @@ async function cargarEstadoVivo() {
   try {
     const data = await apiFetch('/estado_vivo.php');
     ESTADO_VIVO_ULTIMO = data.trabajadores;
+    const contador = document.getElementById('estado-vivo-contador');
+    if (contador) {
+      contador.textContent = data.trabajadores.length;
+      contador.classList.toggle('hidden', !data.trabajadores.length);
+    }
     if (!data.trabajadores.length) {
       lista.innerHTML = '<p class="text-sm text-gray-400 py-2">No hay trabajadores en proceso ahora mismo.</p>';
       return;

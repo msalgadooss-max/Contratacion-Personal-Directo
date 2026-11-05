@@ -70,9 +70,16 @@ CREATE TABLE usuarios (
                         'Desarrollador'
                     ) NOT NULL,
     activo          TINYINT(1) NOT NULL DEFAULT 1,
+    -- v10.28: organigrama. Para un Capataz, el Jefe de Terreno a cuyo cargo
+    -- está (NULL = todavía sin asignar). Lo configura el propio Jefe de
+    -- Terreno desde su pestaña "Mi equipo".
+    jefe_terreno_id INT UNSIGNED NULL,
     creado_at       TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     actualizado_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-                        ON UPDATE CURRENT_TIMESTAMP
+                        ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_usuario_jefe_terreno
+        FOREIGN KEY (jefe_terreno_id) REFERENCES usuarios(id)
+        ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ---------------------------------------------------------------------
@@ -266,6 +273,10 @@ CREATE TABLE postulaciones (
     -- por mi" en vez de tener que llamar a todos los que llegan.
     -- Opcional: el postulante puede no saber quien lo convoco.
     capataz_esperado_id         INT UNSIGNED NULL,
+    -- v10.28: quién envió el enlace de postulación (Capataz o Jefe de
+    -- Terreno) cuando la persona llegó como REFERIDA, posiblemente a
+    -- distancia. NULL = llegó por el QR de la obra, de forma presencial.
+    referido_por_id             INT UNSIGNED NULL,
     exportado_at                DATETIME NULL,
     creado_at                   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     actualizado_at              TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -289,6 +300,9 @@ CREATE TABLE postulaciones (
         ON DELETE SET NULL,
     CONSTRAINT fk_capataz_esperado
         FOREIGN KEY (capataz_esperado_id) REFERENCES usuarios(id)
+        ON DELETE SET NULL,
+    CONSTRAINT fk_postulacion_referido_por
+        FOREIGN KEY (referido_por_id) REFERENCES usuarios(id)
         ON DELETE SET NULL,
     INDEX idx_postulaciones_estado (estado),
     INDEX idx_postulaciones_token (token_privado),

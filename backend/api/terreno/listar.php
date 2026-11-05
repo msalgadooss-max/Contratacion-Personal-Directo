@@ -27,23 +27,41 @@ $pdo = obtenerConexion();
 // 16-09): "match" declarado por el postulante en Etapa 1 -- se muestra
 // el nombre del Capataz esperado (si declaró alguno) para que se
 // identifique de inmediato quién lo está esperando.
+//
+// v10.28 (pedido explícito del usuario): un Capataz solo ve (a) a quienes
+// llegaron sin Capataz asignado -- los que vienen por el QR de la obra, que
+// cualquier Capataz puede seleccionar en persona -- y (b) a quienes ESE
+// Capataz recibió como referidos o que lo declararon a él. Los referidos de
+// otros Capataces no le aparecen. El Jefe de Terreno ve todo (solo lectura)
+// y puede reasignar (ver reasignar_referido.php).
+$filtroCapataz = '';
+$params = [];
+if ($usuario['rol'] === 'Capataz') {
+    $filtroCapataz = ' AND (p.capataz_esperado_id IS NULL OR p.capataz_esperado_id = :uid)';
+    $params['uid'] = $usuario['id'];
+}
+
 $stmt = $pdo->prepare(
     "SELECT p.id, p.tipo_documento, p.rut, p.nombre_completo, p.telefono, p.correo, p.comuna,
             c.nombre_cargo, p.creado_at,
             (p.cv_ruta_archivo IS NOT NULL) AS tiene_cv,
             p.experiencia_sin_cv,
             p.capataz_esperado_id,
-            cap.nombre AS capataz_esperado_nombre
+            cap.nombre AS capataz_esperado_nombre,
+            p.referido_por_id,
+            ref.nombre AS referido_por_nombre
        FROM postulaciones p
        JOIN cargos c ON c.id = p.cargo_id
        LEFT JOIN usuarios cap ON cap.id = p.capataz_esperado_id
-      WHERE p.estado = 'Pendiente'
+       LEFT JOIN usuarios ref ON ref.id = p.referido_por_id
+      WHERE p.estado = 'Pendiente'$filtroCapataz
       ORDER BY p.creado_at ASC"
 );
-$stmt->execute();
+$stmt->execute($params);
 
 $postulaciones = array_map(function ($p) {
     $p['tiene_cv'] = (bool)$p['tiene_cv'];
+    $p['es_referido'] = $p['referido_por_id'] !== null;
     return $p;
 }, $stmt->fetchAll());
 

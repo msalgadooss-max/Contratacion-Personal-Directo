@@ -66,7 +66,7 @@ exigirCupoDiarioAprobaciones($pdo, $usuario['id']);
 $pdo->beginTransaction();
 
 try {
-    $stmtCheck = $pdo->prepare('SELECT estado FROM postulaciones WHERE id = :id FOR UPDATE');
+    $stmtCheck = $pdo->prepare('SELECT estado, capataz_esperado_id FROM postulaciones WHERE id = :id FOR UPDATE');
     $stmtCheck->execute(['id' => $postulacionId]);
     $postulacion = $stmtCheck->fetch();
 
@@ -75,6 +75,12 @@ try {
     }
     if ($postulacion['estado'] !== 'Pendiente') {
         throw new RuntimeException('La postulación ya no está en estado Pendiente.|409');
+    }
+    // v10.28: una persona asignada a otro Capataz (referido) solo la
+    // puede seleccionar ese Capataz -- el Jefe de Terreno puede
+    // reasignarla si hace falta (ver reasignar_referido.php).
+    if ($postulacion['capataz_esperado_id'] !== null && (int)$postulacion['capataz_esperado_id'] !== (int)$usuario['id']) {
+        throw new RuntimeException('Esta persona está asignada a otro Capataz.|403');
     }
 
     // v10.5: el cargo real recién se valida y se fija acá -- antes de

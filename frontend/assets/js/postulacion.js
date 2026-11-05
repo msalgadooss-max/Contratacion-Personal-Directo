@@ -60,10 +60,23 @@ correoUsuarioInput.addEventListener('input', actualizarCorreoCompuesto);
 correoDominioSelect.addEventListener('change', actualizarCorreoCompuesto);
 correoDominioOtroInput.addEventListener('input', actualizarCorreoCompuesto);
 
+// v10.28 (pedido explícito del usuario): referidos. Si la persona llega por el
+// enlace de un Capataz o Jefe de Terreno (index.html?ref=<id>), el servidor
+// valida ese id y devuelve quién la invitó; solo si es válido se envía
+// referido_por_id al postular.
+const REF_ID_URL = Number(new URLSearchParams(window.location.search).get('ref')) || 0;
+let REFERENTE_VALIDO = false;
+
 async function cargarListas() {
   try {
-    const data = await apiFetch('/public/listas.php');
+    const data = await apiFetch('/public/listas.php' + (REF_ID_URL ? `?ref=${REF_ID_URL}` : ''));
     obraBanner.textContent = '📍 ' + (data.obra || 'Obra ICAFAL');
+
+    if (data.referente) {
+      REFERENTE_VALIDO = true;
+      document.getElementById('aviso-referente-nombre').textContent = data.referente.nombre;
+      document.getElementById('aviso-referente').classList.remove('hidden');
+    }
 
     tipoDocumentoSelect.innerHTML = data.listas.tipo_documento
       .map(v => `<option value="${v}">${v}</option>`).join('');
@@ -74,8 +87,18 @@ async function cargarListas() {
     // nada (el campo ya era opcional).
     const capatazSelect = document.getElementById('capataz_esperado');
     if (capatazSelect && data.capataces && data.capataces.length) {
-      capatazSelect.innerHTML = '<option value="">No, nadie en particular</option>' +
-        data.capataces.map(c => `<option value="${c.id}">${c.nombre}</option>`).join('');
+      // Se arman con textContent (no con innerHTML): los nombres vienen de la base de datos.
+      capatazSelect.innerHTML = '';
+      const unicoCapataz = data.referente && data.referente.rol === 'Capataz' && data.capataces.length === 1;
+      if (!unicoCapataz) {
+        capatazSelect.appendChild(new Option('No, nadie en particular', ''));
+      }
+      data.capataces.forEach(c => capatazSelect.appendChild(new Option(c.nombre, c.id)));
+      if (unicoCapataz) {
+        // Ya lo decidió el enlace: queda fijo y no se puede cambiar.
+        capatazSelect.value = String(data.capataces[0].id);
+        capatazSelect.disabled = true;
+      }
     }
   } catch (e) {
     tipoDocumentoSelect.innerHTML = '<option value="">Error al cargar</option>';
@@ -293,6 +316,9 @@ form.addEventListener('submit', async (e) => {
     const capatazEsperado = document.getElementById('capataz_esperado');
     if (capatazEsperado && capatazEsperado.value) {
       formData.append('capataz_esperado_id', capatazEsperado.value);
+    }
+    if (REFERENTE_VALIDO && REF_ID_URL) {
+      formData.append('referido_por_id', String(REF_ID_URL));
     }
     if (sinCvCheckbox.checked) {
       formData.append('experiencia_cargo', document.getElementById('experiencia_cargo').value);

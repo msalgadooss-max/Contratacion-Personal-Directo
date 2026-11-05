@@ -98,6 +98,23 @@
       </div>
     </section>
 
+    <!-- v10.28: tiempos por rol y etapa -->
+    <section class="bg-white rounded-xl shadow-sm p-5 mb-6">
+      <div class="flex flex-wrap items-center justify-between gap-3 mb-1">
+        <h2 class="text-sm font-semibold text-gray-700">Tiempos por rol y etapa</h2>
+        <select id="tiempos-dias" class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm">
+          <option value="0">Todo el historial</option>
+          <option value="7">Últimos 7 días</option>
+          <option value="30">Últimos 30 días</option>
+          <option value="90">Últimos 90 días</option>
+        </select>
+      </div>
+      <p class="text-xs text-gray-500 mb-4">Cuánto tardó cada rol en hacer su parte. La cifra grande es la <strong>mediana</strong> (más justa que el promedio). Es tiempo corrido: incluye noches y fines de semana.</p>
+      <div id="tiempos-resumen" class="text-sm text-gray-500">Cargando...</div>
+      <div id="tiempos-etapas" class="overflow-x-auto"></div>
+      <div id="tiempos-usuarios" class="mt-5"></div>
+    </section>
+
     <!-- QR / enlace -->
     <section class="bg-white rounded-xl shadow-sm p-5">
       <div class="flex gap-1 border-b border-gray-200 mb-4" id="tabs">

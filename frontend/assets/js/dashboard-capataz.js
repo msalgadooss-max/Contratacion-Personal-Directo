@@ -48,7 +48,7 @@ let USUARIO_ACTUAL = null;
   setInterval(() => {
     if (ARRASTRANDO) return;
     if (TAB_ACTIVA === 'seleccion') { cargarCargosConCupo(); cargarLista(); }
-    else cargarContratados();
+    else if (TAB_ACTIVA === 'contratados') cargarContratados();
   }, 15000);
 })();
 
@@ -149,7 +149,12 @@ function cambiarTab(tab) {
   });
   if (tab === 'seleccion') cargarLista();
   if (tab === 'contratados') cargarContratados();
+  if (tab === 'invitar' && !INVITACION_LISTA) {
+    INVITACION_LISTA = true;
+    iniciarInvitacion('contenedor-invitar', USUARIO_ACTUAL);
+  }
 }
+let INVITACION_LISTA = false;
 
 // v10.19 (pedido explícito del usuario, tras la reunión con la obra del
 // 16-09): si el postulante declaró en Etapa 1 quién lo está esperando,
@@ -219,16 +224,20 @@ async function cargarLista() {
             <p class="nombre-postulante text-lg font-bold text-gray-800">${esc(p.nombre_completo)}</p>
             <p class="text-sm text-gray-500">${esc(p.comuna)}</p>
             ${match(p)}
+            ${p.es_referido ? `<p class="inline-block mt-1.5 ml-1 text-xs font-semibold px-2 py-1 rounded-full bg-green-50 text-green-700 border border-green-200">🤝 Referido por ${esc(p.referido_por_nombre || 'un compañero')}</p>` : ''}
             ${bloqueCv(p)}
           </div>
         </div>
         <div class="px-5 pb-5 space-y-3">
           <label class="flex items-center gap-3 rounded-xl border-2 border-amber-300 bg-amber-50 px-4 py-3 cursor-pointer">
             <input type="checkbox" class="check-documentos w-6 h-6 shrink-0 accent-amber-600" onchange="toggleArrastre(${p.id}, this.checked)">
-            <span>
+            ${p.es_referido ? `<span>
+              <span class="block text-sm font-bold text-amber-900">① Confirmo a esta persona</span>
+              <span class="block text-xs font-medium text-amber-700">Es un referido: si no está en obra, su cédula se verifica en su primer día</span>
+            </span>` : `<span>
               <span class="block text-sm font-bold text-amber-900">① Trae sus documentos</span>
               <span class="block text-xs font-medium text-amber-700">Compara el RUT de arriba con su cédula</span>
-            </span>
+            </span>`}
           </label>
           <div class="drag-handle flex items-center justify-center gap-2 rounded-xl border-2 border-dashed border-gray-300 bg-gray-100 text-gray-400 text-sm font-bold tracking-wide py-3 select-none" data-habilitado="false" style="pointer-events:none">
             <span class="text-base leading-none">⠿⠿⠿</span> ② Primero marca ①

@@ -30,7 +30,7 @@ if ($postulacionId <= 0) {
 $pdo = obtenerConexion();
 
 $stmtCheck = $pdo->prepare(
-    'SELECT p.estado, p.nombre_completo, p.correo, c.nombre_cargo
+    'SELECT p.estado, p.nombre_completo, p.correo, p.capataz_esperado_id, c.nombre_cargo
        FROM postulaciones p
        JOIN cargos c ON c.id = p.cargo_id
       WHERE p.id = :id'
@@ -43,6 +43,10 @@ if (!$postulacion) {
 }
 if ($postulacion['estado'] !== 'Pendiente') {
     responderError('La postulación ya no está en estado Pendiente.', 409);
+}
+// v10.28: un referido asignado a otro Capataz solo lo puede descartar ese Capataz.
+if ($postulacion['capataz_esperado_id'] !== null && (int)$postulacion['capataz_esperado_id'] !== (int)$usuario['id']) {
+    responderError('Esta persona está asignada a otro Capataz.', 403);
 }
 
 fijarUsuarioContextoBD($pdo, $usuario['id']);

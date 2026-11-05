@@ -11,7 +11,9 @@
 (async () => {
   const usuario = await protegerDashboard('Jefe_Terreno');
   if (!usuario) return;
+  USUARIO_ACTUAL = usuario;
   configurarTabs();
+  configurarArrastreEquipo();
   inicializarFiltros('en_proceso');
   await cargarHistorico('en_proceso');
   await cargarBanco();
@@ -28,6 +30,8 @@ function actualizarTodo() {
 // --- v3.2: pestañas -------------------------------------------------------
 let TAB_ACTIVA = 'en_proceso';
 let CONTRATADOS_CARGADO = false;
+let USUARIO_ACTUAL = null;
+let INVITACION_LISTA = false;
 
 function configurarTabs() {
   document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -62,6 +66,13 @@ function cambiarTab(tab) {
     cargarCupos();
     cargarMisSolicitudes();
   }
+  if (tab === 'equipo') {
+    cargarEquipo();
+  }
+  if (tab === 'invitar' && !INVITACION_LISTA) {
+    INVITACION_LISTA = true;
+    iniciarInvitacion('contenedor-invitar', USUARIO_ACTUAL);
+  }
 }
 
 // --- v10.14: "Banco de Postulantes" -- ahora de solo lectura, muestra a
@@ -79,10 +90,18 @@ async function cargarBanco() {
       return;
     }
     vacio.classList.add('hidden');
+    // v10.28: lista de Capataces para poder reasignar a un referido (si
+    // este pedido falla, la tabla igual se muestra, solo sin reasignación).
+    let capataces = [];
+    try {
+      const eq = await apiFetch('/terreno/equipo_listar.php');
+      capataces = [...eq.mis_capataces, ...eq.disponibles, ...eq.de_otro_jefe];
+    } catch (e) { /* sin reasignación */ }
     tbody.innerHTML = data.postulaciones.map(p => `
       <tr class="border-t">
         <td class="px-4 py-3 font-mono">${celdaDocumento(p)}</td>
-        <td class="px-4 py-3">${esc(p.nombre_completo)}</td>
+        <td class="px-4 py-3">${esc(p.nombre_completo)}${p.es_referido
+          ? `<span class="block text-[11px] font-semibold text-green-700">🤝 Referido por ${esc(p.referido_por_nombre || 'un compañero')}</span>` : ''}</td>
         <td class="px-4 py-3">${esc(p.comuna)}</td>
         <td class="px-4 py-3">${esc(p.telefono)}</td>
         <td class="px-4 py-3 text-gray-500">${new Date(p.creado_at).toLocaleString('es-CL')}</td>
@@ -91,10 +110,133 @@ async function cargarBanco() {
           : (p.experiencia_sin_cv
               ? `<span class="text-xs text-amber-700 bg-amber-50 px-2 py-1 rounded cursor-help" title="${esc(p.experiencia_sin_cv)}">Sin CV (ver experiencia) ⓘ</span>`
               : '<span class="text-gray-400 text-xs">Sin CV</span>')}</td>
+        <td class="px-4 py-3">${capataces.length
+          ? `<select class="border border-gray-300 rounded-lg px-2 py-1 text-xs max-w-[11rem]" onchange="reasignarReferido(${p.id}, this.value)">
+              <option value="0" ${p.capataz_esperado_id ? '' : 'selected'}>Banco común (cualquier Capataz)</option>
+              ${capataces.map(c => `<option value="${c.id}" ${Number(p.capataz_esperado_id) === c.id ? 'selected' : ''}>${esc(c.nombre)}</option>`).join('')}
+            </select>`
+          : esc(p.capataz_esperado_nombre || 'Banco común')}</td>
       </tr>`).join('');
   } catch (err) {
     mostrarAlerta('alerta', err.message);
   }
+}
+
+async function reasignarReferido(postulacionId, capatazId) {
+  try {
+    const data = await apiFetch('/terreno/reasignar_referido.php', {
+      method: 'POST',
+      body: { postulacion_id: postulacionId, capataz_id: Number(capatazId) },
+    });
+    mostrarAlerta('alerta', data.mensaje, 'exito');
+  } catch (err) {
+    mostrarAlerta('alerta', err.message);
+  }
+  cargarBanco();
+}
+
+// --- v10.28: "Mi equipo" (organigrama de Capataces) --------------------------
+async function cargarEquipo() {
+  try {
+    const d = await apiFetch('/terreno/equipo_listar.php');
+    renderEquipo(d);
+  } catch (err) {
+    mostrarAlerta('alerta', err.message);
+  }
+}
+
+function renderEquipo(d) {
+  const hijos = d.mis_capataces.map(c => `
+    <div class="org-hijo">
+      <div class="w-44 bg-white border-2 border-gray-200 rounded-xl p-3 text-center cursor-grab select-none"
+           draggable="true" data-capataz-id="${c.id}" data-origen="equipo">
+        <p class="text-sm font-bold text-gray-900 truncate">${esc(c.nombre)}</p>
+        <p class="text-[11px] text-gray-500 mb-2">Capataz</p>
+        <div class="flex justify-center gap-1 flex-wrap mb-2">
+          <span class="text-[11px] font-semibold bg-amber-50 text-amber-800 border border-amber-200 rounded-full px-2 py-0.5" title="Referidos esperando que él los seleccione">⏳ ${c.esperando_referidos}</span>
+          <span class="text-[11px] font-semibold bg-green-50 text-green-700 border border-green-200 rounded-full px-2 py-0.5" title="Personas que seleccionó hoy">✓ ${c.seleccionados_hoy} hoy</span>
+        </div>
+        <button onclick="cambiarEquipo(${c.id}, 'quitar')" class="text-[11px] text-red-600 hover:underline">Quitar del equipo</button>
+      </div>
+    </div>`).join('');
+
+  document.getElementById('equipo-organigrama').innerHTML = `
+    <div id="equipo-zona-org" class="min-w-[260px] py-4 rounded-xl">
+      <div class="w-56 mx-auto bg-gray-900 text-white rounded-xl px-4 py-3 text-center">
+        <p class="text-sm font-bold truncate">${esc(d.jefe.nombre)}</p>
+        <p class="text-[11px] text-gray-300">Jefe de Terreno</p>
+      </div>
+      ${d.mis_capataces.length
+        ? `<div class="org-linea-vertical"></div>
+           <div class="org-hijos ${d.mis_capataces.length === 1 ? 'org-uno' : ''}">${hijos}</div>`
+        : '<p class="text-center text-sm text-gray-400 mt-4 px-4">Todavía no tienes Capataces en tu equipo. Agrégalos con la lista o arrastrándolos hasta aquí.</p>'}
+    </div>`;
+
+  const chips = (lista, arrastrable) => lista.length
+    ? lista.map(c => `
+        <div class="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-full pl-3 pr-1 py-1 text-sm ${arrastrable ? 'cursor-grab' : 'opacity-70'}"
+             ${arrastrable ? `draggable="true" data-capataz-id="${c.id}" data-origen="disponible"` : ''}>
+          <span class="truncate max-w-[10rem]">${esc(c.nombre)}</span>
+          ${arrastrable
+            ? `<button onclick="cambiarEquipo(${c.id}, 'agregar')" class="text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-full w-6 h-6" title="Agregar a mi equipo">+</button>`
+            : `<span class="text-[11px] text-gray-500 pr-2">de ${esc(c.jefe_terreno_nombre || 'otro jefe')}</span>`}
+        </div>`).join('')
+    : '<p class="text-sm text-gray-400">Ninguno.</p>';
+  document.getElementById('equipo-disponibles').innerHTML = chips(d.disponibles, true);
+  document.getElementById('equipo-otros').innerHTML = chips(d.de_otro_jefe, false);
+
+  const select = document.getElementById('equipo-select');
+  const boton = document.getElementById('equipo-agregar');
+  if (d.disponibles.length) {
+    select.innerHTML = d.disponibles.map(c => `<option value="${c.id}">${esc(c.nombre)}</option>`).join('');
+    select.disabled = false;
+    boton.disabled = false;
+  } else {
+    select.innerHTML = '<option value="">No hay Capataces sin asignar</option>';
+    select.disabled = true;
+    boton.disabled = true;
+  }
+  boton.onclick = () => { if (select.value) cambiarEquipo(Number(select.value), 'agregar'); };
+}
+
+async function cambiarEquipo(capatazId, accion) {
+  try {
+    const data = await apiFetch('/terreno/equipo_asignar.php', {
+      method: 'POST',
+      body: { capataz_id: capatazId, accion },
+    });
+    mostrarAlerta('alerta', data.mensaje, 'exito');
+  } catch (err) {
+    mostrarAlerta('alerta', err.message);
+  }
+  cargarEquipo();
+}
+
+// Arrastrar y soltar (escritorio): de "sin asignar" al organigrama = agregar;
+// del organigrama de vuelta a "sin asignar" = quitar. En celular se usa la
+// lista desplegable o los botones, que hacen lo mismo.
+function configurarArrastreEquipo() {
+  const leer = (e) => { try { return JSON.parse(e.dataTransfer.getData('text/plain')); } catch (x) { return null; } };
+  document.addEventListener('dragstart', (e) => {
+    const el = e.target.closest ? e.target.closest('[data-capataz-id][draggable="true"]') : null;
+    if (!el) return;
+    e.dataTransfer.setData('text/plain', JSON.stringify({ id: Number(el.dataset.capatazId), origen: el.dataset.origen }));
+    e.dataTransfer.effectAllowed = 'move';
+  });
+  const zona = (contenedorId, origenValido, accion, claseZona) => {
+    const cont = document.getElementById(contenedorId);
+    if (!cont) return;
+    cont.addEventListener('dragover', (e) => { e.preventDefault(); cont.classList.add('org-zona-activa'); });
+    cont.addEventListener('dragleave', (e) => { if (!cont.contains(e.relatedTarget)) cont.classList.remove('org-zona-activa'); });
+    cont.addEventListener('drop', (e) => {
+      e.preventDefault();
+      cont.classList.remove('org-zona-activa');
+      const info = leer(e);
+      if (info && info.origen === origenValido) cambiarEquipo(info.id, accion);
+    });
+  };
+  zona('equipo-organigrama', 'disponible', 'agregar');
+  zona('equipo-disponibles-zona', 'equipo', 'quitar');
 }
 
 // --- v4: Solicitar Cupos ---------------------------------------------------

@@ -20,13 +20,42 @@ exigirMetodo('GET');
 // id -- ningún dato sensible, es exactamente lo mismo que vería
 // cualquiera parado en la entrada de la obra.
 $pdo = obtenerConexion();
-$stmtCapataces = $pdo->query(
-    "SELECT id, nombre FROM usuarios WHERE rol = 'Capataz' AND activo = 1 ORDER BY nombre ASC"
-);
+$capataces = $pdo->query(
+    "SELECT id, nombre, jefe_terreno_id FROM usuarios WHERE rol = 'Capataz' AND activo = 1 ORDER BY nombre ASC"
+)->fetchAll();
+
+// v10.28: si la persona llega por el enlace de un referente (?ref=<id>),
+// se devuelve quién la invitó (solo el nombre) y la lista de Capataces
+// se ajusta:
+//   - referente Capataz       -> la lista queda solo con él (ya está decidido)
+//   - referente Jefe de Terreno -> solo los Capataces de su equipo (si tiene
+//                                  alguno configurado; si no, todos)
+$referente = null;
+$refId = (int)($_GET['ref'] ?? 0);
+if ($refId > 0) {
+    $stmtRef = $pdo->prepare(
+        "SELECT id, nombre, rol FROM usuarios WHERE id = :id AND activo = 1 AND rol IN ('Capataz', 'Jefe_Terreno')"
+    );
+    $stmtRef->execute(['id' => $refId]);
+    $ref = $stmtRef->fetch();
+    if ($ref) {
+        $referente = ['nombre' => $ref['nombre'], 'rol' => $ref['rol']];
+        if ($ref['rol'] === 'Capataz') {
+            $capataces = array_values(array_filter($capataces, fn ($c) => (int)$c['id'] === (int)$ref['id']));
+        } else {
+            $delEquipo = array_values(array_filter($capataces, fn ($c) => (int)$c['jefe_terreno_id'] === (int)$ref['id']));
+            if ($delEquipo) {
+                $capataces = $delEquipo;
+            }
+        }
+    }
+}
+$capataces = array_map(fn ($c) => ['id' => $c['id'], 'nombre' => $c['nombre']], $capataces);
 
 responderOk([
     'listas' => listasBuk(),
     'regiones_comunas' => regionesConComunas(),
     'obra' => OBRA_NOMBRE,
-    'capataces' => $stmtCapataces->fetchAll(),
+    'capataces' => $capataces,
+    'referente' => $referente,
 ]);
