@@ -94,7 +94,13 @@ if ($idsMostrados) {
         ];
     }
 }
+// v10.31: historial por RUT (veces que ya trabajó y su última recomendación).
+$historial = resumenHistorialPorRut($pdo, $postulaciones);
 foreach ($postulaciones as &$p) {
+    $h = $historial[$p['id']] ?? ['veces_anteriores' => 0, 'recomendacion_anterior' => null, 'comentario_anterior' => null];
+    $p['veces_anteriores'] = $h['veces_anteriores'];
+    $p['recomendacion_anterior'] = $h['recomendacion_anterior'];
+    $p['comentario_anterior'] = $h['comentario_anterior'];
     $p['documentos_marcados'] = $pendientesPorPostulacion[$p['id']] ?? [];
     $p['tiene_pendientes'] = (bool)array_filter(
         $p['documentos_marcados'],

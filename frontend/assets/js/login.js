@@ -30,6 +30,10 @@ document.getElementById('form-login').addEventListener('submit', async (e) => {
       },
     });
     setCsrfToken(data.csrf_token);
+    if (data.debe_cambiar_password) {
+      window.location.href = 'cambiar_clave.html';
+      return;
+    }
     window.location.href = RUTA_POR_ROL[data.usuario.rol] || '../public/login.html';
   } catch (err) {
     document.getElementById('alerta').innerHTML =

@@ -70,6 +70,9 @@ function cambiarTab(tab) {
   if (tab === 'equipo') {
     cargarEquipo();
   }
+  if (tab === 'evaluaciones') {
+    cargarEvaluaciones();
+  }
   if (tab === 'invitar' && !INVITACION_LISTA) {
     INVITACION_LISTA = true;
     iniciarInvitacion('contenedor-invitar', USUARIO_ACTUAL);
@@ -101,7 +104,7 @@ async function cargarBanco() {
     tbody.innerHTML = data.postulaciones.map(p => `
       <tr class="border-t">
         <td class="px-4 py-3 font-mono">${celdaDocumento(p)}</td>
-        <td class="px-4 py-3">${esc(p.nombre_completo)}${p.es_referido
+        <td class="px-4 py-3">${esc(p.nombre_completo)}${chipHistorial(p) ? `<span class="block">${chipHistorial(p)}</span>` : ''}${p.es_referido
           ? `<span class="block text-[11px] font-semibold text-green-700">🤝 Referido por ${esc(p.referido_por_nombre || 'un compañero')}</span>` : ''}</td>
         <td class="px-4 py-3">${esc(p.comuna)}</td>
         <td class="px-4 py-3">${esc(p.telefono)}</td>
@@ -134,6 +137,103 @@ async function reasignarReferido(postulacionId, capatazId) {
     mostrarAlerta('alerta', err.message);
   }
   cargarBanco();
+}
+
+// --- v10.31: evaluación de recontratación al finiquitar ----------------------
+let EVALUACIONES = [];
+
+async function cargarEvaluaciones() {
+  const tbody = document.getElementById('tbody-evaluaciones');
+  const vacio = document.getElementById('evaluaciones-vacio');
+  try {
+    const d = await apiFetch('/terreno/evaluaciones_listar.php');
+    EVALUACIONES = d.trabajadores;
+    if (!d.trabajadores.length) {
+      tbody.innerHTML = '';
+      vacio.classList.remove('hidden');
+      vacio.textContent = d.tabla_disponible
+        ? 'Todavía no hay trabajadores contratados para evaluar.'
+        : 'La función de evaluaciones aún no está activada en la base de datos.';
+      return;
+    }
+    vacio.classList.add('hidden');
+    tbody.innerHTML = d.trabajadores.map(t => `
+      <tr class="border-t align-top" id="fila-eval-${t.id}">
+        <td class="px-4 py-3 font-mono">${esc(t.rut)}</td>
+        <td class="px-4 py-3">${esc(t.nombre_completo)}</td>
+        <td class="px-4 py-3">${esc(t.nombre_cargo)}</td>
+        <td class="px-4 py-3">${t.recomienda
+          ? `<span class="inline-block text-xs font-semibold px-2 py-1 rounded-full border ${CLASE_RECOMENDACION[t.recomienda]}">${ETIQUETA_RECOMENDACION[t.recomienda]}</span>
+             ${t.comentario ? `<span class="block text-xs text-gray-600 mt-1 max-w-xs break-words">${esc(t.comentario)}</span>` : ''}
+             ${t.fecha_termino ? `<span class="block text-[11px] text-gray-400">término ${esc(t.fecha_termino)}</span>` : ''}`
+          : '<span class="text-xs text-gray-400">Sin evaluar</span>'}</td>
+        <td class="px-4 py-3 text-right whitespace-nowrap">
+          <button onclick="abrirFormEvaluacion(${t.id})" class="text-xs font-semibold text-blue-700 hover:underline mr-3">${t.recomienda ? 'Editar' : 'Evaluar'}</button>
+          <button onclick="abrirHistorialTrabajador(${t.id})" class="text-xs font-semibold text-gray-600 hover:underline">Historial</button>
+        </td>
+      </tr>`).join('');
+  } catch (err) {
+    mostrarAlerta('alerta', err.message);
+  }
+}
+
+function abrirFormEvaluacion(id) {
+  const t = EVALUACIONES.find(x => x.id === id);
+  const fila = document.getElementById(`fila-eval-${id}`);
+  if (!t || !fila) return;
+  const abierto = document.getElementById(`form-eval-${id}`);
+  if (abierto) { abierto.remove(); return; }
+  const opciones = Object.entries(ETIQUETA_RECOMENDACION)
+    .map(([v, txt]) => `<option value="${v}" ${t.recomienda === v ? 'selected' : ''}>${txt}</option>`).join('');
+  fila.insertAdjacentHTML('afterend', `
+    <tr id="form-eval-${id}" class="bg-gray-50">
+      <td colspan="5" class="px-4 py-4">
+        <p class="text-sm font-semibold text-gray-800 mb-3">¿Recomiendas recontratar a ${esc(t.nombre_completo)}?</p>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-3xl">
+          <div>
+            <label class="block text-xs text-gray-600 mb-1">Recomendación</label>
+            <select id="eval-rec-${id}" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+              <option value="">Elige...</option>${opciones}
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs text-gray-600 mb-1">Fecha de término <span class="text-gray-400">(opcional)</span></label>
+            <input id="eval-fecha-${id}" type="date" value="${esc(t.fecha_termino || '')}" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+          </div>
+          <div class="sm:col-span-3">
+            <label class="block text-xs text-gray-600 mb-1">Comentario breve <span class="text-gray-400">(obligatorio si no lo recomiendas; hechos concretos, máx. 500 caracteres)</span></label>
+            <textarea id="eval-com-${id}" maxlength="500" rows="2" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">${esc(t.comentario || '')}</textarea>
+          </div>
+        </div>
+        <div class="mt-3 flex gap-2">
+          <button onclick="guardarEvaluacion(${id})" class="bg-gray-900 hover:bg-gray-800 text-white text-sm font-semibold px-4 py-2 rounded-lg">Guardar evaluación</button>
+          <button onclick="document.getElementById('form-eval-${id}').remove()" class="border border-gray-300 text-gray-700 text-sm font-semibold px-4 py-2 rounded-lg">Cancelar</button>
+        </div>
+      </td>
+    </tr>`);
+}
+
+async function guardarEvaluacion(id) {
+  const recomienda = document.getElementById(`eval-rec-${id}`).value;
+  if (!recomienda) {
+    mostrarAlerta('alerta', 'Elige si recomiendas o no recontratar a esta persona.');
+    return;
+  }
+  try {
+    const data = await apiFetch('/terreno/evaluar_trabajador.php', {
+      method: 'POST',
+      body: {
+        postulacion_id: id,
+        recomienda,
+        comentario: document.getElementById(`eval-com-${id}`).value,
+        fecha_termino: document.getElementById(`eval-fecha-${id}`).value,
+      },
+    });
+    mostrarAlerta('alerta', data.mensaje, 'exito');
+    cargarEvaluaciones();
+  } catch (err) {
+    mostrarAlerta('alerta', err.message);
+  }
 }
 
 // --- v10.28: "Mi equipo" (organigrama de Capataces) --------------------------

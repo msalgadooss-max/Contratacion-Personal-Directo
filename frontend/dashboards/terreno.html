@@ -75,6 +75,7 @@
       <button data-tab="contratados" class="tab-btn px-4 py-2 text-sm font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700">Personal Contratado</button>
       <button data-tab="cupos" class="tab-btn px-4 py-2 text-sm font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700 whitespace-nowrap">Solicitar Cupos</button>
       <button data-tab="equipo" class="tab-btn px-4 py-2 text-sm font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700 whitespace-nowrap">Mi equipo</button>
+      <button data-tab="evaluaciones" class="tab-btn px-4 py-2 text-sm font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700 whitespace-nowrap">Evaluaciones</button>
       <button data-tab="invitar" class="tab-btn px-4 py-2 text-sm font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700 whitespace-nowrap">Invitar referido</button>
     </div>
 
@@ -238,6 +239,33 @@
             <div id="equipo-otros" class="flex flex-wrap gap-2"></div>
           </div>
         </div>
+      </div>
+    </section>
+
+    <!-- v10.31 (pedido explícito del usuario): al finiquitar a un trabajador, el
+         Jefe de Terreno deja una evaluación breve: ¿se recomienda recontratarlo? -->
+    <section id="panel-evaluaciones" class="tab-panel hidden">
+      <p class="text-xs text-gray-500 mb-2 max-w-2xl">
+        Cuando un trabajador termina su contrato (finiquito), deja aquí una evaluación breve: <b>¿se recomienda recontratarlo?</b>
+        Si vuelve a postular, el Capataz y el JAO verán tu recomendación.
+      </p>
+      <p class="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-4 max-w-2xl">
+        Uso interno: el postulante nunca la ve. Escribe <b>hechos concretos y breves</b> (asistencia, cumplimiento, seguridad), sin opiniones personales.
+      </p>
+      <div class="bg-white rounded-xl shadow-sm overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead class="bg-gray-50 text-gray-500 text-left">
+            <tr>
+              <th class="px-4 py-3">RUT</th>
+              <th class="px-4 py-3">Nombre</th>
+              <th class="px-4 py-3">Cargo</th>
+              <th class="px-4 py-3">Evaluación</th>
+              <th class="px-4 py-3 text-right">Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-evaluaciones"></tbody>
+        </table>
+        <p id="evaluaciones-vacio" class="text-center text-gray-400 text-sm py-10 hidden">Todavía no hay trabajadores contratados para evaluar.</p>
       </div>
     </section>
 

@@ -74,6 +74,9 @@ CREATE TABLE usuarios (
     -- está (NULL = todavía sin asignar). Lo configura el propio Jefe de
     -- Terreno desde su pestaña "Mi equipo".
     jefe_terreno_id INT UNSIGNED NULL,
+    -- v10.31: 1 = clave temporal (la puso el Desarrollador); la persona debe
+    -- cambiarla en su primer ingreso antes de usar cualquier pantalla.
+    debe_cambiar_password TINYINT(1) NOT NULL DEFAULT 0,
     creado_at       TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     actualizado_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
                         ON UPDATE CURRENT_TIMESTAMP,
@@ -806,4 +809,46 @@ CREATE TABLE intentos_fallidos (
     clave      VARCHAR(190) NOT NULL,
     creado_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     KEY idx_intentos (tipo, clave, creado_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ---------------------------------------------------------------------
+-- Tabla: correos_fallidos (v10.31)
+-- Cada correo que NO pudo salir queda guardado (con su contenido) para
+-- verlo y reintentarlo desde el panel de Desarrollador. Se limpia al
+-- reenviarse con éxito o al descartarlo.
+-- ---------------------------------------------------------------------
+CREATE TABLE correos_fallidos (
+    id                 INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    destinatario       VARCHAR(190) NOT NULL,
+    nombre             VARCHAR(150) NOT NULL DEFAULT '',
+    asunto             VARCHAR(255) NOT NULL,
+    cuerpo             MEDIUMTEXT NOT NULL,
+    error              VARCHAR(255) NULL,
+    intentos           INT UNSIGNED NOT NULL DEFAULT 1,
+    estado             ENUM('fallido', 'reenviado', 'descartado') NOT NULL DEFAULT 'fallido',
+    creado_at          TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    ultimo_intento_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    KEY idx_correos_estado (estado, creado_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ---------------------------------------------------------------------
+-- Tabla: evaluaciones_trabajador (v10.31)
+-- Evaluación breve que hace el Jefe de Terreno cuando un trabajador es
+-- finiquitado: ¿se recomienda recontratarlo? Una por postulación (ciclo);
+-- el historial de una persona se arma uniendo sus ciclos por RUT.
+-- Uso interno: nunca la ve el postulante.
+-- ---------------------------------------------------------------------
+CREATE TABLE evaluaciones_trabajador (
+    id               INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    postulacion_id   INT UNSIGNED NOT NULL UNIQUE,
+    rut              VARCHAR(20) NOT NULL,
+    recomienda       ENUM('si', 'con_reservas', 'no') NOT NULL,
+    comentario       VARCHAR(500) NULL,
+    fecha_termino    DATE NULL,
+    evaluado_por     INT UNSIGNED NULL,
+    creado_at        TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    actualizado_at   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    KEY idx_eval_rut (rut),
+    CONSTRAINT fk_eval_postulacion FOREIGN KEY (postulacion_id) REFERENCES postulaciones(id) ON DELETE CASCADE,
+    CONSTRAINT fk_eval_usuario FOREIGN KEY (evaluado_por) REFERENCES usuarios(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

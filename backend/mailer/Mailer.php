@@ -45,7 +45,49 @@ final class Mailer
     /**
      * @return bool true si el correo se encolo/envio correctamente.
      */
-    public static function enviar(string $destinatario, string $nombreDestinatario, string $asunto, string $htmlBody): bool
+    public static function enviar(string $destinatario, string $nombreDestinatario, string $asunto, string $htmlBody, bool $registrarFallo = true): bool
+    {
+        self::$ultimoError = null;
+        $ok = false;
+        try {
+            $ok = self::despachar($destinatario, $nombreDestinatario, $asunto, $htmlBody);
+        } catch (\Throwable $e) {
+            self::$ultimoError = $e->getMessage();
+        }
+        // v10.31: un correo que no salió ya no se pierde en silencio: queda
+        // guardado (con su contenido) para verlo y reintentarlo desde el panel
+        // de Desarrollador (ver dev/correos_fallidos_listar.php).
+        if (!$ok && $registrarFallo) {
+            self::guardarFallo($destinatario, $nombreDestinatario, $asunto, $htmlBody);
+        }
+        return $ok;
+    }
+
+    /** Último motivo de fallo (para guardarlo junto al correo no enviado). */
+    public static ?string $ultimoError = null;
+
+    private static function guardarFallo(string $destinatario, string $nombre, string $asunto, string $html): void
+    {
+        try {
+            require_once __DIR__ . '/../config/database.php';
+            $stmt = obtenerConexion()->prepare(
+                'INSERT INTO correos_fallidos (destinatario, nombre, asunto, cuerpo, error)
+                 VALUES (:d, :n, :a, :c, :e)'
+            );
+            $stmt->execute([
+                'd' => mb_substr($destinatario, 0, 190),
+                'n' => mb_substr($nombre, 0, 150),
+                'a' => mb_substr($asunto, 0, 255),
+                'c' => $html,
+                'e' => mb_substr((string)(self::$ultimoError ?? 'Sin detalle'), 0, 255),
+            ]);
+        } catch (\Throwable $e) {
+            // Si ni siquiera se puede guardar (p. ej. la tabla aún no existe), queda al menos el log.
+            error_log('Mailer: no se pudo registrar el correo fallido: ' . $e->getMessage());
+        }
+    }
+
+    private static function despachar(string $destinatario, string $nombreDestinatario, string $asunto, string $htmlBody): bool
     {
         self::aplicarModoPrueba($destinatario, $asunto);
 
@@ -97,6 +139,7 @@ final class Mailer
 
         if ($codigo < 200 || $codigo >= 300) {
             error_log('Mailer (Brevo) error: HTTP ' . $codigo . ' - ' . ($respuesta ?: 'sin respuesta'));
+            self::$ultimoError = 'Brevo HTTP ' . $codigo . ' ' . mb_substr((string)$respuesta, 0, 150);
             return false;
         }
         return true;
@@ -140,6 +183,7 @@ final class Mailer
             return true;
         } catch (\Throwable $e) {
             error_log('Mailer (PHPMailer) error: ' . $e->getMessage());
+            self::$ultimoError = 'SMTP: ' . $e->getMessage();
             return false;
         }
     }

@@ -225,6 +225,7 @@ async function cargarLista() {
             <p class="nombre-postulante text-lg font-bold text-gray-800">${esc(p.nombre_completo)}</p>
             <p class="text-sm text-gray-500">${esc(p.comuna)}</p>
             ${match(p)}
+            ${chipHistorial(p)}
             ${p.es_referido ? `<p class="inline-block mt-1.5 ml-1 text-xs font-semibold px-2 py-1 rounded-full bg-green-50 text-green-700 border border-green-200">🤝 Referido por ${esc(p.referido_por_nombre || 'un compañero')}</p>` : ''}
             ${bloqueCv(p)}
           </div>

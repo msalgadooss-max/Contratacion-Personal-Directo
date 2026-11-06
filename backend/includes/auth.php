@@ -61,6 +61,12 @@ function requireLogin(): array
         error_log('requireLogin activo check: ' . $e->getMessage());
     }
 
+    // v10.31: con clave temporal solo funcionan me.php, logout.php y el cambio
+    // de clave (carpeta /api/auth/); cualquier otra pantalla pide cambiarla primero.
+    if (!empty($_SESSION['debe_cambiar']) && !str_contains((string)($_SERVER['SCRIPT_NAME'] ?? ''), '/api/auth/')) {
+        responderError('Debes cambiar tu clave temporal antes de continuar.', 403);
+    }
+
     return $usuario;
 }
 

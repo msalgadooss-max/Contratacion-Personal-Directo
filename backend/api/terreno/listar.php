@@ -59,11 +59,20 @@ $stmt = $pdo->prepare(
 );
 $stmt->execute($params);
 
-$postulaciones = array_map(function ($p) {
+$filas = $stmt->fetchAll();
+// v10.31: historial por RUT -- si la persona ya trabajó antes y qué recomendación
+// dejó el Jefe de Terreno. El Capataz ve solo la recomendación (no el comentario).
+$historial = resumenHistorialPorRut($pdo, $filas);
+$verComentario = $usuario['rol'] === 'Jefe_Terreno';
+$postulaciones = array_map(function ($p) use ($historial, $verComentario) {
     $p['tiene_cv'] = (bool)$p['tiene_cv'];
     $p['es_referido'] = $p['referido_por_id'] !== null;
+    $h = $historial[$p['id']] ?? ['veces_anteriores' => 0, 'recomendacion_anterior' => null, 'comentario_anterior' => null];
+    $p['veces_anteriores'] = $h['veces_anteriores'];
+    $p['recomendacion_anterior'] = $h['recomendacion_anterior'];
+    $p['comentario_anterior'] = $verComentario ? $h['comentario_anterior'] : null;
     return $p;
-}, $stmt->fetchAll());
+}, $filas);
 
 responderOk([
     'postulaciones' => $postulaciones,

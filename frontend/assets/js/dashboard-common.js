@@ -32,12 +32,22 @@ async function protegerDashboard(rolEsperado) {
   try {
     const data = await apiFetch('/auth/me.php');
     setCsrfToken(data.csrf_token);
+    // v10.31: clave temporal -> primero hay que cambiarla.
+    if (data.debe_cambiar_password) {
+      window.location.href = '../public/cambiar_clave.html';
+      return null;
+    }
     if (data.usuario.rol !== rolEsperado) {
       window.location.href = 'no-autorizado.html';
       return null;
     }
     document.querySelectorAll('[data-usuario-nombre]').forEach(el => {
       el.textContent = data.usuario.nombre;
+      // v10.31: acceso directo para cambiar la propia clave cuando se quiera.
+      if (!el.dataset.claveLink && !data.modo_desarrollador) {
+        el.dataset.claveLink = '1';
+        el.insertAdjacentHTML('afterend', ' <a href="../public/cambiar_clave.html" class="text-xs text-gray-500 hover:text-gray-800 underline" title="Cambiar mi clave">🔑 Mi clave</a>');
+      }
     });
     if (data.modo_desarrollador) {
       mostrarBannerDesarrollador(data.dev_nombre);
@@ -274,4 +284,65 @@ function mostrarAlerta(contenedorId, mensaje, tipo = 'error') {
     : 'bg-green-50 text-green-700 border-green-200';
   el.innerHTML = `<div class="border rounded-lg px-4 py-3 text-sm ${clases}">${mensaje}</div>`;
   setTimeout(() => { el.innerHTML = ''; }, 6000);
+}
+
+// --- v10.31: historial del trabajador y recomendación de recontratación -------
+// Compartido por Capataz, Jefe de Terreno y JAO.
+const ETIQUETA_RECOMENDACION = {
+  si: '👍 Recomendado',
+  con_reservas: '⚠ Con reservas',
+  no: '👎 No recomendado',
+};
+const CLASE_RECOMENDACION = {
+  si: 'bg-green-50 text-green-700 border-green-200',
+  con_reservas: 'bg-amber-50 text-amber-800 border-amber-200',
+  no: 'bg-red-50 text-red-700 border-red-200',
+};
+
+/** Etiqueta "♻ Ya trabajó antes · 👍 Recomendado" (o '' si es la primera vez). */
+function chipHistorial(p) {
+  if (!p || !p.veces_anteriores) return '';
+  const rec = p.recomendacion_anterior;
+  const clase = rec ? CLASE_RECOMENDACION[rec] : 'bg-purple-50 text-purple-700 border-purple-200';
+  const texto = `♻ Ya trabajó antes${p.veces_anteriores > 1 ? ` (${p.veces_anteriores} veces)` : ''}${rec ? ' · ' + ETIQUETA_RECOMENDACION[rec] : ''}`;
+  const titulo = p.comentario_anterior ? ` title="${esc(p.comentario_anterior)}"` : '';
+  return `<span class="inline-block mt-1.5 text-xs font-semibold px-2 py-1 rounded-full border ${clase}"${titulo}>${esc(texto)}</span>`;
+}
+
+/** Abre una ventana con todas las contrataciones anteriores de la persona (JAO y Jefe de Terreno). */
+async function abrirHistorialTrabajador(postulacionId) {
+  let modal = document.getElementById('historial-trabajador-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'historial-trabajador-modal';
+    modal.className = 'hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4';
+    modal.onclick = (e) => { if (e.target === modal) modal.classList.add('hidden'); };
+    document.body.appendChild(modal);
+  }
+  modal.innerHTML = `<div class="bg-white rounded-2xl shadow-2xl max-w-xl w-full p-6 relative max-h-[85vh] overflow-y-auto">${spinnerHtml('Cargando historial...')}</div>`;
+  modal.classList.remove('hidden');
+  try {
+    const d = await apiFetch(`/admin_general/historial_trabajador.php?postulacion_id=${encodeURIComponent(postulacionId)}`);
+    const filas = d.contrataciones.map((c) => `
+      <div class="border border-gray-200 rounded-lg p-3">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <p class="text-sm font-semibold text-gray-900">${esc(c.nombre_cargo)}</p>
+          <span class="text-xs text-gray-500">${esc(new Date(c.creado_at.replace(' ', 'T')).toLocaleDateString('es-CL'))}</span>
+        </div>
+        <p class="text-xs text-gray-500 mt-0.5">Estado: ${esc(c.estado.replace(/_/g, ' '))}${c.codigo_ficha ? ` · Ficha ${esc(c.codigo_ficha)}` : ''}</p>
+        ${c.recomienda ? `
+          <p class="mt-2 inline-block text-xs font-semibold px-2 py-1 rounded-full border ${CLASE_RECOMENDACION[c.recomienda]}">${ETIQUETA_RECOMENDACION[c.recomienda]}</p>
+          ${c.fecha_termino ? `<span class="text-xs text-gray-500 ml-2">término ${esc(c.fecha_termino)}</span>` : ''}
+          ${c.comentario ? `<p class="text-sm text-gray-700 mt-1.5 break-words">${esc(c.comentario)}</p>` : ''}
+          ${c.evaluado_por_nombre ? `<p class="text-[11px] text-gray-400 mt-1">Evaluó: ${esc(c.evaluado_por_nombre)}</p>` : ''}`
+          : '<p class="text-xs text-gray-400 mt-2">Sin evaluación de recontratación.</p>'}
+      </div>`).join('');
+    modal.firstElementChild.innerHTML = `
+      <button onclick="document.getElementById('historial-trabajador-modal').classList.add('hidden')" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-xl leading-none">✕</button>
+      <h2 class="text-lg font-bold text-gray-900 mb-0.5">Historial de ${esc(d.nombre_completo)}</h2>
+      <p class="text-xs text-gray-500 mb-4">${esc(d.rut)} · ${d.contrataciones.length} ${d.contrataciones.length === 1 ? 'postulación' : 'postulaciones'} en total. Uso interno.</p>
+      <div class="space-y-3">${filas}</div>`;
+  } catch (err) {
+    modal.firstElementChild.innerHTML = `<p class="text-sm text-red-600">${esc(err.message)}</p>`;
+  }
 }

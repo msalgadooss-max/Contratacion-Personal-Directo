@@ -33,6 +33,7 @@ const ETIQUETAS_ROL = {
   await cargarUsuarios();
   cargarUsuariosClaves();
   inicializarAdminUsuarios();
+  inicializarCorreosFallidos();
   cargarTiempos();
   document.getElementById('tiempos-dias').addEventListener('change', cargarTiempos);
   configurarTabs();
@@ -146,6 +147,44 @@ document.getElementById('btn-generar-qr-rol').addEventListener('click', async ()
     mostrarAlerta('alerta', err.message);
   }
 });
+
+// --- v10.31: correos que no pudieron salir -----------------------------------
+function inicializarCorreosFallidos() {
+  document.getElementById('correos-reintentar-todos').addEventListener('click', () => accionCorreo('reintentar_todos'));
+  cargarCorreosFallidos();
+  setInterval(cargarCorreosFallidos, 60000);
+}
+
+async function cargarCorreosFallidos() {
+  try {
+    const data = await apiFetch('/dev/correos_fallidos_listar.php');
+    const seccion = document.getElementById('seccion-correos');
+    seccion.classList.toggle('hidden', !data.correos.length);
+    document.getElementById('correos-contador').textContent = data.correos.length;
+    document.getElementById('correos-tabla').innerHTML = data.correos.map(c => `
+      <tr class="border-b border-gray-100 align-top">
+        <td class="py-2 px-3 text-gray-800">${esc(c.destinatario)}${c.nombre ? `<span class="block text-[11px] text-gray-500">${esc(c.nombre)}</span>` : ''}</td>
+        <td class="py-2 px-3 text-gray-700">${esc(c.asunto)}<span class="block text-[11px] text-gray-400">${esc(new Date(c.creado_at.replace(' ', 'T')).toLocaleString('es-CL'))}</span></td>
+        <td class="py-2 px-3 text-xs text-red-700 max-w-xs break-words">${esc(c.error || '—')}</td>
+        <td class="py-2 px-3 text-right text-gray-600">${c.intentos}</td>
+        <td class="py-2 px-3 text-right whitespace-nowrap">
+          <button onclick="accionCorreo('reintentar', ${c.id})" class="text-xs font-semibold text-blue-700 hover:underline mr-3">Reintentar</button>
+          <button onclick="accionCorreo('descartar', ${c.id})" class="text-xs font-semibold text-gray-500 hover:underline">Descartar</button>
+        </td>
+      </tr>`).join('');
+  } catch (err) { /* sin aviso: no es crítico para el resto del panel */ }
+}
+
+async function accionCorreo(accion, id) {
+  if (accion === 'descartar' && !confirm('¿Descartar este correo sin enviarlo?')) return;
+  try {
+    const data = await apiFetch('/dev/correos_fallidos_accion.php', { method: 'POST', body: { accion, id: id || 0 } });
+    mostrarAlerta('alerta', data.mensaje, 'exito');
+  } catch (err) {
+    mostrarAlerta('alerta', err.message);
+  }
+  cargarCorreosFallidos();
+}
 
 // --- v10.30: administración de usuarios (crear, editar, desactivar) ----------
 const ROLES_ADMINISTRABLES = ['Jefe_Terreno', 'Capataz', 'Admin_Contrato', 'Jefe_Administrativo', 'Prevencionista', 'Jefe_Bodega', 'Porteria', 'Gerencia'];

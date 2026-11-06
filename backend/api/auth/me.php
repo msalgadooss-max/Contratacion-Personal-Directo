@@ -17,5 +17,7 @@ responderOk([
     // v5: si esto viene true, el frontend muestra el banner "modo
     // desarrollador" con el link para volver (ver dev/entrar_como.php).
     'modo_desarrollador' => isset($_SESSION['dev_original']),
+    // v10.31: clave temporal pendiente de cambiar.
+    'debe_cambiar_password' => !empty($_SESSION['debe_cambiar']),
     'dev_nombre'         => $_SESSION['dev_original']['nombre'] ?? null,
 ]);

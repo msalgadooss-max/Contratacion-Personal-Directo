@@ -80,6 +80,25 @@
       </div>
     </section>
 
+    <!-- v10.31: correos que no pudieron salir (se reintentan desde aquí) -->
+    <section id="seccion-correos" class="hidden bg-red-50 border-2 border-red-300 rounded-xl p-5 mb-6">
+      <div class="flex flex-wrap items-start justify-between gap-3 mb-3">
+        <div>
+          <h2 class="text-sm font-bold text-red-800">⚠ Correos que no pudieron salir <span id="correos-contador" class="ml-1 bg-red-600 text-white text-xs rounded-full px-2 py-0.5"></span></h2>
+          <p class="text-xs text-red-700 mt-1 max-w-xl">Alguien no recibió un aviso. Reintenta el envío; si sigue fallando, revisa la configuración de correo. Si es un "Buenas noticias", la persona también puede generar su enlace desde su seguimiento.</p>
+        </div>
+        <button id="correos-reintentar-todos" class="bg-red-700 hover:bg-red-800 text-white text-sm font-semibold px-4 py-2 rounded-lg">Reintentar todos</button>
+      </div>
+      <div class="overflow-x-auto bg-white rounded-lg">
+        <table class="w-full text-sm">
+          <thead class="text-left text-xs text-gray-500 border-b border-gray-200">
+            <tr><th class="py-2 px-3 font-semibold">Para</th><th class="py-2 px-3 font-semibold">Asunto</th><th class="py-2 px-3 font-semibold">Motivo</th><th class="py-2 px-3 font-semibold text-right">Intentos</th><th class="py-2 px-3 font-semibold text-right">Acciones</th></tr>
+          </thead>
+          <tbody id="correos-tabla"></tbody>
+        </table>
+      </div>
+    </section>
+
     <!-- v10.30: administración de usuarios internos (crear, editar, desactivar) -->
     <section class="bg-white rounded-xl shadow-sm p-5 mb-6">
       <h2 class="text-sm font-semibold text-gray-700 mb-1">Usuarios</h2>

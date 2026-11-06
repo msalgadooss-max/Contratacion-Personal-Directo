@@ -46,6 +46,7 @@ const GUIA_POR_ROL = {
   terreno: {
     titulo: 'Guía de uso · Jefe de Terreno',
     contenido: `
+      <p class="text-xs text-gray-500 mb-3">🔑 <b>Tu clave:</b> la primera vez que entres con la clave temporal que te dieron, la plataforma te pide cambiarla. Puedes cambiarla cuando quieras con el enlace <b>"Mi clave"</b> junto a tu nombre.</p>
       <p class="text-gray-700 mb-4">Tu rol es <b>solicitar cupos y hacer seguimiento</b> -- ya no apruebas ni rechazas postulantes uno por uno; eso lo hace el Capataz, en persona, en portería.</p>
       <ul class="space-y-2.5 text-gray-700">
         <li>• <b>Pestaña "Solicitar Cupos":</b> pide, por ejemplo, "5 jornales". La solicitud queda <b>Pendiente</b> hasta que el Administrador de Contrato la aprueba -- recién ahí se abre la vacante y el cargo muestra cupos disponibles. En la tabla de abajo ves el estado de tus solicitudes (Pendiente/Aprobada/Rechazada).</li>
@@ -56,6 +57,7 @@ const GUIA_POR_ROL = {
         <li>• <b>Estado en vivo:</b> el widget de arriba te muestra en qué fase está cada postulante activo (en el celular viene plegado: tócalo para abrirlo).</li>
         <li>• <b>Pestaña "Mi equipo":</b> arma tu organigrama. Agrega a los Capataces que tienes a cargo con la lista desplegable, o arrástralos desde "Capataces sin asignar" hasta tu organigrama (y de vuelta para quitarlos). Cada Capataz muestra cuántos referidos esperan y cuántos seleccionó hoy.</li>
         <li>• <b>Pestaña "Invitar referido":</b> tu enlace personal y QR para invitar a alguien a postular desde donde esté (copiar, WhatsApp o correo). Quien postula por tu enlace elige entre los Capataces de tu equipo.</li>
+        <li>• <b>Pestaña "Evaluaciones":</b> cuando un trabajador termina su contrato (finiquito), deja ahí una evaluación breve: <b>👍 Recomendado, ⚠ Con reservas o 👎 No recomendado</b> para recontratar, con la fecha de término y un comentario (obligatorio si no lo recomiendas; hechos concretos, máx. 500 caracteres). Es de uso interno: el postulante nunca la ve. Si esa persona vuelve a postular, el Capataz y el JAO ven tu recomendación, y tú también el comentario. "Historial" muestra todas sus contrataciones anteriores.</li>
       </ul>`,
   },
   capataz: {
@@ -75,6 +77,7 @@ const GUIA_POR_ROL = {
         <li>• <b>Pestaña "Personal Contratado":</b> cuando alguien queda contratado (listo para tu cuadrilla), aparece acá con el botón <b>"Ya lo retiré"</b> -- apriétalo cuando lo vayas a buscar y se lo lleves a su cuadrilla. La ve también Jefe de Terreno: cualquiera de los dos puede confirmarlo. Cuando alguien queda listo te aparece una <b>franja verde arriba</b> y un contador rojo en la pestaña.</li>
         <li>• <b>Referidos:</b> las personas que invitaste con tu enlace (o que dijeron venir por ti) aparecen con la etiqueta <b>"🤝 Referido por ..."</b> y <b>solo las ves tú</b>; los referidos de otros Capataces no te aparecen. En vez de "Trae sus documentos" marcas <b>"① Confirmo a esta persona"</b>: si no está en la obra, su cédula se verifica en su primer día. Las personas que llegan por el QR de la obra (sin Capataz asignado) las ves tú y los demás Capataces.</li>
         <li>• <b>Pestaña "Invitar referido":</b> tu enlace personal y QR para invitar a alguien a postular a distancia (copiar, WhatsApp o correo). Lo que postule por tu enlace queda asociado a ti.</li>
+        <li>• <b>"♻ Ya trabajó antes":</b> si la persona ya fue contratada otra vez, su tarjeta lo dice y muestra la recomendación que dejó el Jefe de Terreno (👍 Recomendado, ⚠ Con reservas, 👎 No recomendado). Es una ayuda para decidir, no una orden.</li>
       </ul>`,
   },
   admin_contrato: {
@@ -97,7 +100,7 @@ const GUIA_POR_ROL = {
         <li>• <b>Observar un documento:</b> si algo está mal o ilegible, puedes rechazar ese documento puntual -- el postulante recibe un correo pidiéndole que lo vuelva a subir, sin afectar el resto de sus documentos ya aprobados.</li>
         <li>• <b>Todos los documentos, siempre a la vista:</b> en cada tarjeta ves los 7 documentos (cédula frente y reverso, certificado de AFP, <b>últimas 12 cotizaciones AFP</b>, Fonasa/Isapre, finiquito y residencia), estén subidos o no. Junto a cada uno: ✕ observar (esto sí frena la firma hasta que el postulante lo corrija), <b>⏳ pendiente de entrega</b>, <b>○ opcional</b> (para esta persona no se exige), <b>✓ entregado</b> y ↺ quitar la marca. Pendiente y opcional <b>no frenan nada</b>: la persona sigue su camino y al firmar queda anotado en la bitácora qué faltaba. La cédula no se puede dejar pendiente.</li>
         <li>• <b>Pendientes que entrega el postulante:</b> si dejó algo "pendiente de entrega", lo puede subir él mismo desde su seguimiento (útil si postula a distancia); en cuanto lo sube, el documento aparece solo en tu tarjeta como entregado.</li>
-        <li>• <b>CV:</b> si la persona no subió CV y contó su experiencia, "CV" abre un PDF con su nombre, RUT y la experiencia que declaró. Si ya trabajó antes, su tarjeta muestra <b>♻ Recontratado</b> y el código de ficha de su contratación anterior viene prellenado en los datos de nómina.</li>
+        <li>• <b>CV:</b> si la persona no subió CV y contó su experiencia, "CV" abre un PDF con su nombre, RUT y la experiencia que declaró. Si ya trabajó antes, su tarjeta muestra <b>♻ Ya trabajó antes</b> con la recomendación del Jefe de Terreno, un botón <b>"Ver historial"</b> con todas sus contrataciones anteriores, y el código de ficha de la última viene prellenado en los datos de nómina.</li>
         <li>• <b>Día 1, 8am -- Firmar Contrato (y enrolamiento de asistencia):</b> cuando Portería autoriza el paso de la persona a contratación te llega un aviso por correo y su tarjeta muestra "✓ Paso autorizado por Portería" (si Portería no alcanzó, usa "Confirmar manualmente" en la tarjeta). Se habilita recién cuando ya verificaste la identidad, Prevención hizo su verificación del Día 0, completaste los datos de nómina Y no queda ningún documento observado. Al firmar, la persona pasa con Prevención a la <b>IRL</b> y después a Bodega -- queda Contratado recién cuando Bodega entrega el kit de EPP.</li>
         <li>• <b>⏱ "Ver tiempos":</b> en cada tarjeta, el detalle de cuándo se hizo cada paso y cuánto demoró, desde que el Capataz seleccionó a la persona.</li>
         <li>• <b>Ventana de contratación:</b> tú fijas las fechas en que se puede contratar (Desde / Hasta); fuera de ellas no se puede firmar contrato ni entregar EPP. Debe incluir el día en que se contrata.</li>

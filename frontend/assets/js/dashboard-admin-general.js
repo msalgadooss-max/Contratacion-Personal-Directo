@@ -307,7 +307,7 @@ function tarjeta(p) {
         </div>
         <div class="flex items-center gap-2 flex-wrap justify-end">
           <button class="text-xs font-semibold text-blue-600 underline" onclick="abrirDetalleTiempos(${p.id})">⏱ Ver tiempos</button>
-          ${p.recontratado ? '<span class="text-xs text-purple-700 bg-purple-50 px-2 py-1 rounded-md font-medium" title="Esta persona ya trabajó antes en la empresa">♻ Recontratado</span>' : ''}
+          ${p.veces_anteriores > 0 ? `${chipHistorial(p)} <button onclick="abrirHistorialTrabajador(${p.id})" class="text-xs font-semibold text-gray-600 underline">Ver historial</button>` : ''}
           ${p.tiene_datos_jao ? '<span class="text-xs text-green-700 bg-green-50 px-2 py-1 rounded-md font-medium">✓ Nómina completa</span>' : ''}
           ${p.identidad_verificada
             ? `<span class="text-xs text-green-700 bg-green-50 px-2 py-1 rounded-md font-medium" title="Verificado por ${esc(p.identidad_verificada_por_nombre || '')}">✓ Identidad verificada</span>`

@@ -48,6 +48,15 @@ if (!$objetivo) {
 $stmt = $pdo->prepare('UPDATE usuarios SET password = :hash WHERE id = :id');
 $stmt->execute(['hash' => password_hash($nueva, PASSWORD_BCRYPT), 'id' => $usuarioId]);
 
+// v10.31: una clave puesta por el Desarrollador es temporal: la persona debe
+// cambiarla al entrar (salvo que el Desarrollador cambie la suya propia).
+try {
+    $pdo->prepare('UPDATE usuarios SET debe_cambiar_password = :m WHERE id = :id')
+        ->execute(['m' => ((int)$usuarioId === (int)$dev['id']) ? 0 : 1, 'id' => $usuarioId]);
+} catch (PDOException $e) {
+    error_log('cambiar_password (dev): ' . $e->getMessage());
+}
+
 // Al cambiar la clave, se levanta cualquier bloqueo por intentos fallidos.
 limpiarIntentosFallidos($pdo, 'login', mb_strtolower($objetivo['correo']));
 

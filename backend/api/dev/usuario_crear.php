@@ -59,5 +59,13 @@ $stmt->execute([
     'rol'    => $rol,
 ]);
 
-error_log(sprintf('usuario_crear: dev #%d creó usuario #%d (%s, %s)', $dev['id'], (int)$pdo->lastInsertId(), $correo, $rol));
-responderOk(['mensaje' => 'Usuario creado: ' . $nombre . '.', 'id' => (int)$pdo->lastInsertId()]);
+$nuevoId = (int)$pdo->lastInsertId();
+// v10.31: la clave inicial es temporal: la persona debe cambiarla en su primer ingreso.
+try {
+    $pdo->prepare('UPDATE usuarios SET debe_cambiar_password = 1 WHERE id = :id')->execute(['id' => $nuevoId]);
+} catch (PDOException $e) {
+    error_log('usuario_crear: no se pudo marcar clave temporal: ' . $e->getMessage());
+}
+
+error_log(sprintf('usuario_crear: dev #%d creó usuario #%d (%s, %s)', $dev['id'], $nuevoId, $correo, $rol));
+responderOk(['mensaje' => 'Usuario creado: ' . $nombre . '. Deberá cambiar su clave al entrar por primera vez.', 'id' => $nuevoId]);

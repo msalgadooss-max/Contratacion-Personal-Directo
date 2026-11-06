@@ -43,7 +43,25 @@ $_SESSION['usuario'] = [
     'rol'    => $usuario['rol'],
 ];
 
+// v10.31: si la clave es temporal (la puso el Desarrollador), la sesión queda
+// marcada y solo se puede cambiar la clave hasta hacerlo (ver requireLogin()).
+// A prueba de fallos: si la columna aún no existe, se ignora.
+$debeCambiar = false;
+try {
+    $stmtMarca = $pdo->prepare('SELECT debe_cambiar_password FROM usuarios WHERE id = :id');
+    $stmtMarca->execute(['id' => $usuario['id']]);
+    $debeCambiar = (bool)$stmtMarca->fetchColumn();
+} catch (PDOException $e) {
+    $debeCambiar = false;
+}
+if ($debeCambiar) {
+    $_SESSION['debe_cambiar'] = true;
+} else {
+    unset($_SESSION['debe_cambiar']);
+}
+
 responderOk([
     'usuario'    => $_SESSION['usuario'],
     'csrf_token' => generarCsrfToken(),
+    'debe_cambiar_password' => $debeCambiar,
 ]);

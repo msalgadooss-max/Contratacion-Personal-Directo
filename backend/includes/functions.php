@@ -1510,3 +1510,69 @@ function normalizarTallaOverol(string $t): ?string
     }
     return preg_match('/^(3[4-9]|[4-6][0-9]|70)$/', $t) ? $t : null;
 }
+
+/**
+ * v10.31 - Historial de una persona (por RUT): cuántas veces ya trabajó antes y
+ * qué recomendación dejó el Jefe de Terreno la última vez que fue evaluada.
+ *
+ * Recibe una lista de postulaciones (cada una con 'id' y 'rut') y devuelve un
+ * mapa [id => ['veces_anteriores' => n, 'recomendacion_anterior' => 'si'|'con_reservas'|'no'|null,
+ * 'comentario_anterior' => string|null]]. A prueba de fallos: si la tabla de
+ * evaluaciones aún no existe, devuelve solo el conteo; si nada funciona, [].
+ */
+function resumenHistorialPorRut(PDO $pdo, array $postulaciones): array
+{
+    $ruts = array_values(array_unique(array_filter(array_map(fn ($p) => $p['rut'] ?? null, $postulaciones))));
+    if (!$ruts) {
+        return [];
+    }
+    $in = implode(',', array_fill(0, count($ruts), '?'));
+    $filas = null;
+    try {
+        $stmt = $pdo->prepare(
+            "SELECT p.id, p.rut, e.recomienda, e.comentario
+               FROM postulaciones p
+               LEFT JOIN evaluaciones_trabajador e ON e.postulacion_id = p.id
+              WHERE p.rut IN ($in) AND p.estado IN ('Contratado', 'Proceso_completo')
+              ORDER BY p.creado_at DESC, p.id DESC"
+        );
+        $stmt->execute($ruts);
+        $filas = $stmt->fetchAll();
+    } catch (PDOException $e) {
+        try {
+            $stmt = $pdo->prepare(
+                "SELECT p.id, p.rut, NULL AS recomienda, NULL AS comentario
+                   FROM postulaciones p
+                  WHERE p.rut IN ($in) AND p.estado IN ('Contratado', 'Proceso_completo')"
+            );
+            $stmt->execute($ruts);
+            $filas = $stmt->fetchAll();
+        } catch (PDOException $e2) {
+            error_log('resumenHistorialPorRut: ' . $e2->getMessage());
+            return [];
+        }
+    }
+
+    $resultado = [];
+    foreach ($postulaciones as $p) {
+        $veces = 0;
+        $recomendacion = null;
+        $comentario = null;
+        foreach ($filas as $f) {
+            if ($f['rut'] !== $p['rut'] || (int)$f['id'] === (int)$p['id']) {
+                continue;
+            }
+            $veces++;
+            if ($recomendacion === null && $f['recomienda'] !== null) {
+                $recomendacion = $f['recomienda'];
+                $comentario = $f['comentario'];
+            }
+        }
+        $resultado[$p['id']] = [
+            'veces_anteriores' => $veces,
+            'recomendacion_anterior' => $recomendacion,
+            'comentario_anterior' => $comentario,
+        ];
+    }
+    return $resultado;
+}
