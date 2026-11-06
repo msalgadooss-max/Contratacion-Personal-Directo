@@ -32,6 +32,7 @@ const ETIQUETAS_ROL = {
   if (!usuario) return;
   await cargarUsuarios();
   cargarUsuariosClaves();
+  inicializarAdminUsuarios();
   cargarTiempos();
   document.getElementById('tiempos-dias').addEventListener('change', cargarTiempos);
   configurarTabs();
@@ -145,6 +146,118 @@ document.getElementById('btn-generar-qr-rol').addEventListener('click', async ()
     mostrarAlerta('alerta', err.message);
   }
 });
+
+// --- v10.30: administración de usuarios (crear, editar, desactivar) ----------
+const ROLES_ADMINISTRABLES = ['Jefe_Terreno', 'Capataz', 'Admin_Contrato', 'Jefe_Administrativo', 'Prevencionista', 'Jefe_Bodega', 'Porteria', 'Gerencia'];
+let USUARIOS_ADMIN = [];
+
+function inicializarAdminUsuarios() {
+  document.getElementById('usr-rol').innerHTML = ROLES_ADMINISTRABLES
+    .map(r => `<option value="${r}">${ETIQUETAS_ROL[r] || r}</option>`).join('');
+  document.getElementById('usr-generar').addEventListener('click', () => {
+    document.getElementById('usr-clave').value = generarClaveAleatoria();
+  });
+  document.getElementById('usr-cancelar').addEventListener('click', salirEdicionUsuario);
+  document.getElementById('form-usuario').addEventListener('submit', guardarUsuario);
+  cargarUsuariosAdmin();
+}
+
+async function cargarUsuariosAdmin() {
+  try {
+    const data = await apiFetch('/dev/usuarios_listar.php');
+    USUARIOS_ADMIN = data.usuarios;
+    document.getElementById('usr-tabla').innerHTML = data.usuarios.map(u => {
+      const esDev = u.rol === 'Desarrollador';
+      const acciones = esDev
+        ? '<span class="text-xs text-gray-400">protegido</span>'
+        : `<button onclick="editarUsuario(${u.id})" class="text-xs font-semibold text-blue-700 hover:underline mr-3">Editar</button>
+           <button onclick="cambiarEstadoUsuario(${u.id}, ${u.activo ? 'false' : 'true'})" class="text-xs font-semibold ${u.activo ? 'text-red-600' : 'text-green-700'} hover:underline">${u.activo ? 'Desactivar' : 'Reactivar'}</button>`;
+      return `
+        <tr class="border-b border-gray-100 ${u.activo ? '' : 'opacity-60'}">
+          <td class="py-2 pr-3 font-medium text-gray-800">${esc(u.nombre)}</td>
+          <td class="py-2 pr-3 text-gray-600">${esc(u.correo)}</td>
+          <td class="py-2 pr-3 text-gray-600">${esc(ETIQUETAS_ROL[u.rol] || u.rol)}${u.jefe_terreno_nombre ? `<span class="block text-[11px] text-gray-400">a cargo de ${esc(u.jefe_terreno_nombre)}</span>` : ''}</td>
+          <td class="py-2 pr-3">${u.activo
+            ? '<span class="text-[11px] font-semibold bg-green-50 text-green-700 border border-green-200 rounded-full px-2 py-0.5">Activo</span>'
+            : '<span class="text-[11px] font-semibold bg-gray-100 text-gray-500 border border-gray-200 rounded-full px-2 py-0.5">Desactivado</span>'}</td>
+          <td class="py-2 text-right whitespace-nowrap">${acciones}</td>
+        </tr>`;
+    }).join('');
+  } catch (err) {
+    mostrarAlerta('alerta', err.message);
+  }
+}
+
+function salirEdicionUsuario() {
+  document.getElementById('form-usuario').reset();
+  document.getElementById('usr-id').value = '';
+  document.getElementById('usr-clave-wrap').classList.remove('hidden');
+  document.getElementById('usr-clave').required = true;
+  document.getElementById('usr-guardar').textContent = 'Crear usuario';
+  document.getElementById('usr-cancelar').classList.add('hidden');
+}
+
+function editarUsuario(id) {
+  const u = USUARIOS_ADMIN.find(x => x.id === id);
+  if (!u) return;
+  document.getElementById('usr-id').value = u.id;
+  document.getElementById('usr-nombre').value = u.nombre;
+  document.getElementById('usr-correo').value = u.correo;
+  document.getElementById('usr-rol').value = u.rol;
+  // En edición no se toca la clave (para eso está "Claves de los usuarios").
+  document.getElementById('usr-clave-wrap').classList.add('hidden');
+  document.getElementById('usr-clave').required = false;
+  document.getElementById('usr-guardar').textContent = 'Guardar cambios';
+  document.getElementById('usr-cancelar').classList.remove('hidden');
+  document.getElementById('form-usuario').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+async function guardarUsuario(e) {
+  e.preventDefault();
+  const id = Number(document.getElementById('usr-id').value);
+  const base = {
+    nombre: document.getElementById('usr-nombre').value,
+    correo: document.getElementById('usr-correo').value,
+    rol: document.getElementById('usr-rol').value,
+  };
+  try {
+    let data;
+    if (id) {
+      data = await apiFetch('/dev/usuario_actualizar.php', { method: 'POST', body: { usuario_id: id, ...base } });
+    } else {
+      const clave = document.getElementById('usr-clave').value;
+      if (clave.length < 8) {
+        mostrarAlerta('alerta', 'La clave inicial debe tener al menos 8 caracteres.');
+        return;
+      }
+      data = await apiFetch('/dev/usuario_crear.php', { method: 'POST', body: { ...base, password: clave } });
+    }
+    mostrarAlerta('alerta', data.mensaje, 'exito');
+    salirEdicionUsuario();
+    recargarListasUsuarios();
+  } catch (err) {
+    mostrarAlerta('alerta', err.message);
+  }
+}
+
+async function cambiarEstadoUsuario(id, activar) {
+  const u = USUARIOS_ADMIN.find(x => x.id === id);
+  if (!u) return;
+  if (!activar && !confirm(`¿Desactivar a ${u.nombre}? Ya no podrá entrar. Si es Capataz, sus personas que esperan selección vuelven al banco común.`)) return;
+  try {
+    const data = await apiFetch('/dev/usuario_actualizar.php', { method: 'POST', body: { usuario_id: id, activo: activar } });
+    mostrarAlerta('alerta', activar ? 'Usuario reactivado.' : data.mensaje, 'exito');
+    recargarListasUsuarios();
+  } catch (err) {
+    mostrarAlerta('alerta', err.message);
+  }
+}
+
+function recargarListasUsuarios() {
+  cargarUsuariosAdmin();
+  cargarUsuarios();        // "Entrar como..."
+  cargarUsuariosClaves();  // selector de "Claves de los usuarios"
+}
 
 // --- v10.28: tiempos por rol y etapa -----------------------------------------
 function formatearDuracion(segundos) {

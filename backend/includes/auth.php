@@ -42,6 +42,25 @@ function requireLogin(): array
     if (!$usuario) {
         responderError('Debe iniciar sesion.', 401);
     }
+
+    // v10.30: si el Desarrollador desactivó a esta persona mientras tenía la
+    // sesión abierta, se le corta el acceso en la siguiente petición (antes
+    // seguía entrando hasta cerrar el navegador). A prueba de fallos: si la
+    // consulta no se puede hacer, NO se bloquea a nadie.
+    try {
+        require_once __DIR__ . '/../config/database.php';
+        $stmt = obtenerConexion()->prepare('SELECT activo FROM usuarios WHERE id = :id');
+        $stmt->execute(['id' => $usuario['id']]);
+        $activo = $stmt->fetchColumn();
+        if ($activo !== false && (int)$activo === 0) {
+            $_SESSION = [];
+            session_destroy();
+            responderError('Tu usuario fue desactivado. Habla con el administrador.', 401);
+        }
+    } catch (PDOException $e) {
+        error_log('requireLogin activo check: ' . $e->getMessage());
+    }
+
     return $usuario;
 }
 
