@@ -49,6 +49,16 @@ async function protegerDashboard(rolEsperado) {
         el.insertAdjacentHTML('afterend', ' <a href="../public/cambiar_clave.html" class="text-xs text-gray-500 hover:text-gray-800 underline" title="Cambiar mi clave">🔑 Mi clave</a>');
       }
     });
+    // v10.32: en una obra que no es la principal, se rotula cual es -- asi
+    // quien tiene cuenta en mas de una obra (ej. el Desarrollador) siempre
+    // sabe en cual esta trabajando. En H57 (por defecto) todo se ve igual que siempre.
+    if (data.usuario.obra_codigo && data.usuario.obra_codigo !== 'h57') {
+      document.querySelectorAll('[data-usuario-nombre]').forEach(el => {
+        if (el.dataset.obraChip) return;
+        el.dataset.obraChip = '1';
+        el.insertAdjacentHTML('beforebegin', `<span class="inline-block text-xs font-bold text-white bg-blue-600 rounded-full px-2 py-0.5 mr-2" title="${esc(data.usuario.obra_nombre)}">${esc(data.usuario.obra_codigo.toUpperCase())}</span>`);
+      });
+    }
     if (data.modo_desarrollador) {
       mostrarBannerDesarrollador(data.dev_nombre);
     }

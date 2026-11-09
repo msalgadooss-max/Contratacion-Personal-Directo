@@ -42,3 +42,12 @@ document.getElementById('form-login').addEventListener('submit', async (e) => {
     btn.textContent = 'Ingresar';
   }
 });
+
+// v10.32: en una obra que no es la principal (/h58/...), la pantalla de ingreso
+// dice a cual obra se esta entrando. En H57 (sin prefijo) no se muestra nada nuevo.
+if (OBRA_PREFIJO) {
+  apiFetch("/public/listas.php").then(d => {
+    const el = document.getElementById("obra-login");
+    if (d && d.obra && el) { el.textContent = d.obra; el.classList.remove("hidden"); }
+  }).catch(() => {});
+}

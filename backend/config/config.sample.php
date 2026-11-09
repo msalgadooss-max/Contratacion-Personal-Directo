@@ -7,13 +7,14 @@
 
 // --- Base de datos -----------------------------------------------------
 define('DB_HOST', 'localhost');
-define('DB_NAME', 'icafal_rrhh');
+// DB_NAME lo define obras.php segun la obra (ver mas abajo).
 define('DB_USER', 'usuario_bd');
 define('DB_PASS', 'clave_bd');
 define('DB_CHARSET', 'utf8mb4');
 
 // --- URL base publica del sistema (sin slash final) ---------------------
-define('BASE_URL', 'https://www.tuempresa.cl/rrhh');
+// v10.32: dominio SIN prefijo de obra; BASE_URL (con prefijo) la arma obras.php.
+define('BASE_URL_RAIZ', 'https://www.tuempresa.cl/rrhh');
 
 // --- Correo saliente (SMTP) ---------------------------------------------
 define('SMTP_HOST', 'smtp.tuempresa.cl');
@@ -35,13 +36,11 @@ define('TOKEN_SUBSANACION_HORAS_VALIDEZ', 72); // horas de validez del link para
 define('CODIGO_SEGUIMIENTO_LARGO', 6);
 define('BANCO_RETENCION_MESES', 6); // cuanto se conservan los datos de quien queda "En_banco"
 
-// --- Obra activa (v4) -------------------------------------------------------
-// Nombre de la obra para la que corre esta tanda de postulacion; se muestra
-// en el formulario publico (Etapa 1) para que el postulante sepa a que
-// proyecto especifico postula. Si en el futuro se manejan varias obras a la
-// vez, esto pasa a ser una columna editable por Jefe_Terreno en vez de una
-// constante fija.
-define('OBRA_NOMBRE', 'Obra H57 Padre Hurtado IV');
+// --- Obra activa (v10.32) ---------------------------------------------------
+// Define DB_NAME, BASE_URL, OBRA_NOMBRE, SESSION_NAME y los datos de Buk segun
+// la obra de la peticion (prefijo /h58/... -> obra h58; sin prefijo -> h57).
+// Ver obras_registro.php para agregar o editar obras.
+require __DIR__ . '/obras.php';
 
 // --- Limite diario de aprobaciones de Jefe_Terreno (v4) ---------------------
 // Maximo de aprobaciones (Pendiente/En_banco -> Pre_aprobado_terreno) que un
@@ -58,9 +57,6 @@ define('LIMITE_APROBACIONES_DIARIAS_TERRENO', 25);
 // Bodega -> recepcion, como en produccion hoy).
 define('MODULO_PREVENCION_ACTIVO', false);
 define('MODULO_BODEGA_ACTIVO', false);
-
-// --- Sesion ---------------------------------------------------------------
-define('SESSION_NAME', 'icafal_rrhh_sesion');
 
 // --- Modo debug (poner en false en produccion) -----------------------------
 define('APP_DEBUG', false);

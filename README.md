@@ -55,6 +55,23 @@ frontend/assets/             JS/CSS compartido
    `backend/tools/crear_usuario.php`).
 6. Generar el QR de acceso público apuntando a `frontend/public/index.html`.
 
+## Varias obras en la misma plataforma (v10.32)
+
+Cada obra tiene su **propia base de datos** (usuarios, cargos, cupos, postulaciones), dentro del mismo servicio, el mismo MariaDB y el mismo disco. Las personas y datos de una obra nunca se mezclan con los de otra.
+
+| Obra | Dirección | Base de datos |
+|---|---|---|
+| H57 (por defecto) | `https://<dominio>/frontend/public/index.html` | `icafal_rrhh` |
+| H58 | `https://<dominio>/h58/frontend/public/index.html` | `icafal_rrhh_h58` |
+
+- El registro de obras (nombre, prefijo, base y datos de Buk) está en `backend/config/obras_registro.php`. Es la única fuente de verdad.
+- `backend/config/obras.php` elige la obra de cada petición por el prefijo de la dirección y define `DB_NAME`, `BASE_URL`, `OBRA_NOMBRE`, el nombre de sesión y los datos de Buk. El resto de la aplicación no sabe que hay más de una obra.
+- El `Dockerfile` redirige `/h<número>/...` a la misma aplicación (`AliasMatch`). El frontend lee el prefijo de su propia dirección (`frontend/assets/js/config.js`).
+- La base de una obra nueva se crea sola en el primer arranque (`docker-entrypoint.sh`), con el esquema actual, sin usuarios de demostración y con los Desarrolladores copiados de H57 (misma clave).
+- Agregar una obra: una entrada más en `obras_registro.php`, deploy, y crear a su equipo desde la pestaña "Usuarios" del panel Desarrollador.
+- Las migraciones SQL nuevas se aplican en todas las obras con `bash /app/database/aplicar_en_todas_las_obras.sh /app/database/<archivo>.sql`.
+- Los archivos subidos comparten la carpeta (nombres aleatorios de 128 bits, y cada obra solo accede a los que figuran en su propia base). Las carpetas espejo por postulante van en una subcarpeta por obra.
+
 ## Seguridad implementada
 
 - Contraseñas con `password_hash()`/`password_verify()` (bcrypt).

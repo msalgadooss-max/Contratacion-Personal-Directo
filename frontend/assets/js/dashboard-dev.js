@@ -46,7 +46,7 @@ const ETIQUETAS_ROL = {
 // portería (qr_imagen.php) -- no hace falta la librería QRCode.js para
 // este, es una imagen normal.
 function mostrarQrEncuesta() {
-  const urlEncuesta = `${window.location.origin}/frontend/public/encuesta.html`;
+  const urlEncuesta = `${window.location.origin}${OBRA_PREFIJO}/frontend/public/encuesta.html`;
   document.getElementById('url-encuesta').textContent = urlEncuesta;
   document.getElementById('qr-encuesta').src = `${API_BASE_URL}/public/qr_imagen.php?u=${encodeURIComponent(urlEncuesta)}`;
 }
@@ -125,7 +125,7 @@ function configurarTabs() {
 }
 
 function mostrarQr() {
-  const url = `${window.location.origin}/frontend/public/index.html`;
+  const url = `${window.location.origin}${OBRA_PREFIJO}/frontend/public/index.html`;
   document.getElementById('url-postulacion').textContent = url;
   // eslint-disable-next-line no-undef
   new QRCode(document.getElementById('qr'), { text: url, width: 200, height: 200 });

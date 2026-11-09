@@ -700,7 +700,10 @@ function nombreCarpetaPostulante(array $p, string $prefijo): string
 
 function carpetaBasePostulantes(): string
 {
-    $carpeta = __DIR__ . '/../carpetas_postulantes';
+    // v10.32: la obra principal (H57) sigue en la carpeta de siempre; las demas
+    // obras usan una subcarpeta propia, para que las carpetas de una obra no se
+    // mezclen con las de otra (aunque coincida el nombre de la persona).
+    $carpeta = __DIR__ . '/../carpetas_postulantes' . (OBRA_CODIGO === 'h57' ? '' : '/' . OBRA_CODIGO);
     if (!is_dir($carpeta)) {
         mkdir($carpeta, 0750, true);
         file_put_contents($carpeta . '/.htaccess', "Require all denied\n");

@@ -49,6 +49,7 @@ RUN a2enmod headers
 RUN { \
         echo '<VirtualHost *:80>'; \
         echo '    DocumentRoot /app'; \
+        echo '    AliasMatch "^/h[0-9]+(/.*)?$" "/app$1"'; \
         echo '    <Directory /app>'; \
         echo '        Options FollowSymLinks'; \
         echo '        AllowOverride None'; \

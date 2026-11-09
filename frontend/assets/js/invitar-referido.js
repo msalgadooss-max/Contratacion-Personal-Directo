@@ -13,8 +13,8 @@ function iniciarInvitacion(contenedorId, usuario) {
   const cont = document.getElementById(contenedorId);
   if (!cont || !usuario) return;
 
-  const url = `${window.location.origin}/frontend/public/index.html?ref=${encodeURIComponent(usuario.id)}`;
-  const mensajeWsp = `Hola, te invito a postular a ICAFAL (Obra H57 Padre Hurtado IV). Completa tu postulación desde tu celular aquí: ${url}`;
+  const url = `${window.location.origin}${OBRA_PREFIJO}/frontend/public/index.html?ref=${encodeURIComponent(usuario.id)}`;
+  const mensajeWsp = `Hola, te invito a postular a ICAFAL (${usuario.obra_nombre || 'nuestra obra'}). Completa tu postulación desde tu celular aquí: ${url}`;
 
   cont.innerHTML = `
     <div class="bg-white rounded-xl shadow-sm p-5 max-w-xl">

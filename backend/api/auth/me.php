@@ -12,7 +12,9 @@ iniciarSesionSegura();
 $usuario = requireLogin();
 
 responderOk([
-    'usuario'    => $usuario,
+    // v10.32: la obra a la que pertenece esta sesion (cada obra tiene su propia
+    // base de datos; ver config/obras.php).
+    'usuario'    => $usuario + ['obra_codigo' => OBRA_CODIGO, 'obra_nombre' => OBRA_NOMBRE],
     'csrf_token' => generarCsrfToken(),
     // v5: si esto viene true, el frontend muestra el banner "modo
     // desarrollador" con el link para volver (ver dev/entrar_como.php).

@@ -52,16 +52,33 @@ if ! mysql -h127.0.0.1 -uroot -e "USE icafal_rrhh" 2>/dev/null; then
   mysql -h127.0.0.1 -uroot --default-character-set=utf8mb4 < /app/database/seed_deploy.sql
 fi
 
+# --- 3.5) v10.32: obras adicionales (H58, ...) ---------------------------
+#          Cada obra tiene su PROPIA base de datos dentro del mismo MariaDB
+#          y del mismo disco persistente. El registro de obras (unica
+#          fuente de verdad) es backend/config/obras_registro.php. Una base
+#          solo se crea si todavia no existe: nunca toca una ya creada.
+#          La obra principal (H57, base icafal_rrhh) no se toca aqui.
+for DBX in $(php -r '$o = require "/app/backend/config/obras_registro.php"; foreach ($o as $x) { if ($x["prefijo"] !== "") { echo $x["db"], "\n"; } }'); do
+  if ! mysql -h127.0.0.1 -uroot -e "USE \`$DBX\`" 2>/dev/null; then
+    echo "[entrypoint] Creando base de la obra adicional: $DBX ..."
+    sed "s/icafal_rrhh/$DBX/g" /app/database/schema.sql | mysql -h127.0.0.1 -uroot --default-character-set=utf8mb4
+    sed "s/icafal_rrhh/$DBX/g" /app/database/seed_deploy.sql | mysql -h127.0.0.1 -uroot --default-character-set=utf8mb4
+    mysql -h127.0.0.1 -uroot --default-character-set=utf8mb4 "$DBX" < /app/database/seed_obra_nueva.sql
+    echo "[entrypoint] Base $DBX lista."
+  fi
+done
+
 # --- 4) Genera config.php desde variables de entorno (nunca desde git) --
 cat > /app/backend/config/config.php <<PHP
 <?php
 define('DB_HOST', '127.0.0.1');
-define('DB_NAME', 'icafal_rrhh');
+// DB_NAME lo define obras.php segun la obra de la peticion (v10.32).
 define('DB_USER', 'root');
 define('DB_PASS', '');
 define('DB_CHARSET', 'utf8mb4');
 
-define('BASE_URL', '${BASE_URL}');
+// v10.32: dominio sin prefijo; obras.php arma BASE_URL agregando /h58 si corresponde.
+define('BASE_URL_RAIZ', '${BASE_URL}');
 
 define('SMTP_HOST', '${SMTP_HOST}');
 define('SMTP_PORT', ${SMTP_PORT:-587});
@@ -80,32 +97,10 @@ define('TOKEN_SUBSANACION_HORAS_VALIDEZ', 72);
 define('CODIGO_SEGUIMIENTO_LARGO', 6);
 define('BANCO_RETENCION_MESES', 6);
 
-define('OBRA_NOMBRE', 'Obra H57 Padre Hurtado IV');
-
-// v10.14 (pedido explícito del usuario, segundo exportador Buk
-// "Trabajos"): códigos exactos sacados de las hojas de referencia del
-// template Trabajos.xls para esta obra -- Sub-área base de "H57
-// Conjunto Padre Hurtado Etapa 4" bajo Gerencia Edificación (hoja
-// "Sub-áreas"), y la Empresa real (confirmado por el usuario: Icafal
-// Ingeniería y Construcción S.A., no la que traía la fila de ejemplo
-// del template).
-define('OBRA_SUBAREA_BUK', '9042');
-define('OBRA_SUBAREA_NOMBRE_BUK', 'H57 Conjunto Padre Hurtado Etapa 4');
-define('OBRA_EMPRESA_BUK', 'Icafal Ingeniería y Construcción S.A.');
-// v10.14: confirmado contra un envío real de Luis López a Buk (Ariel
-// Torres / Elin Sánchez, 10-09) -- "Obra" y "Recinto para marcar
-// asistencia" van con este código corto en minúscula, no con
-// OBRA_COMUNA_BUK como se había asumido antes de ver un caso real (esa
-// columna, "Comuna/Localidad", Luis la deja en blanco).
-define('OBRA_CODIGO_CORTO_BUK', 'h57');
-// v10.14: confirmado por el usuario contra el mismo envío real --
-// supervisor de registro para todo el personal MOD de esta obra.
-define('OBRA_SUPERVISOR_RUT_BUK', '13.855.883-5');
-define('OBRA_SUPERVISOR_FICHA_BUK', 'ICP00254');
-// v10.14: horario semanal default para MOD -- confirmado por el
-// usuario. El sueldo base sigue sin default (pedido explícito: "el
-// sueldo dejémoslo en blanco mientras tanto").
-define('OBRA_HORARIO_SEMANAL_MOD_BUK', '42');
+# v10.32: nombre de la obra, datos de Buk, base de datos y sesion salen del
+# registro de obras (backend/config/obras_registro.php). Los datos de H57 que
+# estaban aqui (sub-area 9042, supervisor, horario, etc.) pasaron ahi, sin cambios.
+require __DIR__ . '/obras.php';
 define('LIMITE_APROBACIONES_DIARIAS_TERRENO', 25);
 
 // v10.14 (pedido explícito del usuario: "activar nuevamente los
@@ -118,7 +113,6 @@ define('LIMITE_APROBACIONES_DIARIAS_TERRENO', 25);
 define('MODULO_PREVENCION_ACTIVO', true);
 define('MODULO_BODEGA_ACTIVO', true);
 
-define('SESSION_NAME', 'icafal_rrhh_sesion');
 define('APP_DEBUG', false);
 PHP
 
