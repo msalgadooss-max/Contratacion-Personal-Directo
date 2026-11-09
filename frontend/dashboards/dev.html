@@ -53,6 +53,9 @@
     </div>
   </header>
 
+  <!-- v10.33: aviso fijo cuando el modo prueba de correo está redirigiendo los correos -->
+  <div id="banner-correo-prueba" class="hidden px-6 py-3 text-sm font-semibold text-white bg-red-600"></div>
+
   <main class="max-w-4xl mx-auto p-6">
     <div id="alerta"></div>
 
@@ -174,6 +177,29 @@
       <div id="tiempos-resumen" class="text-sm text-gray-500">Cargando...</div>
       <div id="tiempos-etapas" class="overflow-x-auto"></div>
       <div id="tiempos-usuarios" class="mt-5"></div>
+    </section>
+
+    <!-- v10.33: borrar datos de prueba (por RUT, con vista previa y confirmación) -->
+    <section class="bg-white rounded-xl shadow-sm p-5 mb-6">
+      <h2 class="text-sm font-semibold text-gray-700 mb-1">Borrar datos de prueba</h2>
+      <p class="text-xs text-gray-500 mb-3 max-w-2xl">
+        Después de probar, borra las postulaciones de prueba con todo lo que traen (documentos, nómina, bitácora) y devuelve los cupos que tenían reservados.
+        Solo afecta a la obra en la que estás: <strong id="dp-obra">—</strong>.
+        Primero <strong>buscas y revisas</strong> la lista; recién después confirmas. No se puede deshacer.
+      </p>
+      <label class="block text-xs font-medium text-gray-600 mb-1">RUT de prueba (uno por línea)</label>
+      <textarea id="dp-ruts" rows="4" class="w-full max-w-md border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono">10000001-6
+10000002-4
+10000003-2
+10000004-0
+10000005-9
+10000006-7
+10000007-5
+10000008-3
+10000009-1
+10000010-5</textarea>
+      <div class="mt-3"><button id="dp-buscar" class="bg-gray-800 hover:bg-gray-900 text-white text-sm font-semibold px-4 py-2 rounded-lg">Buscar</button></div>
+      <div id="dp-resultado" class="mt-4"></div>
     </section>
 
     <!-- QR / enlace -->

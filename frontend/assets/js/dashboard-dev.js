@@ -34,6 +34,8 @@ const ETIQUETAS_ROL = {
   cargarUsuariosClaves();
   inicializarAdminUsuarios();
   inicializarCorreosFallidos();
+  cargarEstadoSistema();
+  inicializarDatosPrueba();
   cargarTiempos();
   document.getElementById('tiempos-dias').addEventListener('change', cargarTiempos);
   configurarTabs();
@@ -426,3 +428,91 @@ document.getElementById('form-enviar-link').addEventListener('submit', async (e)
     mostrarAlerta('alerta', err.message);
   }
 });
+
+// --- v10.33: aviso de "modo prueba" de correo --------------------------------
+async function cargarEstadoSistema() {
+  try {
+    const e = await apiFetch('/dev/estado_sistema.php');
+    const b = document.getElementById('banner-correo-prueba');
+    if (e.correo_redirigiendo) {
+      b.textContent = `⚠ MODO PRUEBA DE CORREO ACTIVO: todos los correos del sistema (de todas las obras) se están enviando a ${e.correo_destino}, NO a las personas reales. Si hay postulantes reales, apágalo en Render (variable EMAIL_MODO_PRUEBA).`;
+      b.classList.remove('hidden');
+    } else if (e.correo_modo_sin_destino) {
+      b.textContent = '⚠ EMAIL_MODO_PRUEBA está en 1 pero sin EMAIL_PRUEBA_DESTINO: se ignora y los correos salen a las personas reales. Si querías probar, escribe tu correo en EMAIL_PRUEBA_DESTINO; si no, pon EMAIL_MODO_PRUEBA en 0.';
+      b.classList.remove('hidden');
+    } else {
+      b.classList.add('hidden');
+    }
+    document.getElementById('dp-obra').textContent = e.obra_nombre;
+  } catch (err) { /* sin aviso: no es crítico para el resto del panel */ }
+}
+
+// --- v10.33: borrar datos de prueba (buscar -> revisar -> confirmar) ---------
+let DP_RESULTADO = null;
+
+function inicializarDatosPrueba() {
+  document.getElementById('dp-buscar').addEventListener('click', buscarDatosPrueba);
+}
+
+async function buscarDatosPrueba() {
+  const cont = document.getElementById('dp-resultado');
+  DP_RESULTADO = null;
+  cont.innerHTML = '<p class="text-sm text-gray-500">Buscando...</p>';
+  try {
+    const ruts = document.getElementById('dp-ruts').value;
+    const data = await apiFetch('/dev/datos_prueba_buscar.php', { method: 'POST', body: { ruts } });
+    DP_RESULTADO = { ruts, ids: data.postulaciones.map(p => p.id) };
+    const filas = data.postulaciones.map(p => `
+      <tr class="border-b border-gray-100">
+        <td class="py-2 px-3 font-mono text-xs">${esc(p.rut)}</td>
+        <td class="py-2 px-3">${esc(p.nombre_completo)}<span class="block text-[11px] text-gray-500">${esc(p.correo)}</span></td>
+        <td class="py-2 px-3 text-xs">${esc(p.estado)}</td>
+        <td class="py-2 px-3 text-xs">${p.ocupa_cupo == 1 ? esc(p.nombre_cargo) + ' <span class="text-gray-400">(cupo reservado)</span>' : '<span class="text-gray-400">sin cargo aún</span>'}</td>
+      </tr>`).join('');
+    const faltan = data.no_encontrados.length
+      ? `<p class="text-xs text-gray-500 mt-2">No encontrados en esta obra: ${esc(data.no_encontrados.join(', '))}</p>` : '';
+    if (!data.postulaciones.length) {
+      cont.innerHTML = `<p class="text-sm text-gray-700">No hay postulaciones con esos RUT en <strong>${esc(data.obra)}</strong>. No hay nada que borrar.</p>${faltan}`;
+      return;
+    }
+    cont.innerHTML = `
+      <p class="text-sm text-gray-800 mb-2">Se borrarían <strong>${data.postulaciones.length}</strong> postulaciones de <strong>${esc(data.obra)}</strong> y se devolverían <strong>${data.cupos_a_devolver}</strong> cupos:</p>
+      <div class="overflow-x-auto border border-gray-200 rounded-lg">
+        <table class="w-full text-sm"><thead class="text-left text-xs text-gray-500 border-b border-gray-200">
+          <tr><th class="py-2 px-3 font-semibold">RUT</th><th class="py-2 px-3 font-semibold">Persona</th><th class="py-2 px-3 font-semibold">Estado</th><th class="py-2 px-3 font-semibold">Cargo</th></tr>
+        </thead><tbody>${filas}</tbody></table>
+      </div>
+      ${faltan}
+      <div class="mt-4 flex flex-wrap items-center gap-3">
+        <input id="dp-confirmar" type="text" placeholder="Escribe BORRAR" autocomplete="off" class="border border-gray-300 rounded-lg px-3 py-2 text-sm w-40">
+        <button id="dp-borrar" disabled class="bg-red-600 hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold px-4 py-2 rounded-lg">Borrar definitivamente</button>
+      </div>`;
+    const inp = document.getElementById('dp-confirmar');
+    const btn = document.getElementById('dp-borrar');
+    inp.addEventListener('input', () => { btn.disabled = inp.value.trim() !== 'BORRAR'; });
+    btn.addEventListener('click', borrarDatosPrueba);
+  } catch (err) {
+    cont.innerHTML = '';
+    mostrarAlerta('alerta', err.message);
+  }
+}
+
+async function borrarDatosPrueba() {
+  if (!DP_RESULTADO) return;
+  const btn = document.getElementById('dp-borrar');
+  btn.disabled = true;
+  btn.textContent = 'Borrando...';
+  try {
+    const data = await apiFetch('/dev/datos_prueba_borrar.php', {
+      method: 'POST',
+      body: { ruts: DP_RESULTADO.ruts, ids: DP_RESULTADO.ids, confirmacion: document.getElementById('dp-confirmar').value.trim() },
+    });
+    mostrarAlerta('alerta', data.mensaje, 'exito');
+    document.getElementById('dp-resultado').innerHTML = '';
+    DP_RESULTADO = null;
+  } catch (err) {
+    mostrarAlerta('alerta', err.message);
+    btn.textContent = 'Borrar definitivamente';
+    btn.disabled = false;
+  }
+}
