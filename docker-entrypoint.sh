@@ -58,13 +58,22 @@ fi
 #          fuente de verdad) es backend/config/obras_registro.php. Una base
 #          solo se crea si todavia no existe: nunca toca una ya creada.
 #          La obra principal (H57, base icafal_rrhh) no se toca aqui.
-for DBX in $(php -r '$o = require "/app/backend/config/obras_registro.php"; foreach ($o as $x) { if ($x["prefijo"] !== "") { echo $x["db"], "\n"; } }'); do
+#          Blindaje: pase lo que pase aqui, el arranque NUNCA se detiene (el
+#          contenedor sigue y H57 funciona igual). Si la creacion falla a
+#          medias, la base a medio crear se borra para reintentar limpia en
+#          el proximo arranque.
+OBRAS_EXTRA=$(php -r '$o = require "/app/backend/config/obras_registro.php"; foreach ($o as $x) { if ($x["prefijo"] !== "") { echo $x["db"], "\n"; } }' 2>/dev/null || true)
+for DBX in $OBRAS_EXTRA; do
   if ! mysql -h127.0.0.1 -uroot -e "USE \`$DBX\`" 2>/dev/null; then
     echo "[entrypoint] Creando base de la obra adicional: $DBX ..."
-    sed "s/icafal_rrhh/$DBX/g" /app/database/schema.sql | mysql -h127.0.0.1 -uroot --default-character-set=utf8mb4
-    sed "s/icafal_rrhh/$DBX/g" /app/database/seed_deploy.sql | mysql -h127.0.0.1 -uroot --default-character-set=utf8mb4
-    mysql -h127.0.0.1 -uroot --default-character-set=utf8mb4 "$DBX" < /app/database/seed_obra_nueva.sql
-    echo "[entrypoint] Base $DBX lista."
+    if sed "s/icafal_rrhh/$DBX/g" /app/database/schema.sql | mysql -h127.0.0.1 -uroot --default-character-set=utf8mb4 \
+       && sed "s/icafal_rrhh/$DBX/g" /app/database/seed_deploy.sql | mysql -h127.0.0.1 -uroot --default-character-set=utf8mb4 \
+       && mysql -h127.0.0.1 -uroot --default-character-set=utf8mb4 "$DBX" < /app/database/seed_obra_nueva.sql; then
+      echo "[entrypoint] Base $DBX lista."
+    else
+      echo "[entrypoint] ATENCION: no se pudo crear la base $DBX. Se elimina para reintentar en el proximo arranque. La obra principal (H57) NO se ve afectada."
+      mysql -h127.0.0.1 -uroot -e "DROP DATABASE IF EXISTS \`$DBX\`" || true
+    fi
   fi
 done
 
