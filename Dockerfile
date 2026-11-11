@@ -24,12 +24,21 @@ FROM php:8.3-apache-bookworm
 ENV TZ=America/Santiago
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        default-mysql-server default-mysql-client tzdata \
+        default-mysql-server default-mysql-client tzdata ca-certificates \
         libpng-dev libjpeg-dev libfreetype6-dev libzip-dev unzip git \
     && ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install -j$(nproc) gd zip pdo_mysql \
     && rm -rf /var/lib/apt/lists/*
+
+# v10.34: certificado raiz "Microsoft RSA Root Certificate Authority 2017"
+# (huella SHA-1 73:A5:E6:4A:...:4E:AE:4D:74, la publicada por Microsoft). Azure
+# Database for MySQL firma sus servidores con cadenas que terminan en esta raiz
+# o en DigiCert Global Root G2 (esta ultima ya viene en el paquete
+# ca-certificates de Debian). Con ambas, la conexion TLS validada funciona
+# antes y despues de las rotaciones de certificado de Azure.
+COPY azure/ca/microsoft-rsa-root-ca-2017.crt /usr/local/share/ca-certificates/microsoft-rsa-root-ca-2017.crt
+RUN update-ca-certificates
 
 # v10.4: mod_headers -- necesario para el Cache-Control de mas abajo, que
 # evita que el navegador se quede pegado en un .js viejo despues de un
@@ -55,6 +64,19 @@ RUN { \
         echo '        AllowOverride None'; \
         echo '        Require all granted'; \
         echo '    </Directory>'; \
+        echo '    # v10.34: carpetas que NUNCA deben salir por HTTP. Los documentos'; \
+        echo '    # (cedulas, CV, certificados) solo se entregan via backend/api/*/ver*.php,'; \
+        echo '    # que valida la sesion. El .htaccess que antes protegia uploads/ no'; \
+        echo '    # aplica aqui (AllowOverride None), asi que se bloquea en el vhost.'; \
+        echo '    <LocationMatch "^(/h[0-9]+)?/(backend/(uploads|carpetas_postulantes|config|includes|mailer|tools)|database|vendor|azure)(/|$)">'; \
+        echo '        Require all denied'; \
+        echo '    </LocationMatch>'; \
+        echo '    <LocationMatch "^(/h[0-9]+)?/(Dockerfile|docker-entrypoint\.sh|composer\.(json|lock)|README\.md)$">'; \
+        echo '        Require all denied'; \
+        echo '    </LocationMatch>'; \
+        echo '    <FilesMatch "^\.">'; \
+        echo '        Require all denied'; \
+        echo '    </FilesMatch>'; \
         echo '    <FilesMatch "\.(js|css|html)$">'; \
         echo '        Header set Cache-Control "no-cache, must-revalidate"'; \
         echo '    </FilesMatch>'; \
