@@ -66,5 +66,7 @@ define('OBRA_CODIGO_CORTO_BUK', $icafalObra['buk']['codigo_corto']);
 define('OBRA_SUPERVISOR_RUT_BUK', $icafalObra['buk']['supervisor_rut']);
 define('OBRA_SUPERVISOR_FICHA_BUK', $icafalObra['buk']['supervisor_ficha']);
 define('OBRA_HORARIO_SEMANAL_MOD_BUK', $icafalObra['buk']['horario_semanal']);
+define('OBRA_BUK_TRABAJOS_NOV2026', ($icafalObra['buk']['plantilla_trabajos'] ?? 'sep2026') === 'nov2026');
+define('OBRA_BUK_ASISTENCIA', (bool)($icafalObra['buk']['asistencia'] ?? true));
 
 unset($icafalCodigoObra, $icafalObra);

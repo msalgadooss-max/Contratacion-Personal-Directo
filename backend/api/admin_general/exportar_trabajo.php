@@ -85,6 +85,18 @@ $columnas = [
     'Tramo Seguro Comple. Carga Especial', 'Tramo Seguro Complementario',
 ];
 
+// v10.35: la plantilla "Trabajos" de Buk descargada el 09-11-2026 (obra H58) tiene 36
+// columnas: no trae "ctrlit_recinto*" y el encabezado dice "Código Subárea*" (sin
+// guion). Cada obra declara en obras_registro.php cual plantilla usa; H57 sigue con la
+// del envio real de septiembre, ya probada.
+const COL_SUBAREA = 7;
+const COL_ASISTENCIA = 22;          // Registra asistencia (y la siguiente: recinto para marcar)
+const COL_CTRLIT = 28;              // ctrlit_recinto*
+if (OBRA_BUK_TRABAJOS_NOV2026) {
+    $columnas[COL_SUBAREA] = 'Código Subárea*';
+    array_splice($columnas, COL_CTRLIT, 1);
+}
+
 $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
 $hoja = $spreadsheet->getActiveSheet();
 $hoja->setTitle('trabajos');
@@ -149,6 +161,13 @@ foreach ($filas as $filaIdx => $f) {
         '',                         // Tramo Seguro Comple. Carga Especial
         '',                         // Tramo Seguro Complementario
     ];
+    if (!OBRA_BUK_ASISTENCIA) {
+        $valores[COL_ASISTENCIA] = '';       // Registra asistencia
+        $valores[COL_ASISTENCIA + 1] = '';   // Recinto para marcar asistencia
+    }
+    if (OBRA_BUK_TRABAJOS_NOV2026) {
+        array_splice($valores, COL_CTRLIT, 1);
+    }
     foreach ($valores as $i => $v) {
         $hoja->setCellValue([$i + 1, $numeroFila], $v);
     }

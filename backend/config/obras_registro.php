@@ -32,6 +32,12 @@ return [
             'supervisor_rut'   => '13.855.883-5',
             'supervisor_ficha' => 'ICP00254',
             'horario_semanal'  => '42',
+            // Plantilla "Trabajos" que acepta Buk para esta obra: 'sep2026' = la del
+            // envio real de septiembre (37 columnas, con ctrlit_recinto*); 'nov2026' =
+            // la descargada el 09-11-2026 (36 columnas, sin ctrlit_recinto*).
+            'plantilla_trabajos' => 'sep2026',
+            // Si se informa asistencia (Registra asistencia + Recinto para marcar).
+            'asistencia'       => true,
         ],
     ],
     'h58' => [
@@ -39,13 +45,20 @@ return [
         'db'      => 'icafal_rrhh_h58',
         'nombre'  => 'Obra H58 Padre Hurtado III',
         'buk'     => [
-            'subarea'          => '',
-            'subarea_nombre'   => 'H58 Conjunto Padre Hurtado Somos Todos Etapa 3',
+            // Datos tomados de los templates de Buk de H58 (09-11-2026): sub-area 11021
+            // "H58 Conjunto Padre Hurtado Etapa 3"; supervisor 15317108-4 (mismo formato que el RUT de los trabajadores en el export), ficha CPV00010.
+            'subarea'          => '11021',
+            'subarea_nombre'   => 'H58 Conjunto Padre Hurtado Etapa 3',
             'empresa'          => 'Icafal Ingeniería y Construcción S.A.',
             'codigo_corto'     => 'h58',
-            'supervisor_rut'   => '',
-            'supervisor_ficha' => '',
+            'supervisor_rut'   => '15317108-4',
+            'supervisor_ficha' => 'CPV00010',
             'horario_semanal'  => '42',
+            'plantilla_trabajos' => 'nov2026',
+            // La hoja "Recintos" del template de H58 viene vacia y su fila de ejemplo deja
+            // la asistencia en blanco: informar el recinto "h58" haria referencia a algo
+            // que en Buk no existe.
+            'asistencia'       => false,
         ],
     ],
 ];
