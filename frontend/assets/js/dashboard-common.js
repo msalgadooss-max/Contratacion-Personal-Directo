@@ -62,11 +62,31 @@ async function protegerDashboard(rolEsperado) {
     if (data.modo_desarrollador) {
       mostrarBannerDesarrollador(data.dev_nombre);
     }
+    agregarBotonGuiaPdf(data.usuario.rol);
     return data.usuario;
   } catch (e) {
     window.location.href = '../public/login.html';
     return null;
   }
+}
+
+/**
+ * v10.36: botón "Guía rápida (PDF)" en el encabezado de cada panel. Abre SOLO la guía del
+ * rol de la sesión (el servidor la elige por el rol de quien pregunta; ver auth/guia.php).
+ * El Desarrollador no tiene guía propia, así que ahí no se muestra.
+ */
+function agregarBotonGuiaPdf(rol) {
+  if (rol === 'Desarrollador' || document.getElementById('btn-guia-pdf')) return;
+  const salir = document.querySelector('button[onclick="cerrarSesion()"]');
+  if (!salir) return;
+  const b = document.createElement('button');
+  b.id = 'btn-guia-pdf';
+  b.type = 'button';
+  b.className = 'text-sm text-orange-700 font-medium border border-orange-200 bg-orange-50 hover:bg-orange-100 px-3 py-1.5 rounded-lg';
+  b.textContent = '📄 Guía rápida (PDF)';
+  b.title = 'Una hoja con tus pasos, lo que recibes y entregas, y qué hacer si algo falla';
+  b.addEventListener('click', () => window.open(API_BASE_URL + '/auth/guia.php', '_blank'));
+  salir.parentNode.insertBefore(b, salir);
 }
 
 /**

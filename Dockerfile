@@ -68,7 +68,7 @@ RUN { \
         echo '    # (cedulas, CV, certificados) solo se entregan via backend/api/*/ver*.php,'; \
         echo '    # que valida la sesion. El .htaccess que antes protegia uploads/ no'; \
         echo '    # aplica aqui (AllowOverride None), asi que se bloquea en el vhost.'; \
-        echo '    <LocationMatch "^(/h[0-9]+)?/(backend/(uploads|carpetas_postulantes|config|includes|mailer|tools)|database|vendor|azure)(/|$)">'; \
+        echo '    <LocationMatch "^(/h[0-9]+)?/(backend/(uploads|carpetas_postulantes|config|includes|mailer|tools|guias)|database|vendor|azure)(/|$)">'; \
         echo '        Require all denied'; \
         echo '    </LocationMatch>'; \
         echo '    <LocationMatch "^(/h[0-9]+)?/(Dockerfile|docker-entrypoint\.sh|composer\.(json|lock)|README\.md)$">'; \
