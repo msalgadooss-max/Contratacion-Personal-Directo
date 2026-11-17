@@ -34,11 +34,18 @@ $stmt = $pdo->prepare(
     'SELECT p.nombre_completo, p.rut, p.estado, p.creado_at, p.admin_autorizado_at,
             uAdmin.nombre AS admin_autorizado_por_nombre,
             c.nombre_cargo,
-            d.creado_at AS etapa2_completada_at
+            d.creado_at AS etapa2_completada_at,
+            p.ingreso_faena_at,
+            p.identidad_verificada_at, uIdent.nombre AS identidad_verificada_por_nombre,
+            p.contrato_firmado_at, uFirma.nombre AS contrato_firmado_por_nombre,
+            j.creado_at AS datos_jao_at
        FROM postulaciones p
        JOIN cargos c ON c.id = p.cargo_id
        LEFT JOIN usuarios uAdmin ON uAdmin.id = p.admin_autorizado_por
+       LEFT JOIN usuarios uIdent ON uIdent.id = p.identidad_verificada_por
+       LEFT JOIN usuarios uFirma ON uFirma.id = p.contrato_firmado_por
        LEFT JOIN datos_contratacion d ON d.postulacion_id = p.id
+       LEFT JOIN datos_jao j ON j.postulacion_id = p.id
       WHERE p.id = :id'
 );
 $stmt->execute(['id' => $postulacionId]);
@@ -88,53 +95,114 @@ function formatearDuracionFina(int $segundos): string
     return implode(' ', $partes);
 }
 
-$hitos = [];
-$hitos[] = [
-    'etiqueta' => 'Postulación recibida',
-    'fecha_hora' => $postulacion['creado_at'],
-    'quien' => null,
+// v10.45 (pedido del usuario, prueba real del 17-11): el detalle solo mostraba los CAMBIOS DE ESTADO,
+// asi que no aparecian el ingreso a la obra, la verificacion de identidad del JAO, los datos de
+// nomina, la autorizacion de Porteria del Dia 1, la firma ni la IRL: parecia detenido en Prevencion
+// aunque la persona esperaba la firma del JAO. Todo esto YA se guardaba (columnas de postulaciones,
+// datos_jao y trazabilidad_logs); aqui solo se lee. No cambia ningun paso del proceso.
+$stmtExtra = $pdo->prepare(
+    "SELECT t.accion, t.fecha_hora, u.nombre AS usuario_nombre
+       FROM trazabilidad_logs t
+       LEFT JOIN usuarios u ON u.id = t.usuario_id
+      WHERE t.postulacion_id = :id
+        AND (t.accion = :paso OR t.accion = :irl OR t.accion LIKE '%ingreso a faena%')
+      ORDER BY t.fecha_hora ASC, t.id ASC"
+);
+$stmtExtra->execute(['id' => $postulacionId, 'paso' => ACCION_INGRESO_CONTRATACION, 'irl' => ACCION_IRL_REALIZADA]);
+$logsExtra = ['paso' => null, 'irl' => null, 'faena' => null];
+foreach ($stmtExtra->fetchAll() as $e) {
+    if ($e['accion'] === ACCION_INGRESO_CONTRATACION && $logsExtra['paso'] === null) {
+        $logsExtra['paso'] = $e;
+    } elseif ($e['accion'] === ACCION_IRL_REALIZADA && $logsExtra['irl'] === null) {
+        $logsExtra['irl'] = $e;
+    } elseif (stripos($e['accion'], 'ingreso a faena') !== false && $logsExtra['faena'] === null) {
+        $logsExtra['faena'] = $e;
+    }
+}
+
+// Orden de desempate cuando dos hitos caen en el mismo segundo (el orden real del proceso).
+$ORDEN = [
+    'recibida' => 0, 'Pre_aprobado_terreno' => 1, 'admin' => 2, 'faena' => 3, 'etapa2' => 4, 'Aprobado_admin' => 5,
+    'identidad' => 6, 'Induccion_ok' => 7, 'nomina' => 8, 'paso' => 9, 'firma' => 10, 'irl' => 11,
+    'EPP_listo' => 12, 'Contratado' => 13, 'Proceso_completo' => 14, 'Rechazado' => 15,
 ];
+// v10.45 (pedido del usuario): de QUIEN son los minutos que aparecen en cada paso. El tiempo desde el hito
+// anterior se atribuye al rol que realizó ESTE paso (mismo criterio que "Tiempos por rol y etapa" del Desarrollador).
+$ROL_DEL_TIEMPO = [
+    'Pre_aprobado_terreno' => 'Capataz', 'admin' => 'Administrador de Contrato', 'faena' => 'Postulante / Portería',
+    'etapa2' => 'Postulante', 'Aprobado_admin' => 'Postulante', 'identidad' => 'JAO', 'Induccion_ok' => 'Prevención',
+    'nomina' => 'JAO', 'paso' => 'Postulante / Portería (Día 1)', 'firma' => 'JAO', 'irl' => 'Prevención',
+    'EPP_listo' => 'Bodega', 'Contratado' => 'Bodega', 'Proceso_completo' => 'Capataz / Jefe de Terreno',
+];
+$hitos = [['clave' => 'recibida', 'etiqueta' => 'Postulación recibida', 'fecha_hora' => $postulacion['creado_at'], 'quien' => null]];
 
 foreach ($logs as $log) {
     if (!preg_match('/Cambio de estado: .+ -> (\w+)/', $log['accion'], $m)) {
         continue;
     }
     $estadoNuevo = $m[1];
+    // "En revision del JAO" cae en el MISMO segundo que "Datos completados" (es el mismo momento): se omite.
+    if ($estadoNuevo === 'Aprobado_admin' && $postulacion['etapa2_completada_at'] !== null
+        && abs(strtotime($log['fecha_hora']) - strtotime($postulacion['etapa2_completada_at'])) <= 2) {
+        continue;
+    }
     $hitos[] = [
+        'clave' => $estadoNuevo,
         'etiqueta' => $etiquetasEstado[$estadoNuevo] ?? $estadoNuevo,
         'fecha_hora' => $log['fecha_hora'],
         'quien' => $log['usuario_nombre'],
     ];
-
-    // v6.7: justo al llegar a 'Pre_aprobado_terreno' se insertan los dos
-    // hitos sinteticos del flujo SECUENCIAL actual -- cronologicamente
-    // ambos caen entre esta llegada y la siguiente ("-> Aprobado_admin"),
-    // por eso se insertan aqui mismo, en el orden real: primero autoriza
-    // el Administrador, recien despues el postulante completa Etapa 2.
-    if ($estadoNuevo === 'Pre_aprobado_terreno') {
-        if ($postulacion['admin_autorizado_at'] !== null) {
-            $hitos[] = [
-                'etiqueta' => 'Autorización del Administrador de Contrato',
-                'fecha_hora' => $postulacion['admin_autorizado_at'],
-                'quien' => $postulacion['admin_autorizado_por_nombre'],
-            ];
-        }
-        if ($postulacion['etapa2_completada_at'] !== null) {
-            $hitos[] = [
-                'etiqueta' => 'Datos y documentos completados por el postulante',
-                'fecha_hora' => $postulacion['etapa2_completada_at'],
-                'quien' => null,
-            ];
-        }
-    }
 }
+if ($postulacion['admin_autorizado_at'] !== null) {
+    $hitos[] = ['clave' => 'admin', 'etiqueta' => 'Autorización del Administrador de Contrato',
+                'fecha_hora' => $postulacion['admin_autorizado_at'], 'quien' => $postulacion['admin_autorizado_por_nombre']];
+}
+$ingresoFaena = $postulacion['ingreso_faena_at'] ?? ($logsExtra['faena']['fecha_hora'] ?? null);
+if ($ingresoFaena !== null) {
+    $hitos[] = ['clave' => 'faena', 'etiqueta' => 'Ingreso a la obra confirmado (Portería)',
+                'fecha_hora' => $ingresoFaena, 'quien' => $logsExtra['faena']['usuario_nombre'] ?? null];
+}
+if ($postulacion['etapa2_completada_at'] !== null) {
+    $hitos[] = ['clave' => 'etapa2', 'etiqueta' => 'Datos y documentos completados por el postulante',
+                'fecha_hora' => $postulacion['etapa2_completada_at'], 'quien' => null];
+}
+if ($postulacion['identidad_verificada_at'] !== null) {
+    $hitos[] = ['clave' => 'identidad', 'etiqueta' => 'Identidad verificada (JAO)',
+                'fecha_hora' => $postulacion['identidad_verificada_at'], 'quien' => $postulacion['identidad_verificada_por_nombre']];
+}
+if ($postulacion['datos_jao_at'] !== null) {
+    $hitos[] = ['clave' => 'nomina', 'etiqueta' => 'Datos de nómina completados (JAO)',
+                'fecha_hora' => $postulacion['datos_jao_at'], 'quien' => null];
+}
+if ($logsExtra['paso'] !== null) {
+    $hitos[] = ['clave' => 'paso', 'etiqueta' => 'Paso a contratación autorizado (Portería, Día 1)',
+                'fecha_hora' => $logsExtra['paso']['fecha_hora'], 'quien' => $logsExtra['paso']['usuario_nombre']];
+}
+if ($postulacion['contrato_firmado_at'] !== null) {
+    $hitos[] = ['clave' => 'firma', 'etiqueta' => 'Contrato firmado (JAO)',
+                'fecha_hora' => $postulacion['contrato_firmado_at'], 'quien' => $postulacion['contrato_firmado_por_nombre']];
+}
+if ($logsExtra['irl'] !== null) {
+    $hitos[] = ['clave' => 'irl', 'etiqueta' => 'IRL registrada (Prevención, Día 1)',
+                'fecha_hora' => $logsExtra['irl']['fecha_hora'], 'quien' => $logsExtra['irl']['usuario_nombre']];
+}
+
+usort($hitos, static function ($x, $y) use ($ORDEN) {
+    $c = strtotime($x['fecha_hora']) <=> strtotime($y['fecha_hora']);
+    return $c !== 0 ? $c : (($ORDEN[$x['clave']] ?? 99) <=> ($ORDEN[$y['clave']] ?? 99));
+});
 
 // Duracion desde el hito anterior, para cada uno.
 $anterior = null;
+$etiquetaAnterior = null;
 foreach ($hitos as &$h) {
     $segundos = $anterior !== null ? (strtotime($h['fecha_hora']) - strtotime($anterior)) : null;
     $h['duracion_desde_anterior'] = $segundos !== null ? formatearDuracionFina(max($segundos, 0)) : null;
+    $h['rol_tiempo'] = $segundos !== null ? ($ROL_DEL_TIEMPO[$h['clave']] ?? null) : null;
+    $h['desde_etiqueta'] = $etiquetaAnterior;
     $anterior = $h['fecha_hora'];
+    $etiquetaAnterior = $h['etiqueta'];
+    unset($h['clave']);
 }
 unset($h);
 
@@ -161,6 +229,56 @@ $duracionTotal = ($fechaTerreno !== null && $finParaTotal !== null)
     ? formatearDuracionFina(max(strtotime($finParaTotal) - strtotime($fechaTerreno), 0))
     : null;
 
+// v10.45: en qué paso está AHORA y a quién le toca (solo lectura: se deduce de lo que ya está registrado).
+$pasoActual = null;
+$ultimoHito = $hitos ? end($hitos)['fecha_hora'] : null;
+$estadoActual = $postulacion['estado'];
+$texto = null;
+$responsable = null;
+if ($estadoActual === 'Pendiente') {
+    [$texto, $responsable] = ['Esperando que un Capataz la seleccione', 'Capataz'];
+} elseif ($estadoActual === 'Pre_aprobado_terreno') {
+    if ($postulacion['etapa2_completada_at'] === null) {
+        [$texto, $responsable] = ['Esperando que el postulante complete su Etapa 2 (datos y documentos)', 'Postulante'];
+    } else {
+        [$texto, $responsable] = ['Esperando la revisión del JAO', 'JAO'];
+    }
+} elseif ($estadoActual === 'Aprobado_admin') {
+    if ($postulacion['identidad_verificada_at'] === null) {
+        [$texto, $responsable] = ['Esperando la verificación de identidad del JAO', 'JAO'];
+    } else {
+        [$texto, $responsable] = ['Esperando el check de inducción de Prevención (Día 0)', 'Prevención'];
+    }
+} elseif ($estadoActual === 'Induccion_ok') {
+    $faltan = [];
+    if ($logsExtra['paso'] === null) {
+        $faltan[] = 'la autorización de Portería del Día 1 (el JAO puede confirmarla a mano)';
+    }
+    if ($postulacion['datos_jao_at'] === null) {
+        $faltan[] = 'los datos de nómina del JAO';
+    }
+    if ($faltan) {
+        [$texto, $responsable] = ['Esperando ' . implode(' y ', $faltan) . ' para poder firmar el contrato', $logsExtra['paso'] === null ? 'Portería / JAO' : 'JAO'];
+    } elseif ($postulacion['contrato_firmado_at'] === null) {
+        [$texto, $responsable] = ['Esperando la firma del contrato', 'JAO'];
+    } elseif ($logsExtra['irl'] === null) {
+        [$texto, $responsable] = ['Esperando la IRL (Día 1)', 'Prevención'];
+    } else {
+        [$texto, $responsable] = ['Esperando la entrega del kit de EPP', 'Bodega'];
+    }
+} elseif ($estadoActual === 'Contratado') {
+    [$texto, $responsable] = ['Esperando el retiro en terreno', 'Capataz / Jefe de Terreno'];
+}
+if ($texto !== null && $ultimoHito !== null) {
+    $ahoraBd = $pdo->query('SELECT NOW()')->fetchColumn();
+    $pasoActual = [
+        'texto' => $texto,
+        'responsable' => $responsable,
+        'desde' => $ultimoHito,
+        'hace' => formatearDuracionFina(max(strtotime($ahoraBd) - strtotime($ultimoHito), 0)),
+    ];
+}
+
 responderOk([
     'nombre_completo' => $postulacion['nombre_completo'],
     'rut' => $postulacion['rut'],
@@ -169,4 +287,5 @@ responderOk([
     'hitos' => $hitos,
     'duracion_total_desde_terreno' => $duracionTotal,
     'proceso_en_curso' => $enCurso,
+    'paso_actual' => $pasoActual,
 ]);

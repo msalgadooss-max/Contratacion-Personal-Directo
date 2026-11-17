@@ -317,7 +317,7 @@ function renderTiemposHtml(data) {
         <p class="text-sm font-semibold text-gray-900">${esc(h.etiqueta)}</p>
         <p class="text-xs text-gray-500 font-mono">${fechaHoraLegible(h.fecha_hora)}</p>
         ${h.quien ? `<p class="text-xs text-gray-400">por ${esc(h.quien)}</p>` : ''}
-        ${h.duracion_desde_anterior ? `<p class="text-xs text-blue-600 font-medium mt-0.5">⏱ +${esc(h.duracion_desde_anterior)} desde el paso anterior</p>` : ''}
+        ${h.duracion_desde_anterior ? `<p class="text-xs text-blue-600 font-medium mt-0.5">⏱ +${esc(h.duracion_desde_anterior)}${h.rol_tiempo ? ` · tiempo de <strong>${esc(h.rol_tiempo)}</strong>` : ''}${h.desde_etiqueta ? ` <span class="text-gray-400 font-normal">(desde «${esc(h.desde_etiqueta)}»)</span>` : ''}</p>` : ''}
       </div>
     </div>`).join('');
 
@@ -336,7 +336,14 @@ function renderTiemposHtml(data) {
         : 'Todavía no hay suficientes hitos para calcular una duración total.'}
     </div>
 
-    <div>${filas}</div>`;
+    ${data.paso_actual ? `
+    <div class="rounded-xl px-4 py-3 mb-5 text-sm bg-blue-50 border border-blue-200">
+      <p class="font-semibold text-blue-900">⏳ Ahora: ${esc(data.paso_actual.texto)}</p>
+      <p class="text-xs text-blue-700 mt-0.5">Le toca a: <strong>${esc(data.paso_actual.responsable)}</strong> · desde hace ${esc(data.paso_actual.hace)}</p>
+    </div>` : ''}
+
+    <div>${filas}</div>
+    <p class="text-[11px] text-gray-400 mt-2">Los minutos de cada paso se atribuyen al rol que lo realizó. Este detalle no se actualiza solo: ciérralo y ábrelo de nuevo para ver el tiempo al momento.</p>`;
 }
 
 function mostrarAlerta(contenedorId, mensaje, tipo = 'error') {
