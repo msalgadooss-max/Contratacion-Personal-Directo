@@ -225,8 +225,8 @@ define('SMTP_FROM_NAME', 'RRHH ICAFAL');
 // vez de SMTP (necesario en hostings que bloquean los puertos salientes).
 define('BREVO_API_KEY', $(phpq "${BREVO_API_KEY:-}"));
 
-define('TOKEN_PRIVADO_HORAS_VALIDEZ', 72);
-define('TOKEN_SUBSANACION_HORAS_VALIDEZ', 72);
+define('TOKEN_PRIVADO_HORAS_VALIDEZ', 168);       // v10.37: 7 dias (antes 72 h: un fin de semana lo vencia)
+define('TOKEN_SUBSANACION_HORAS_VALIDEZ', 168);
 define('CODIGO_SEGUIMIENTO_LARGO', 6);
 define('BANCO_RETENCION_MESES', 6);
 

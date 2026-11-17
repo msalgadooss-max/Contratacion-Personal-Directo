@@ -429,6 +429,21 @@ document.getElementById('form-enviar-link').addEventListener('submit', async (e)
   }
 });
 
+// --- v10.37: regenerar el enlace de Etapa 2 (sin usar el Web Shell) ------------
+async function generarEnlaceEtapa2(enviarCorreo) {
+  try {
+    const data = await apiFetch('/terreno/enlace_etapa2.php', {
+      method: 'POST',
+      body: { rut: document.getElementById('etapa2-rut').value, enviar_correo: enviarCorreo },
+    });
+    mostrarEnlaceEtapa2(data);
+  } catch (err) {
+    mostrarAlerta('alerta', err.message);
+  }
+}
+document.getElementById('form-enlace-etapa2').addEventListener('submit', (e) => { e.preventDefault(); generarEnlaceEtapa2(false); });
+document.getElementById('btn-etapa2-correo').addEventListener('click', () => generarEnlaceEtapa2(true));
+
 // --- v10.33: aviso de "modo prueba" de correo --------------------------------
 async function cargarEstadoSistema() {
   try {

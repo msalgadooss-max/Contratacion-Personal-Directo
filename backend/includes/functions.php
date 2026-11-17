@@ -281,6 +281,25 @@ function otorgarAccesoEtapa2(PDO $pdo, int $postulacionId, ?int $usuarioId, bool
 }
 
 /**
+ * v10.37: renueva el enlace de Etapa 2 de una persona YA seleccionada (estado
+ * 'Pre_aprobado_terreno', sin Etapa 2 completada), sin mandar correo ni tocar el
+ * estado. Lo usan (a) seguimiento.php, cuando el enlace venció y la persona ya se
+ * identifico con RUT + correo, y (b) terreno/enlace_etapa2.php, para que el equipo
+ * lo regenere sin usar el Web Shell. Devuelve el token nuevo.
+ */
+function renovarTokenEtapa2(PDO $pdo, int $postulacionId): string
+{
+    $token = generarTokenPrivado();
+    $expira = (new DateTime())->modify('+' . TOKEN_PRIVADO_HORAS_VALIDEZ . ' hours')->format('Y-m-d H:i:s');
+    $stmt = $pdo->prepare(
+        'UPDATE postulaciones SET token_privado = :token, token_expira_at = :expira
+          WHERE id = :id AND estado = "Pre_aprobado_terreno"'
+    );
+    $stmt->execute(['token' => $token, 'expira' => $expira, 'id' => $postulacionId]);
+    return $token;
+}
+
+/**
  * v3: notifica a todos los Jefe_Administrativo con nombre, RUT y cargo
  * de la persona recien aprobada -- para que sepan que ya pueden
  * revisarla sin tener que entrar al dashboard a cada rato.

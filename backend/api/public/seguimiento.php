@@ -95,6 +95,14 @@ $tokenVigente = $postulacion['token_privado'] !== null
     && $postulacion['token_expira_at'] !== null
     && strtotime($postulacion['token_expira_at']) > time();
 
+// v10.37: si el enlace venció, se renueva solo -- la persona ya se identificó con RUT
+// + correo, los mismos dos datos que protegen este módulo. Así no queda detenida
+// ni necesita pedirle nada al equipo: ve directo "Continuar completando mis datos".
+if ($puedeCompletarEtapa2 && !$tokenVigente) {
+    $postulacion['token_privado'] = renovarTokenEtapa2($pdo, (int)$postulacion['id']);
+    $tokenVigente = true;
+}
+
 // v10.29: documentos que el postulante dejó pendientes ("No lo tengo ahora")
 // o que el JAO marcó como pendientes de entrega, y que todavía no llegan.
 // Se los ofrece subir desde aquí (ver pendientes_enviar.php).

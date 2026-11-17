@@ -710,6 +710,11 @@ async function inicializar() {
     }
   } catch (err) {
     mostrarError(err.message);
+    // v10.37: enlace vencido -> el propio postulante lo renueva en Seguimiento con RUT + correo.
+    if (/expir|venci/i.test(err.message || '')) {
+      alertaDiv.insertAdjacentHTML('beforeend',
+        '<a href="seguimiento.html" class="inline-block mt-3 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2 rounded-lg">Pedir un enlace nuevo con mi RUT y correo</a>');
+    }
   }
 }
 

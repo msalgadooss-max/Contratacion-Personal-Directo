@@ -31,8 +31,8 @@ define('SMTP_FROM_NAME', 'RRHH ICAFAL');
 define('BREVO_API_KEY', '');
 
 // --- Reglas de negocio ---------------------------------------------------
-define('TOKEN_PRIVADO_HORAS_VALIDEZ', 72); // horas de validez del link privado
-define('TOKEN_SUBSANACION_HORAS_VALIDEZ', 72); // horas de validez del link para corregir un documento rechazado
+define('TOKEN_PRIVADO_HORAS_VALIDEZ', 168); // horas de validez del link privado (v10.37: 7 dias)
+define('TOKEN_SUBSANACION_HORAS_VALIDEZ', 168); // horas de validez del link para corregir un documento rechazado
 define('CODIGO_SEGUIMIENTO_LARGO', 6);
 define('BANCO_RETENCION_MESES', 6); // cuanto se conservan los datos de quien queda "En_banco"
 

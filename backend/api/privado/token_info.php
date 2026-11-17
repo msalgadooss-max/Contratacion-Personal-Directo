@@ -34,7 +34,7 @@ if ($postulacion['estado'] !== 'Pre_aprobado_terreno') {
 }
 
 if (strtotime($postulacion['token_expira_at']) < time()) {
-    responderError('El enlace expiró. Solicita uno nuevo a tu contacto en la empresa.', 410);
+    responderError('Este enlace venció. Puedes pedir uno nuevo con tu RUT y tu correo, en un par de clics.', 410);
 }
 
 // v10.15 (pedido explícito del usuario, item 3 de la lista post-prueba):

@@ -529,6 +529,9 @@ async function cargarHistorico(vista) {
           <td class="px-4 py-3">${ETIQUETAS_ETAPA[p.estado] || p.estado}</td>
           <td class="px-4 py-3">${aprobador}</td>
           <td class="px-4 py-3 text-gray-500">${fecha}</td>
+          <td class="px-4 py-3 text-right">${p.estado === 'Pre_aprobado_terreno'
+            ? `<button class="text-xs font-semibold text-blue-700 border border-blue-200 bg-blue-50 hover:bg-blue-100 px-2.5 py-1.5 rounded-lg" onclick="regenerarEnlaceEtapa2(${p.id})" title="Si el enlace venció o la persona no lo recibió">Enlace Etapa 2</button>`
+            : ''}</td>
         </tr>`;
       }
       // v10.14 (pedido explícito del usuario, item 6): se retira la
@@ -554,6 +557,17 @@ async function cargarHistorico(vista) {
 // ahora es un botón dentro de "Personal Contratado". Reutiliza el mismo
 // endpoint de siempre (terreno/recepcion_confirmar.php), solo cambia
 // desde dónde se llama.
+// v10.37: genera de nuevo el enlace de Etapa 2 de una persona ya seleccionada
+// (venció, o nunca le llegó el correo) y lo muestra para copiar / WhatsApp.
+async function regenerarEnlaceEtapa2(id) {
+  try {
+    const data = await apiFetch('/terreno/enlace_etapa2.php', { method: 'POST', body: { postulacion_id: id } });
+    mostrarEnlaceEtapa2(data);
+  } catch (err) {
+    mostrarAlerta('alerta', err.message);
+  }
+}
+
 async function confirmarRecepcion(id) {
   if (!confirm('¿Confirmas que fuiste a buscar a esta persona? Esto da por terminado el proceso completo.')) return;
   try {

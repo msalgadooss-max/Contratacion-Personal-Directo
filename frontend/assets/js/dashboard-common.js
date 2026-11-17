@@ -71,6 +71,39 @@ async function protegerDashboard(rolEsperado) {
 }
 
 /**
+ * v10.37: ventana con el enlace de Etapa 2 recién generado (para copiarlo o
+ * mandarlo por WhatsApp). La usan el Jefe de Terreno y el Desarrollador.
+ */
+function mostrarEnlaceEtapa2(data) {
+  const previo = document.getElementById('modal-enlace-etapa2');
+  if (previo) previo.remove();
+  const nombre = String(data.nombre || '').split(' ')[0] || '';
+  const texto = `Hola ${nombre}, este es tu enlace personal para completar tus datos en ICAFAL (vale 7 días y se usa una sola vez): ${data.url_etapa2}`;
+  const m = document.createElement('div');
+  m.id = 'modal-enlace-etapa2';
+  m.className = 'fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4';
+  m.innerHTML = `
+    <div class="bg-white rounded-xl shadow-xl max-w-md w-full p-5">
+      <p class="font-bold text-gray-900 mb-1">Enlace de Etapa 2 listo</p>
+      <p class="text-sm text-gray-600 mb-3">Para <b>${esc(data.nombre)}</b>. Válido hasta ${esc(new Date(String(data.expira_at).replace(' ', 'T')).toLocaleString('es-CL'))}. El enlace anterior ya no funciona.</p>
+      <input id="enlace-etapa2-input" readonly value="${esc(data.url_etapa2)}" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-xs font-mono mb-3">
+      <div class="flex flex-wrap gap-2">
+        <button id="enlace-etapa2-copiar" class="bg-gray-900 hover:bg-gray-800 text-white text-sm font-semibold px-4 py-2 rounded-lg">Copiar enlace</button>
+        <a href="https://wa.me/?text=${encodeURIComponent(texto)}" target="_blank" rel="noopener" class="bg-green-600 hover:bg-green-700 text-white text-sm font-semibold px-4 py-2 rounded-lg">Enviar por WhatsApp</a>
+        <button id="enlace-etapa2-cerrar" class="ml-auto text-sm text-gray-500 hover:text-gray-800 px-3 py-2">Cerrar</button>
+      </div>
+    </div>`;
+  document.body.appendChild(m);
+  const input = document.getElementById('enlace-etapa2-input');
+  document.getElementById('enlace-etapa2-copiar').addEventListener('click', async (ev) => {
+    try { await navigator.clipboard.writeText(data.url_etapa2); } catch (e) { input.select(); document.execCommand('copy'); }
+    ev.target.textContent = '✓ Copiado';
+  });
+  document.getElementById('enlace-etapa2-cerrar').addEventListener('click', () => m.remove());
+  m.addEventListener('click', (ev) => { if (ev.target === m) m.remove(); });
+}
+
+/**
  * v10.36: botón "Guía rápida (PDF)" en el encabezado de cada panel. Abre SOLO la guía del
  * rol de la sesión (el servidor la elige por el rol de quien pregunta; ver auth/guia.php).
  * El Desarrollador no tiene guía propia, así que ahí no se muestra.

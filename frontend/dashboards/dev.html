@@ -208,6 +208,7 @@
         <button data-tab="qr" class="tab-btn px-4 py-2 text-sm font-semibold border-b-2 border-blue-600 text-blue-600">Código QR</button>
         <button data-tab="correo" class="tab-btn px-4 py-2 text-sm font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700">Enviar por correo</button>
         <button data-tab="roles" class="tab-btn px-4 py-2 text-sm font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700">QR de acceso por rol</button>
+        <button data-tab="etapa2" class="tab-btn px-4 py-2 text-sm font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700">Enlace de Etapa 2</button>
       </div>
 
       <div id="panel-qr" class="tab-panel text-center py-4">
@@ -238,6 +239,18 @@
           <div id="qr-rol" class="inline-block bg-white p-4 border border-gray-200 rounded-lg"></div>
           <p id="url-qr-rol" class="text-xs text-gray-400 mt-3 break-all max-w-md mx-auto"></p>
         </div>
+      </div>
+
+      <div id="panel-etapa2" class="tab-panel hidden max-w-sm mx-auto py-2">
+        <p class="text-sm text-gray-600 mb-4">Para una persona ya <b>seleccionada</b> por un Capataz que no pudo entrar a su Etapa 2 (enlace vencido, correo mal escrito o que nunca llegó). Genera un enlace nuevo de 7 días; el anterior deja de funcionar.</p>
+        <form id="form-enlace-etapa2" class="space-y-3">
+          <div>
+            <label class="block text-xs text-gray-600 mb-1">RUT de la persona</label>
+            <input id="etapa2-rut" type="text" required placeholder="12.345.678-9" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+          </div>
+          <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2.5 rounded-lg">Generar enlace</button>
+          <button type="button" id="btn-etapa2-correo" class="w-full border border-gray-300 text-gray-700 hover:bg-gray-50 text-sm font-semibold px-4 py-2.5 rounded-lg">Generar y reenviar por correo</button>
+        </form>
       </div>
 
       <div id="panel-correo" class="tab-panel hidden max-w-sm mx-auto py-2">
