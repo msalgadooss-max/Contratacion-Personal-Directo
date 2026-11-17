@@ -23,7 +23,7 @@ if ($postulacionId <= 0) {
 
 $pdo = obtenerConexion();
 
-$filtroPT = $usuario['rol'] === 'Jefe_Terreno' ? condicionGentePT($pdo, (int)$usuario['id']) : '';
+$filtroPT = $usuario['rol'] === 'Jefe_Terreno' ? condicionGentePT($pdo, (int)$usuario['id']) : condicionGenteCapataz($pdo, (int)$usuario['id']);
 $stmtCheck = $pdo->prepare('SELECT p.estado, p.recibido_terreno_at FROM postulaciones p WHERE p.id = :id' . $filtroPT);
 $stmtCheck->execute(['id' => $postulacionId]);
 $postulacion = $stmtCheck->fetch();

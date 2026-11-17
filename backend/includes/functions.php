@@ -1491,6 +1491,23 @@ function condicionGentePT(PDO $pdo, int $ptId, bool $conPendientes = false, stri
 }
 
 /**
+ * v10.41: igual que condicionGentePT pero para un Capataz: solo ve a SU cuadrilla (las
+ * personas que el selecciono). Con $conPendientes tambien deja pasar a quienes aun esperan
+ * seleccion (sin capataz, o referidos a el). Sin la migracion v10.40 no filtra nada.
+ */
+function condicionGenteCapataz(PDO $pdo, int $capatazId, bool $conPendientes = false, string $alias = 'p'): string
+{
+    if (!usaCuposPorCapataz($pdo)) {
+        return '';
+    }
+    $cond = "{$alias}.capataz_id = " . (int)$capatazId;
+    if ($conPendientes) {
+        $cond .= " OR ({$alias}.estado = 'Pendiente' AND ({$alias}.capataz_esperado_id IS NULL OR {$alias}.capataz_esperado_id = " . (int)$capatazId . "))";
+    }
+    return " AND ($cond)";
+}
+
+/**
  * v10.40: cupos de un Capataz por cargo = los reservados para el + los generales (los que
  * quedan en el cargo sin reservar para nadie). Devuelve filas
  * [id, nombre_cargo, propios, generales, disponibles].

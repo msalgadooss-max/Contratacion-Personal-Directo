@@ -19,7 +19,7 @@ $stmt = $pdo->query(
        FROM postulaciones p
        JOIN cargos c ON c.id = p.cargo_id
       WHERE p.estado = "Contratado" AND p.recibido_terreno_at IS NULL'
-      . ($usuario['rol'] === 'Jefe_Terreno' ? condicionGentePT($pdo, (int)$usuario['id']) : '') . '
+      . ($usuario['rol'] === 'Jefe_Terreno' ? condicionGentePT($pdo, (int)$usuario['id']) : condicionGenteCapataz($pdo, (int)$usuario['id'])) . '
       ORDER BY p.actualizado_at ASC'
 );
 

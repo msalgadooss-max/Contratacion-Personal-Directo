@@ -358,7 +358,9 @@ async function cargarCupos() {
       + '<option value="__otro__">➕ Otro (agregar cargo nuevo)</option>';
     // v10.40: pedir los cupos "para" un Capataz de mi equipo (o para todo el equipo).
     const eq = data.mi_equipo || [];
-    document.getElementById('cupo-capataz-wrap').classList.toggle('hidden', !eq.length);
+    document.getElementById('cupo-capataz-wrap').classList.toggle('hidden', !eq.length || REPARTO);
+    document.getElementById('cupo-reparto-toggle-wrap').classList.toggle('hidden', !eq.length);
+    renderReparto(eq);
     const selCap = document.getElementById('cupo-capataz');
     const capActual = selCap.value;
     selCap.innerHTML = '<option value="">Todo mi equipo (cupo general)</option>' + eq
@@ -424,8 +426,57 @@ document.getElementById('cupo-cargo').addEventListener('change', (e) => {
   document.getElementById('cupo-cargo-nuevo').required = esOtro;
 });
 
+// --- v10.41: repartir cupos de un cargo entre varios Capataces en un solo envío ---
+var REPARTO = false;
+
+function renderReparto(eq) {
+  const lista = document.getElementById('cupo-reparto-lista');
+  const previos = {};
+  lista.querySelectorAll('input').forEach(i => { previos[i.dataset.cap] = i.value; });
+  const fila = (id, nombre, extra) => `
+    <label class="flex items-center justify-between gap-3 border border-gray-200 rounded-lg px-3 py-2 text-sm">
+      <span class="min-w-0 truncate">${nombre}${extra ? `<span class="block text-[11px] text-gray-400">${extra}</span>` : ''}</span>
+      <input type="number" min="0" max="500" data-cap="${id}" value="${esc(previos[id] || '')}" placeholder="0" class="w-20 border border-gray-300 rounded-lg px-2 py-1 text-sm text-right">
+    </label>`;
+  lista.innerHTML = eq.map(c => fila(c.id, esc(c.nombre), c.frente ? esc(c.frente) : '')).join('')
+    + fila('0', 'Cupo general del equipo', 'Cualquier Capataz puede usarlo');
+}
+
+function alternarReparto(activo) {
+  REPARTO = activo;
+  document.getElementById('cupo-reparto-wrap').classList.toggle('hidden', !activo);
+  document.getElementById('cupo-capataz-wrap').classList.toggle('hidden', activo || !document.getElementById('cupo-capataz').options.length);
+  document.getElementById('cupo-cantidad-wrap').classList.toggle('hidden', activo);
+  document.getElementById('cupo-cantidad').required = !activo;
+  document.getElementById('cupo-reparto-toggle').textContent = activo ? '↩ Volver a pedir para un solo Capataz' : '➗ Repartir entre varios Capataces';
+}
+document.getElementById('cupo-reparto-toggle').addEventListener('click', () => alternarReparto(!REPARTO));
+
 document.getElementById('form-cupo').addEventListener('submit', async (e) => {
   e.preventDefault();
+  if (REPARTO) {
+    const cargoSel = document.getElementById('cupo-cargo').value;
+    if (!cargoSel || cargoSel === '__otro__') {
+      mostrarAlerta('alerta', 'Para repartir, elige un cargo de la lista (los cargos nuevos se piden de a uno).');
+      return;
+    }
+    const reparto = [...document.querySelectorAll('#cupo-reparto-lista input')]
+      .map(i => ({ capataz_id: Number(i.dataset.cap) || null, cantidad: Number(i.value) || 0 }))
+      .filter(l => l.cantidad > 0);
+    if (!reparto.length) {
+      mostrarAlerta('alerta', 'Escribe al menos una cantidad mayor a 0.');
+      return;
+    }
+    try {
+      const data = await apiFetch('/terreno/solicitar_cupos_reparto.php', { method: 'POST', body: { cargo_id: Number(cargoSel), reparto } });
+      mostrarAlerta('alerta', data.mensaje, 'exito');
+      document.querySelectorAll('#cupo-reparto-lista input').forEach(i => { i.value = ''; });
+      await cargarMisSolicitudes();
+    } catch (err) {
+      mostrarAlerta('alerta', err.message);
+    }
+    return;
+  }
   const cargoSeleccionado = document.getElementById('cupo-cargo').value;
   const cantidad = Number(document.getElementById('cupo-cantidad').value);
   const esOtro = cargoSeleccionado === '__otro__';

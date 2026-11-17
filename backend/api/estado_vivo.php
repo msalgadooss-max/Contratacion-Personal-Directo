@@ -51,7 +51,7 @@ $stmt = $pdo->query(
               WHERE pd.postulacion_id = p.id AND pd.rechazado_at IS NOT NULL AND pd.resubido_at IS NULL) > 0 AS documento_observado
        FROM postulaciones p
        JOIN cargos c ON c.id = p.cargo_id
-      WHERE p.estado NOT IN ('Rechazado', 'En_banco')" . ($usuario['rol'] === 'Jefe_Terreno' ? condicionGentePT($pdo, (int)$usuario['id'], true) : '') . "
+      WHERE p.estado NOT IN ('Rechazado', 'En_banco')" . ($usuario['rol'] === 'Jefe_Terreno' ? condicionGentePT($pdo, (int)$usuario['id'], true) : ($usuario['rol'] === 'Capataz' ? condicionGenteCapataz($pdo, (int)$usuario['id'], true) : '')) . "
       ORDER BY p.actualizado_at DESC
       LIMIT 30"
 );

@@ -80,6 +80,9 @@ if ($aprobadoPor > 0) {
 // (las personas cuyo capataz es de su equipo).
 if ($usuario['rol'] === 'Jefe_Terreno') {
     $sql .= condicionGentePT($pdo, (int)$usuario['id']);
+} else {
+    // v10.41: el Capataz ve solo a su cuadrilla (las personas que él seleccionó).
+    $sql .= condicionGenteCapataz($pdo, (int)$usuario['id']);
 }
 $sql .= ' ORDER BY ap.fecha_hora DESC';
 
