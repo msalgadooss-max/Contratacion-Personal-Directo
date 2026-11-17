@@ -35,6 +35,7 @@ return <<<HTML
     </tbody>
   </table>
   <p style="font-size:14px"><b>Total: {$textoTotal}.</b></p>
+  <p style="font-size:13px;color:#374151">📎 Adjuntamos la nómina en Excel: nombre, RUT, cargo, fecha de ingreso y tallas de cada trabajador.</p>
   <p style="font-size:12px;color:#6b7280">
     Este correo fue generado automáticamente por el sistema de reclutamiento ICAFAL.
   </p>

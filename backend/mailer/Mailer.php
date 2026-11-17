@@ -45,12 +45,12 @@ final class Mailer
     /**
      * @return bool true si el correo se encolo/envio correctamente.
      */
-    public static function enviar(string $destinatario, string $nombreDestinatario, string $asunto, string $htmlBody, bool $registrarFallo = true): bool
+    public static function enviar(string $destinatario, string $nombreDestinatario, string $asunto, string $htmlBody, bool $registrarFallo = true, array $adjuntos = []): bool
     {
         self::$ultimoError = null;
         $ok = false;
         try {
-            $ok = self::despachar($destinatario, $nombreDestinatario, $asunto, $htmlBody);
+            $ok = self::despachar($destinatario, $nombreDestinatario, $asunto, $htmlBody, $adjuntos);
         } catch (\Throwable $e) {
             self::$ultimoError = $e->getMessage();
         }
@@ -87,15 +87,19 @@ final class Mailer
         }
     }
 
-    private static function despachar(string $destinatario, string $nombreDestinatario, string $asunto, string $htmlBody): bool
+    /**
+     * v10.38: $adjuntos = lista de ['nombre' => 'archivo.xlsx', 'contenido' => <bytes>, 'mime' => '...'].
+     * Brevo y PHPMailer los envian; el envio nativo de PHP no (queda solo el cuerpo).
+     */
+    private static function despachar(string $destinatario, string $nombreDestinatario, string $asunto, string $htmlBody, array $adjuntos = []): bool
     {
         self::aplicarModoPrueba($destinatario, $asunto);
 
         if (defined('BREVO_API_KEY') && BREVO_API_KEY !== '') {
-            return self::enviarConBrevo($destinatario, $nombreDestinatario, $asunto, $htmlBody);
+            return self::enviarConBrevo($destinatario, $nombreDestinatario, $asunto, $htmlBody, $adjuntos);
         }
         if (class_exists(\PHPMailer\PHPMailer\PHPMailer::class)) {
-            return self::enviarConPhpMailer($destinatario, $nombreDestinatario, $asunto, $htmlBody);
+            return self::enviarConPhpMailer($destinatario, $nombreDestinatario, $asunto, $htmlBody, $adjuntos);
         }
         return self::enviarConMailNativo($destinatario, $asunto, $htmlBody);
     }
@@ -106,14 +110,18 @@ final class Mailer
      * extension de PHP extra: usa file_get_contents con un contexto
      * HTTPS, que funciona con la instalacion por defecto de PHP.
      */
-    private static function enviarConBrevo(string $destinatario, string $nombre, string $asunto, string $html): bool
+    private static function enviarConBrevo(string $destinatario, string $nombre, string $asunto, string $html, array $adjuntos = []): bool
     {
-        $payload = json_encode([
+        $cuerpo = [
             'sender' => ['name' => SMTP_FROM_NAME, 'email' => SMTP_FROM_EMAIL],
             'to' => [['email' => $destinatario, 'name' => $nombre]],
             'subject' => $asunto,
             'htmlContent' => $html,
-        ], JSON_UNESCAPED_UNICODE);
+        ];
+        if ($adjuntos) {
+            $cuerpo['attachment'] = array_map(fn ($a) => ['name' => $a['nombre'], 'content' => base64_encode($a['contenido'])], $adjuntos);
+        }
+        $payload = json_encode($cuerpo, JSON_UNESCAPED_UNICODE);
 
         $contexto = stream_context_create([
             'http' => [
@@ -124,7 +132,7 @@ final class Mailer
                     'api-key: ' . BREVO_API_KEY,
                 ]),
                 'content' => $payload,
-                'timeout' => 10,
+                'timeout' => $adjuntos ? 25 : 10,
                 'ignore_errors' => true,
             ],
         ]);
@@ -145,7 +153,7 @@ final class Mailer
         return true;
     }
 
-    private static function enviarConPhpMailer(string $destinatario, string $nombre, string $asunto, string $html): bool
+    private static function enviarConPhpMailer(string $destinatario, string $nombre, string $asunto, string $html, array $adjuntos = []): bool
     {
         $mail = new \PHPMailer\PHPMailer\PHPMailer(true);
         try {
@@ -178,6 +186,9 @@ final class Mailer
             $mail->Subject = $asunto;
             $mail->Body    = $html;
             $mail->AltBody  = strip_tags($html);
+            foreach ($adjuntos as $a) {
+                $mail->addStringAttachment($a['contenido'], $a['nombre'], 'base64', $a['mime'] ?? 'application/octet-stream');
+            }
 
             $mail->send();
             return true;

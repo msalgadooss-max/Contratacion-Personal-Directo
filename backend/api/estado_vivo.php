@@ -32,6 +32,14 @@ $usuario = requireRol(['Jefe_Terreno', 'Capataz', 'Admin_Contrato', 'Prevencioni
 exigirMetodo('GET');
 
 $pdo = obtenerConexion();
+
+// v10.38: este panel consulta cada pocos segundos; aprovechamos para el envío automático de tallas a
+// Bodega (a la hora fijada o cuando pasa un rato sin nuevas personas; ver enviarTallasAutomatico()).
+try {
+    enviarTallasAutomatico($pdo);
+} catch (\Throwable $e) {
+    error_log('enviarTallasAutomatico error: ' . $e->getMessage());
+}
 $stmt = $pdo->query(
     "SELECT p.id, p.nombre_completo, p.estado, p.contrato_firmado_at, p.identidad_verificada_at, c.nombre_cargo,
             (SELECT COUNT(*) FROM trazabilidad_logs t

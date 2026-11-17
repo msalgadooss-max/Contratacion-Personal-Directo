@@ -281,6 +281,69 @@ function otorgarAccesoEtapa2(PDO $pdo, int $postulacionId, ?int $usuarioId, bool
 }
 
 /**
+ * v10.38 - Interruptores de correo (variables de entorno de Render: se prenden y apagan sin
+ * tocar código ni desplegar; todas las obras comparten la misma configuración).
+ *  EMAIL_JAO_ACTIVO=1                 los 3 avisos individuales al JAO + "cupos aprobados" (apagado por defecto)
+ *  EMAIL_BODEGA_AVISOS=1              "Entrega EPP ahora" a Bodega (apagado: Bodega solo recibe tallas y nómina)
+ *  EMAIL_CONTRATACION_EXITOSA=1       "Proceso de contratación exitoso" al postulante (apagado por defecto)
+ */
+function interruptorCorreo(string $variable): bool
+{
+    return getenv($variable) === '1';
+}
+
+/**
+ * v10.38: genera un Excel en memoria (para adjuntarlo a un correo). Devuelve null si falta
+ * la librería (composer install) o algo falla: el correo igual sale, solo sin adjunto.
+ * $filas = lista de listas en el mismo orden que $encabezados.
+ */
+function excelEnMemoria(string $titulo, array $encabezados, array $filas): ?string
+{
+    $autoload = __DIR__ . '/../../vendor/autoload.php';
+    if (!file_exists($autoload)) {
+        return null;
+    }
+    try {
+        require_once $autoload;
+        $libro = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $hoja = $libro->getActiveSheet();
+        $hoja->setTitle(mb_substr($titulo, 0, 30));
+        foreach ($encabezados as $i => $h) {
+            $hoja->setCellValue([$i + 1, 1], $h);
+        }
+        $hoja->getStyle('1:1')->getFont()->setBold(true);
+        foreach ($filas as $r => $fila) {
+            foreach (array_values($fila) as $c => $v) {
+                $hoja->setCellValueExplicit([$c + 1, $r + 2], (string)$v, \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
+            }
+        }
+        foreach (range(1, count($encabezados)) as $c) {
+            $hoja->getColumnDimensionByColumn($c)->setAutoSize(true);
+        }
+        ob_start();
+        (new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($libro))->save('php://output');
+        return (string)ob_get_clean();
+    } catch (\Throwable $e) {
+        if (ob_get_level() > 0) {
+            ob_end_clean();
+        }
+        error_log('excelEnMemoria error: ' . $e->getMessage());
+        return null;
+    }
+}
+
+function adjuntoExcel(string $nombreArchivo, ?string $bytes): array
+{
+    return $bytes === null ? [] : [['nombre' => $nombreArchivo, 'contenido' => $bytes,
+        'mime' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']];
+}
+
+function fechaIngresoTexto(?string $f): string
+{
+    return $f ? (new DateTime($f))->format('d-m-Y') : '-';
+}
+
+/**
  * v10.37: renueva el enlace de Etapa 2 de una persona YA seleccionada (estado
  * 'Pre_aprobado_terreno', sin Etapa 2 completada), sin mandar correo ni tocar el
  * estado. Lo usan (a) seguimiento.php, cuando el enlace venció y la persona ya se
@@ -310,6 +373,9 @@ function renovarTokenEtapa2(PDO $pdo, int $postulacionId): string
  */
 function notificarAprobacionAJao(PDO $pdo, array $postulacion): void
 {
+    if (!interruptorCorreo('EMAIL_JAO_ACTIVO')) {
+        return; // v10.38: correos al JAO desactivados por ahora (se ve en su panel)
+    }
     require_once __DIR__ . '/../mailer/Mailer.php';
     $stmt = $pdo->query("SELECT nombre, correo FROM usuarios WHERE rol = 'Jefe_Administrativo' AND activo = 1");
     $destinatarios = $stmt->fetchAll();
@@ -341,6 +407,9 @@ function notificarAprobacionAJao(PDO $pdo, array $postulacion): void
  */
 function notificarSeleccionAJao(PDO $pdo, int $postulacionId): void
 {
+    if (!interruptorCorreo('EMAIL_JAO_ACTIVO')) {
+        return; // v10.38
+    }
     require_once __DIR__ . '/../mailer/Mailer.php';
     $stmt = $pdo->query("SELECT nombre, correo FROM usuarios WHERE rol = 'Jefe_Administrativo' AND activo = 1");
     $destinatarios = $stmt->fetchAll();
@@ -408,7 +477,9 @@ function notificarCuposAprobados(
     // v10.13: tambien al JAO -- pedido explicito del usuario ("una vez
     // autoriza el administrador el JAO ya sabe que hay cupos
     // habilitados"), asi sabe con anticipacion que viene gente en camino.
-    $stmtDestinatarios = $pdo->query("SELECT nombre, correo FROM usuarios WHERE rol IN ('Capataz', 'Jefe_Administrativo') AND activo = 1");
+    // v10.38: sin correos al JAO por ahora (EMAIL_JAO_ACTIVO=1 los vuelve a activar).
+    $rolesCupos = interruptorCorreo('EMAIL_JAO_ACTIVO') ? "'Capataz', 'Jefe_Administrativo'" : "'Capataz'";
+    $stmtDestinatarios = $pdo->query("SELECT nombre, correo FROM usuarios WHERE rol IN ($rolesCupos) AND activo = 1");
     foreach ($stmtDestinatarios->fetchAll() as $destinatario) {
         $destinatarios[] = $destinatario;
     }
@@ -588,6 +659,9 @@ function notificarPrevencionYBodega(PDO $pdo, array $postulacion): void
  */
 function notificarEntregaEppAhora(PDO $pdo, array $postulacion): void
 {
+    if (!interruptorCorreo('EMAIL_BODEGA_AVISOS')) {
+        return; // v10.38: Bodega recibe solo tallas (14:00) y nómina; esto lo ve en su panel
+    }
     require_once __DIR__ . '/../mailer/Mailer.php';
     $stmt = $pdo->query("SELECT nombre, correo FROM usuarios WHERE rol = 'Jefe_Bodega' AND activo = 1");
     $destinatarios = $stmt->fetchAll();
@@ -661,6 +735,9 @@ function traducirAccionLog(string $accion): string
  */
 function notificarContratacionExitosa(PDO $pdo, array $postulacion): void
 {
+    if (!interruptorCorreo('EMAIL_CONTRATACION_EXITOSA')) {
+        return; // v10.38: el postulante recibe solo 3 correos + 1 si falta un documento
+    }
     require_once __DIR__ . '/../mailer/Mailer.php';
 
     $urlValidacion = BASE_URL . '/frontend/public/porteria_resultado.html'
@@ -1098,15 +1175,16 @@ const ACCION_TALLAS_ENVIADAS = 'Tallas incluidas en el correo consolidado a Bode
 function tallasSinEnviar(PDO $pdo): array
 {
     $stmt = $pdo->prepare(
-        "SELECT x.id, x.nombre_completo, x.rut, x.nombre_cargo, x.talla_calzado, x.talla_overol, x.completado_at
+        "SELECT x.id, x.nombre_completo, x.rut, x.nombre_cargo, x.talla_calzado, x.talla_overol, x.ingreso_compania, x.completado_at
            FROM (
-                SELECT p.id, p.nombre_completo, p.rut, c.nombre_cargo, d.talla_calzado, d.talla_overol,
+                SELECT p.id, p.nombre_completo, p.rut, c.nombre_cargo, d.talla_calzado, d.talla_overol, j.ingreso_compania,
                        (SELECT MAX(t.fecha_hora) FROM trazabilidad_logs t
                          WHERE t.postulacion_id = p.id
                            AND t.accion LIKE 'Cambio de estado: % -> Aprobado_admin') AS completado_at
                   FROM postulaciones p
                   JOIN cargos c ON c.id = p.cargo_id
                   JOIN datos_contratacion d ON d.postulacion_id = p.id
+                  LEFT JOIN datos_jao j ON j.postulacion_id = p.id
                  WHERE p.estado IN ('Aprobado_admin', 'Induccion_ok')
                    AND NOT EXISTS (
                         SELECT 1 FROM trazabilidad_logs n
@@ -1169,9 +1247,14 @@ function enviarTallasABodega(PDO $pdo, array $personas, ?int $usuarioId): int
     })();
 
     $asunto = "Tallas de postulantes para preparar kits de EPP - {$fecha} ({$total}) - ICAFAL";
+    // v10.38: el mismo listado, en Excel adjunto (nombre, RUT, cargo, fecha de ingreso y tallas).
+    $excel = excelEnMemoria('Tallas EPP', ['N°', 'Nombre', 'RUT', 'Cargo', 'Fecha de ingreso', 'N° calzado', 'Talla overol'],
+        array_map(fn ($i, $p) => [$i + 1, $p['nombre_completo'], $p['rut'], $p['nombre_cargo'], fechaIngresoTexto($p['ingreso_compania'] ?? null), $p['talla_calzado'], $p['talla_overol']],
+            array_keys(array_values($personas)), array_values($personas)));
+    $adjuntos = adjuntoExcel('Tallas_EPP_' . (new DateTime())->format('Ymd_Hi') . '.xlsx', $excel);
     $enviados = 0;
     foreach ($destinatarios as $d) {
-        if (Mailer::enviar($d['correo'], $d['nombre'], $asunto, $html)) {
+        if (Mailer::enviar($d['correo'], $d['nombre'], $asunto, $html, true, $adjuntos)) {
             $enviados++;
         }
     }
@@ -1185,6 +1268,59 @@ function enviarTallasABodega(PDO $pdo, array $personas, ?int $usuarioId): int
 }
 
 /**
+ * v10.38 - Envío AUTOMÁTICO de las tallas a Bodega (antes solo salía si Bodega apretaba el botón).
+ * No hay un proceso programado en el servidor, así que se revisa cuando los paneles consultan
+ * (el "estado en vivo" y el panel de Bodega lo hacen cada pocos segundos). Un mismo envío no se
+ * repite: cada persona incluida queda marcada en la bitácora.
+ *
+ *  TALLAS_HORA_ENVIO       hora fija del día, "HH:MM" (por defecto 14:00; "off" la desactiva). A esa hora
+ *                          sale UN correo con todo lo pendiente (si hoy no salió ya uno).
+ *  TALLAS_ESPERA_MINUTOS   si es > 0, sale un correo cuando pasan esos minutos sin que nadie nuevo
+ *                          complete su Etapa 2 ("terminamos de generar a las personas"). Pensado para
+ *                          pruebas en que Día 0 y Día 1 ocurren el mismo día. Por defecto 0 (apagado).
+ */
+function enviarTallasAutomatico(PDO $pdo): void
+{
+    $horaCfg = getenv('TALLAS_HORA_ENVIO');
+    $hora = ($horaCfg === false || $horaCfg === '') ? '14:00' : strtolower(trim($horaCfg));
+    $horaValida = (bool)preg_match('/^([01]?\d|2[0-3]):[0-5]\d$/', $hora);
+    $espera = (int)(getenv('TALLAS_ESPERA_MINUTOS') ?: 0);
+    if (!$horaValida && $espera <= 0) {
+        return;
+    }
+
+    $lock = 'icafal_tallas_' . DB_NAME;
+    if (!(int)$pdo->query('SELECT GET_LOCK(' . $pdo->quote($lock) . ', 0)')->fetchColumn()) {
+        return; // otra consulta ya lo está haciendo
+    }
+    try {
+        $personas = tallasSinEnviar($pdo);
+        if (!$personas) {
+            return;
+        }
+        $ahora = time();
+        $dispara = false;
+        if ($horaValida && $ahora >= strtotime(date('Y-m-d') . ' ' . $hora . ':00')) {
+            $stmt = $pdo->prepare('SELECT COUNT(*) FROM trazabilidad_logs WHERE accion = :a AND fecha_hora >= CURDATE()');
+            $stmt->execute(['a' => ACCION_TALLAS_ENVIADAS]);
+            $dispara = (int)$stmt->fetchColumn() === 0;     // a la hora fija, una vez por día
+        }
+        if (!$dispara && $espera > 0) {
+            $ultimo = 0;
+            foreach ($personas as $p) {
+                $ultimo = max($ultimo, (int)strtotime((string)$p['completado_at']));
+            }
+            $dispara = $ultimo > 0 && ($ahora - $ultimo) >= $espera * 60;
+        }
+        if ($dispara) {
+            enviarTallasABodega($pdo, $personas, null);
+        }
+    } finally {
+        $pdo->query('SELECT RELEASE_LOCK(' . $pdo->quote($lock) . ')');
+    }
+}
+
+/**
  * Trabajadores ya liberados por Bodega (Contratado / Proceso_completo) hoy
  * o ayer que todavía no fueron incluidos en ninguna nómina enviada. Se
  * limita a los últimos dos días para no arrastrar contrataciones antiguas
@@ -1193,9 +1329,10 @@ function enviarTallasABodega(PDO $pdo, array $personas, ?int $usuarioId): int
 function liberadosSinNomina(PDO $pdo): array
 {
     $stmt = $pdo->prepare(
-        "SELECT x.id, x.nombre_completo, x.rut, x.nombre_cargo, x.liberado_at, x.seleccionado_por
+        "SELECT x.id, x.nombre_completo, x.rut, x.nombre_cargo, x.liberado_at, x.seleccionado_por,
+                x.ingreso_compania, x.talla_calzado, x.talla_overol
            FROM (
-                SELECT p.id, p.nombre_completo, p.rut, c.nombre_cargo,
+                SELECT p.id, p.nombre_completo, p.rut, c.nombre_cargo, j.ingreso_compania, d.talla_calzado, d.talla_overol,
                        (SELECT MAX(t.fecha_hora) FROM trazabilidad_logs t
                          WHERE t.postulacion_id = p.id
                            AND t.accion LIKE 'Cambio de estado: % -> Contratado') AS liberado_at,
@@ -1207,6 +1344,8 @@ function liberadosSinNomina(PDO $pdo): array
                          LIMIT 1) AS seleccionado_por
                   FROM postulaciones p
                   JOIN cargos c ON c.id = p.cargo_id
+                  LEFT JOIN datos_jao j ON j.postulacion_id = p.id
+                  LEFT JOIN datos_contratacion d ON d.postulacion_id = p.id
                  WHERE p.estado IN ('Contratado', 'Proceso_completo')
                    AND NOT EXISTS (
                         SELECT 1 FROM trazabilidad_logs n
@@ -1274,9 +1413,15 @@ function enviarNominaLiberados(PDO $pdo, array $liberados, ?int $usuarioId): int
     })();
 
     $asunto = "Nómina de trabajadores liberados - {$fecha} ({$total}) - ICAFAL";
+    // v10.38: Excel adjunto con nombre, RUT, cargo, fecha de ingreso y tallas de cada uno.
+    $excel = excelEnMemoria('Nómina liberados', ['N°', 'Nombre', 'RUT', 'Cargo', 'Fecha de ingreso', 'N° calzado', 'Talla overol', 'Liberado', 'Seleccionado por'],
+        array_map(fn ($i, $l) => [$i + 1, $l['nombre_completo'], $l['rut'], $l['nombre_cargo'], fechaIngresoTexto($l['ingreso_compania'] ?? null),
+            $l['talla_calzado'] ?? '-', $l['talla_overol'] ?? '-', !empty($l['liberado_at']) ? (new DateTime($l['liberado_at']))->format('d-m-Y H:i') : '-', $l['seleccionado_por'] ?? '-'],
+            array_keys(array_values($liberados)), array_values($liberados)));
+    $adjuntos = adjuntoExcel('Nomina_liberados_' . (new DateTime())->format('Ymd_Hi') . '.xlsx', $excel);
     $enviados = 0;
     foreach ($destinatarios as $d) {
-        if (Mailer::enviar($d['correo'], $d['nombre'], $asunto, $html)) {
+        if (Mailer::enviar($d['correo'], $d['nombre'], $asunto, $html, true, $adjuntos)) {
             $enviados++;
         }
     }
@@ -1403,6 +1548,9 @@ function marcarPasoAContratacion(PDO $pdo, int $postulacionId, ?int $usuarioId, 
  */
 function notificarPasoContratacionAJao(PDO $pdo, int $postulacionId): void
 {
+    if (!interruptorCorreo('EMAIL_JAO_ACTIVO')) {
+        return; // v10.38
+    }
     require_once __DIR__ . '/../mailer/Mailer.php';
     $stmt = $pdo->query("SELECT nombre, correo FROM usuarios WHERE rol = 'Jefe_Administrativo' AND activo = 1");
     $destinatarios = $stmt->fetchAll();

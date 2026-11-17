@@ -23,6 +23,12 @@ require_once __DIR__ . '/../../includes/auth.php';
 
 iniciarSesionSegura();
 requireRol(['Jefe_Bodega']);
+// v10.38: aprovecha esta consulta para el envío automático de tallas (ver enviarTallasAutomatico()).
+try {
+    enviarTallasAutomatico(obtenerConexion());
+} catch (\Throwable $e) {
+    error_log('enviarTallasAutomatico (bodega) error: ' . $e->getMessage());
+}
 exigirModuloActivo(MODULO_BODEGA_ACTIVO, 'Bodega');
 exigirMetodo('GET');
 

@@ -31,6 +31,7 @@ return <<<HTML
     </tbody>
   </table>
   <p style="font-size:14px"><b>Total: {$textoTotal}.</b></p>
+  <p style="font-size:13px;color:#374151">📎 Adjuntamos este mismo listado en Excel (nombre, RUT, cargo, fecha de ingreso y tallas). También puedes bajar el Excel con todo el personal listo desde tu panel.</p>
   <p style="font-size:12px;color:#6b7280">
     Si más personas completan su postulación después de este envío, recibirás
     otro correo aparte solo con ellas. Generado automáticamente por el sistema
