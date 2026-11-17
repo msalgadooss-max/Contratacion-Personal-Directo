@@ -126,6 +126,9 @@ async function cargarRechazadosTab() {
   }
 }
 
+// v10.43: última lista cargada, para avisar al firmar si la persona tiene documentos pendientes.
+var LISTA_JAO = [];
+
 async function cargarLista() {
   const cont = document.getElementById('lista-postulaciones');
   const vacio = document.getElementById('vacio');
@@ -140,6 +143,7 @@ async function cargarLista() {
       return;
     }
     vacio.classList.add('hidden');
+    LISTA_JAO = data.postulaciones;
     cont.innerHTML = data.postulaciones.map(p => tarjeta(p)).join('');
   } catch (err) {
     mostrarAlerta('alerta', err.message);
@@ -528,7 +532,16 @@ async function firmarContrato(id) {
   const confirmacion = MODULO_PREVENCION_ACTIVO
     ? '¿Registrar la firma del contrato? Esto habilita a Bodega para entregar el EPP -- el cupo se descuenta recién cuando Bodega entrega.'
     : '¿Registrar la firma del contrato? Etapa 1 del piloto: esto cierra la contratación y descuenta el cupo de inmediato.';
-  if (!confirm(confirmacion)) return;
+  // v10.43 (pedido del usuario): si la persona tiene documentos pendientes de entrega, el JAO lo ve
+  // en la propia confirmación (no impiden firmar, pero que nadie firme sin darse cuenta).
+  const persona = LISTA_JAO.find(x => x.id === id);
+  const pendientes = persona && persona.tiene_pendientes
+    ? (persona.documentos_marcados || []).filter(m => m.condicion === 'pendiente' && !m.entregado).map(m => ETIQUETAS_DOC[m.tipo] || m.tipo)
+    : [];
+  const aviso = pendientes.length
+    ? `⚠ ${persona.nombre_completo} tiene documentos PENDIENTES de entrega:\n  • ${pendientes.join('\n  • ')}\n\nNo impiden firmar, pero quedarán anotados en la bitácora.\n¿Firmar igual?\n\n`
+    : '';
+  if (!confirm(aviso + confirmacion)) return;
   try {
     const data = await apiFetch('/admin_general/firmar_contrato.php', { method: 'POST', body: { postulacion_id: id } });
     mostrarAlerta('alerta', data.mensaje, 'exito');
