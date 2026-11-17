@@ -54,9 +54,15 @@ function actualizarCorreoCompuesto() {
   const dominio = correoDominioSelect.value === '__otro__'
     ? correoDominioOtroInput.value.trim()
     : correoDominioSelect.value;
-  correoHidden.value = correoUsuarioInput.value.trim() + dominio;
+  // v10.43 (hallado en la prueba del 17-11): mucha gente escribe su correo COMPLETO en la primera
+  // casilla. Antes se le sumaba el dominio otra vez (usuario@gmail.com@gmail.com) y la plataforma
+  // "no la encontraba". Si ya trae @, se usa tal cual.
+  const usuarioEscrito = correoUsuarioInput.value.trim();
+  correoHidden.value = usuarioEscrito.includes('@') ? usuarioEscrito : usuarioEscrito + dominio;
 }
 correoUsuarioInput.addEventListener('input', actualizarCorreoCompuesto);
+// Al salir de la casilla, si escribió el correo completo, se reparte solo entre usuario y dominio.
+correoUsuarioInput.addEventListener('blur', () => { if (correoUsuarioInput.value.includes('@')) precargarCorreoPrincipal(correoUsuarioInput.value.trim()); });
 correoDominioSelect.addEventListener('change', actualizarCorreoCompuesto);
 correoDominioOtroInput.addEventListener('input', actualizarCorreoCompuesto);
 

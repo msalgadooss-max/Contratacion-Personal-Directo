@@ -3,6 +3,15 @@
  * documentos que el JAO marcó como observados, usando el token de
  * subsanación de su correo. No repite toda la Etapa 2.
  */
+// v10.43: estas páginas públicas llamaban a esc() sin definirla (desde el escapado de HTML de v10.25),
+// así que la pantalla fallaba en silencio: no mostraba ni el resultado ni los errores.
+function esc(valor) {
+  // Escapa <, >, &, " y ' : seguro para texto y para atributos HTML.
+  return (valor == null ? '' : String(valor))
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
 const params = new URLSearchParams(window.location.search);
 const token = params.get('token') || '';
 

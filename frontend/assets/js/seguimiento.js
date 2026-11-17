@@ -10,6 +10,15 @@
  * o "el Jefe de Terreno") -- se muestra en cambio una sola fase breve
  * y general, en FASES_POSTULANTE más abajo.
  */
+// v10.43: estas páginas públicas llamaban a esc() sin definirla (desde el escapado de HTML de v10.25),
+// así que la pantalla fallaba en silencio: no mostraba ni el resultado ni los errores.
+function esc(valor) {
+  // Escapa <, >, &, " y ' : seguro para texto y para atributos HTML.
+  return (valor == null ? '' : String(valor))
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
 const FASES_POSTULANTE = {
   Pendiente: '📋 Tu postulación está en revisión',
   Pre_aprobado_terreno: '📝 Completa tus datos para avanzar',
@@ -54,9 +63,15 @@ function actualizarCorreoCompuesto() {
   const dominio = correoDominioSelect.value === '__otro__'
     ? correoDominioOtroInput.value.trim()
     : correoDominioSelect.value;
-  correoHidden.value = correoUsuarioInput.value.trim() + dominio;
+  // v10.43 (hallado en la prueba del 17-11): mucha gente escribe su correo COMPLETO en la primera
+  // casilla. Antes se le sumaba el dominio otra vez (usuario@gmail.com@gmail.com) y la plataforma
+  // "no la encontraba". Si ya trae @, se usa tal cual.
+  const usuarioEscrito = correoUsuarioInput.value.trim();
+  correoHidden.value = usuarioEscrito.includes('@') ? usuarioEscrito : usuarioEscrito + dominio;
 }
 correoUsuarioInput.addEventListener('input', actualizarCorreoCompuesto);
+// Al salir de la casilla, si escribió el correo completo, se reparte solo entre usuario y dominio.
+correoUsuarioInput.addEventListener('blur', () => { if (correoUsuarioInput.value.includes('@')) precargarCorreo(correoUsuarioInput.value.trim()); });
 correoDominioSelect.addEventListener('change', actualizarCorreoCompuesto);
 correoDominioOtroInput.addEventListener('input', actualizarCorreoCompuesto);
 

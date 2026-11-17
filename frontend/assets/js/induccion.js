@@ -7,6 +7,15 @@
  * propio postulante en texto libre, y Prevención es quien la aprueba o
  * reprueba a mano (sin corrección automática) -- ver dashboard-prevencion.js.
  */
+// v10.43: estas páginas públicas llamaban a esc() sin definirla (desde el escapado de HTML de v10.25),
+// así que la pantalla fallaba en silencio: no mostraba ni el resultado ni los errores.
+function esc(valor) {
+  // Escapa <, >, &, " y ' : seguro para texto y para atributos HTML.
+  return (valor == null ? '' : String(valor))
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
 const form = document.getElementById('form-induccion');
 const rutInput = document.getElementById('rut');
 const resultadoDiv = document.getElementById('resultado');
