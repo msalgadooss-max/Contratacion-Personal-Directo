@@ -64,9 +64,9 @@ try {
     // tiene que haber registrado la IRL del día de contratación (segundo
     // check, ver prevencion/marcar_irl.php) antes de entregar el kit.
     $stmtIrl = $pdo->prepare('SELECT COUNT(*) FROM trazabilidad_logs WHERE postulacion_id = :id AND accion = :accion');
-    $stmtIrl->execute(['id' => $postulacionId, 'accion' => ACCION_IRL_REALIZADA]);
+    $stmtIrl->execute(['id' => $postulacionId, 'accion' => ACCION_IRL_COMPLETADA]);
     if ((int)$stmtIrl->fetchColumn() === 0) {
-        throw new RuntimeException('Prevención todavía no registra la IRL de esta persona.|409');
+        throw new RuntimeException('Prevención todavía no confirma que la IRL de esta persona se realizó.|409');
     }
     // v10.14: el cupo ya se reservó/descontó al momento de la selección
     // del Capataz (ver terreno/aprobar.php), no corresponde volver a

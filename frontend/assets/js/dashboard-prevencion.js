@@ -107,7 +107,7 @@ async function cargarLista() {
     const dia0 = data.postulaciones || [];
     const dia1 = data.irl_pendientes || [];
     pintarTabla('tbody-postulaciones', 'vacio', dia0, 'Verificación realizada', 'marcarInduccion');
-    pintarTabla('tbody-irl', 'vacio-irl', dia1, 'IRL realizada', 'marcarIrl');
+    pintarTablaIrl(dia1);
     pintarContador('cuenta-dia0', dia0.length);
     pintarContador('cuenta-dia1', dia1.length);
     // Si el usuario todavía no eligió pestaña, se abre la que tiene
@@ -146,6 +146,48 @@ function marcarInduccion(checkbox, id) {
   return confirmarCheck(checkbox, id, '/prevencion/marcar_induccion.php', '¿Confirmas que la verificación quedó realizada para');
 }
 
+// v10.46 (pedido del usuario, 17-11): la IRL del Día 1 tiene DOS confirmaciones.
+//   1) "Presentes en la sala"  2) "IRL realizada" (solo se habilita cuando ya están presentes).
+// Recién la segunda deja a la persona lista para Bodega.
 function marcarIrl(checkbox, id) {
-  return confirmarCheck(checkbox, id, '/prevencion/marcar_irl.php', '¿Confirmas que la IRL quedó realizada para');
+  return confirmarCheck(checkbox, id, '/prevencion/marcar_irl.php', '¿Confirmas que está presente en la sala');
+}
+
+function marcarIrlRealizada(checkbox, id) {
+  return confirmarCheck(checkbox, id, '/prevencion/marcar_irl_realizada.php', '¿Confirmas que la IRL quedó realizada para');
+}
+
+function filaIrl(p) {
+  const presente = !!p.presente_sala;
+  return `
+    <tr class="border-t">
+      <td class="px-4 py-3 font-mono">${esc(p.rut)}</td>
+      <td class="px-4 py-3">${esc(p.nombre_completo)}</td>
+      <td class="px-4 py-3">${esc(p.nombre_cargo)}</td>
+      <td class="px-4 py-3">
+        <label class="inline-flex items-center gap-2 select-none ${presente ? 'opacity-80' : 'cursor-pointer'}">
+          <input type="checkbox" class="w-6 h-6 accent-indigo-600" ${presente ? 'checked disabled' : `onchange="marcarIrl(this, ${Number(p.id)})"`}>
+          <span class="text-sm font-semibold ${presente ? 'text-green-700' : 'text-gray-700'}">${presente ? '✓ Presente en la sala' : 'Presente en la sala'}</span>
+        </label>
+      </td>
+      <td class="px-4 py-3 text-right">
+        <label class="inline-flex items-center gap-2 select-none ${presente ? 'cursor-pointer' : 'opacity-40'}">
+          <input type="checkbox" class="w-6 h-6 accent-indigo-600" ${presente ? `onchange="marcarIrlRealizada(this, ${Number(p.id)})"` : 'disabled'}
+                 title="${presente ? '' : 'Primero confirma que está presente en la sala'}">
+          <span class="text-sm font-semibold text-gray-700">IRL realizada</span>
+        </label>
+      </td>
+    </tr>`;
+}
+
+function pintarTablaIrl(filas) {
+  const tbody = document.getElementById('tbody-irl');
+  const vacio = document.getElementById('vacio-irl');
+  if (!filas.length) {
+    tbody.innerHTML = '';
+    vacio.classList.remove('hidden');
+    return;
+  }
+  vacio.classList.add('hidden');
+  tbody.innerHTML = filas.map(filaIrl).join('');
 }

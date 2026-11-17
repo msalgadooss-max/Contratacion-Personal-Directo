@@ -105,15 +105,17 @@ $stmtExtra = $pdo->prepare(
        FROM trazabilidad_logs t
        LEFT JOIN usuarios u ON u.id = t.usuario_id
       WHERE t.postulacion_id = :id
-        AND (t.accion = :paso OR t.accion = :irl OR t.accion LIKE '%ingreso a faena%')
+        AND (t.accion = :paso OR t.accion IN (:irl_a, :irl_b) OR t.accion = :irl_c OR t.accion LIKE '%ingreso a faena%')
       ORDER BY t.fecha_hora ASC, t.id ASC"
 );
-$stmtExtra->execute(['id' => $postulacionId, 'paso' => ACCION_INGRESO_CONTRATACION, 'irl' => ACCION_IRL_REALIZADA]);
-$logsExtra = ['paso' => null, 'irl' => null, 'faena' => null];
+$stmtExtra->execute(['id' => $postulacionId, 'paso' => ACCION_INGRESO_CONTRATACION, 'irl_a' => ACCION_IRL_REALIZADA, 'irl_b' => ACCION_IRL_PRESENTES, 'irl_c' => ACCION_IRL_COMPLETADA]);
+$logsExtra = ['paso' => null, 'sala' => null, 'irl' => null, 'faena' => null];
 foreach ($stmtExtra->fetchAll() as $e) {
     if ($e['accion'] === ACCION_INGRESO_CONTRATACION && $logsExtra['paso'] === null) {
         $logsExtra['paso'] = $e;
-    } elseif ($e['accion'] === ACCION_IRL_REALIZADA && $logsExtra['irl'] === null) {
+    } elseif (in_array($e['accion'], [ACCION_IRL_REALIZADA, ACCION_IRL_PRESENTES], true) && $logsExtra['sala'] === null) {
+        $logsExtra['sala'] = $e;
+    } elseif ($e['accion'] === ACCION_IRL_COMPLETADA && $logsExtra['irl'] === null) {
         $logsExtra['irl'] = $e;
     } elseif (stripos($e['accion'], 'ingreso a faena') !== false && $logsExtra['faena'] === null) {
         $logsExtra['faena'] = $e;
@@ -123,7 +125,7 @@ foreach ($stmtExtra->fetchAll() as $e) {
 // Orden de desempate cuando dos hitos caen en el mismo segundo (el orden real del proceso).
 $ORDEN = [
     'recibida' => 0, 'Pre_aprobado_terreno' => 1, 'admin' => 2, 'faena' => 3, 'etapa2' => 4, 'Aprobado_admin' => 5,
-    'identidad' => 6, 'Induccion_ok' => 7, 'nomina' => 8, 'paso' => 9, 'firma' => 10, 'irl' => 11,
+    'identidad' => 6, 'Induccion_ok' => 7, 'nomina' => 8, 'paso' => 9, 'firma' => 10, 'sala' => 10.5, 'irl' => 11,
     'EPP_listo' => 12, 'Contratado' => 13, 'Proceso_completo' => 14, 'Rechazado' => 15,
 ];
 // v10.45 (pedido del usuario): de QUIEN son los minutos que aparecen en cada paso. El tiempo desde el hito
@@ -131,7 +133,7 @@ $ORDEN = [
 $ROL_DEL_TIEMPO = [
     'Pre_aprobado_terreno' => 'Capataz', 'admin' => 'Administrador de Contrato', 'faena' => 'Postulante / Portería',
     'etapa2' => 'Postulante', 'Aprobado_admin' => 'Postulante', 'identidad' => 'JAO', 'Induccion_ok' => 'Prevención',
-    'nomina' => 'JAO', 'paso' => 'Postulante / Portería (Día 1)', 'firma' => 'JAO', 'irl' => 'Prevención',
+    'nomina' => 'JAO', 'paso' => 'Postulante / Portería (Día 1)', 'firma' => 'JAO', 'sala' => 'Prevención', 'irl' => 'Prevención',
     'EPP_listo' => 'Bodega', 'Contratado' => 'Bodega', 'Proceso_completo' => 'Capataz / Jefe de Terreno',
 ];
 $hitos = [['clave' => 'recibida', 'etiqueta' => 'Postulación recibida', 'fecha_hora' => $postulacion['creado_at'], 'quien' => null]];
@@ -182,8 +184,12 @@ if ($postulacion['contrato_firmado_at'] !== null) {
     $hitos[] = ['clave' => 'firma', 'etiqueta' => 'Contrato firmado (JAO)',
                 'fecha_hora' => $postulacion['contrato_firmado_at'], 'quien' => $postulacion['contrato_firmado_por_nombre']];
 }
+if ($logsExtra['sala'] !== null) {
+    $hitos[] = ['clave' => 'sala', 'etiqueta' => 'Presentes en la sala (Prevención, Día 1)',
+                'fecha_hora' => $logsExtra['sala']['fecha_hora'], 'quien' => $logsExtra['sala']['usuario_nombre']];
+}
 if ($logsExtra['irl'] !== null) {
-    $hitos[] = ['clave' => 'irl', 'etiqueta' => 'IRL registrada (Prevención, Día 1)',
+    $hitos[] = ['clave' => 'irl', 'etiqueta' => 'IRL realizada (Prevención, Día 1)',
                 'fecha_hora' => $logsExtra['irl']['fecha_hora'], 'quien' => $logsExtra['irl']['usuario_nombre']];
 }
 
@@ -261,8 +267,10 @@ if ($estadoActual === 'Pendiente') {
         [$texto, $responsable] = ['Esperando ' . implode(' y ', $faltan) . ' para poder firmar el contrato', $logsExtra['paso'] === null ? 'Portería / JAO' : 'JAO'];
     } elseif ($postulacion['contrato_firmado_at'] === null) {
         [$texto, $responsable] = ['Esperando la firma del contrato', 'JAO'];
+    } elseif ($logsExtra['sala'] === null) {
+        [$texto, $responsable] = ['Esperando que Prevención confirme que están presentes en la sala (Día 1)', 'Prevención'];
     } elseif ($logsExtra['irl'] === null) {
-        [$texto, $responsable] = ['Esperando la IRL (Día 1)', 'Prevención'];
+        [$texto, $responsable] = ['Presentes en la sala: esperando que Prevención confirme que la IRL se realizó', 'Prevención'];
     } else {
         [$texto, $responsable] = ['Esperando la entrega del kit de EPP', 'Bodega'];
     }

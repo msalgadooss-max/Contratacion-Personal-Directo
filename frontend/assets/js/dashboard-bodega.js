@@ -48,7 +48,7 @@ async function cargarLista() {
           ${p.puede_entregar
             ? `<button class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg" onclick="marcarEpp(${Number(p.id)})">Entregar EPP</button>`
             : (p.espera === 'irl'
-                ? `<span class="text-xs text-gray-400" title="Prevención todavía no registra la IRL de esta persona">⏳ Esperando IRL (Prevención)</span>`
+                ? `<span class="text-xs text-gray-400" title="Prevención todavía no confirma que la IRL de esta persona se realizó">⏳ Esperando IRL realizada (Prevención)</span>`
                 : `<span class="text-xs text-gray-400" title="El JAO todavía no firma el contrato de esta persona">⏳ Esperando firma de contrato (JAO)</span>`)}
         </td>
       </tr>`).join('');

@@ -40,8 +40,12 @@ $stmtInduccion = $pdo->query(
       ORDER BY p.actualizado_at ASC'
 );
 
+// v10.46: siguen en esta lista hasta que Prevención confirme "IRL realizada" (2ª confirmación).
+// `presente_sala` = ya confirmó que están presentes en la sala (1ª confirmación; incluye la marca antigua).
 $stmtIrl = $pdo->prepare(
-    'SELECT p.id, p.rut, p.nombre_completo, c.nombre_cargo, p.contrato_firmado_at
+    'SELECT p.id, p.rut, p.nombre_completo, c.nombre_cargo, p.contrato_firmado_at,
+            EXISTS (SELECT 1 FROM trazabilidad_logs tp
+                     WHERE tp.postulacion_id = p.id AND tp.accion IN (:presente_a, :presente_b)) AS presente_sala
        FROM postulaciones p
        JOIN cargos c ON c.id = p.cargo_id
       WHERE p.estado = "Induccion_ok"
@@ -52,9 +56,12 @@ $stmtIrl = $pdo->prepare(
         )
       ORDER BY p.contrato_firmado_at ASC'
 );
-$stmtIrl->execute(['accion_irl' => ACCION_IRL_REALIZADA]);
+$stmtIrl->execute(['accion_irl' => ACCION_IRL_COMPLETADA, 'presente_a' => ACCION_IRL_REALIZADA, 'presente_b' => ACCION_IRL_PRESENTES]);
 
 responderOk([
     'postulaciones' => $stmtInduccion->fetchAll(),
-    'irl_pendientes' => $stmtIrl->fetchAll(),
+    'irl_pendientes' => array_map(function ($f) {
+        $f['presente_sala'] = (bool)$f['presente_sala'];
+        return $f;
+    }, $stmtIrl->fetchAll()),
 ]);

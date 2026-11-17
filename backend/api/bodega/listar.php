@@ -44,7 +44,7 @@ $stmt = $pdo->prepare(
       WHERE p.estado = "Induccion_ok"
       ORDER BY p.actualizado_at ASC'
 );
-$stmt->execute(['accion_irl' => ACCION_IRL_REALIZADA]);
+$stmt->execute(['accion_irl' => ACCION_IRL_COMPLETADA]);
 
 $postulaciones = array_map(function ($p) {
     $firmado = $p['contrato_firmado_at'] !== null;

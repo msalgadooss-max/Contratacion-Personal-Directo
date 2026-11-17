@@ -43,7 +43,9 @@ try {
 $stmt = $pdo->query(
     "SELECT p.id, p.nombre_completo, p.estado, p.contrato_firmado_at, p.identidad_verificada_at, c.nombre_cargo,
             (SELECT COUNT(*) FROM trazabilidad_logs t
-              WHERE t.postulacion_id = p.id AND t.accion = " . $pdo->quote(ACCION_IRL_REALIZADA) . ") > 0 AS irl_realizada,
+              WHERE t.postulacion_id = p.id AND t.accion = " . $pdo->quote(ACCION_IRL_COMPLETADA) . ") > 0 AS irl_realizada,
+            (SELECT COUNT(*) FROM trazabilidad_logs tpr
+              WHERE tpr.postulacion_id = p.id AND tpr.accion IN (" . $pdo->quote(ACCION_IRL_REALIZADA) . ", " . $pdo->quote(ACCION_IRL_PRESENTES) . ")) > 0 AS irl_presente,
             (SELECT COUNT(*) FROM trazabilidad_logs tp
               WHERE tp.postulacion_id = p.id AND tp.accion = " . $pdo->quote(ACCION_INGRESO_CONTRATACION) . ") > 0 AS paso_autorizado,
             (SELECT COUNT(*) FROM datos_contratacion d WHERE d.postulacion_id = p.id) > 0 AS etapa2_completada,
@@ -94,6 +96,7 @@ function faseVisual(array $p): string
         'Induccion_ok' => match (true) {
             $p['contrato_firmado_at'] === null && !(bool)$p['paso_autorizado'] => 'Día 0 listo: espera su llegada a la obra a las 8 am (Portería autoriza su paso)',
             $p['contrato_firmado_at'] === null => 'Paso autorizado, esperando la firma de contrato (JAO)',
+            !(bool)$p['irl_realizada'] && (bool)$p['irl_presente'] => 'Presentes en la sala, esperando que Prevención confirme la IRL realizada',
             !(bool)$p['irl_realizada'] => 'Contrato firmado, esperando la IRL con Prevención',
             default => 'IRL realizada, esperando la entrega del kit en Bodega',
         },

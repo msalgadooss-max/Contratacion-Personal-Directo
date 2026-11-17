@@ -65,7 +65,9 @@ $cambioA = fn (string $estadoNuevo) => "t.accion LIKE " . $pdo->quote("Cambio de
 $condSeleccion = $cambioA('Pre_aprobado_terreno');
 $condInduccion = $cambioA('Induccion_ok');
 $condPorteria1 = 't.accion = ' . $pdo->quote(ACCION_INGRESO_CONTRATACION);
-$condIrl       = "t.accion LIKE " . $pdo->quote('Prevención registró la IRL%');
+// v10.46: la IRL ahora tiene dos confirmaciones: presentes en la sala (incluye la marca antigua) e IRL realizada.
+$condIrlSala   = "(t.accion LIKE " . $pdo->quote('Prevención registró la IRL%') . " OR t.accion = " . $pdo->quote(ACCION_IRL_PRESENTES) . ")";
+$condIrl       = "t.accion = " . $pdo->quote(ACCION_IRL_COMPLETADA);
 $condEpp       = $cambioA('Contratado');
 
 $stmt = $pdo->query(
@@ -81,6 +83,8 @@ $stmt = $pdo->query(
             {$hito($condInduccion, 'usuario_id')} AS induccion_por,
             {$hito($condPorteria1, 'fecha_hora')} AS porteria1_at,
             {$hito($condPorteria1, 'usuario_id')} AS porteria1_por,
+            {$hito($condIrlSala, 'fecha_hora')} AS irl_sala_at,
+            {$hito($condIrlSala, 'usuario_id')} AS irl_sala_por,
             {$hito($condIrl, 'fecha_hora')} AS irl_at,
             {$hito($condIrl, 'usuario_id')} AS irl_por,
             {$hito($condEpp, 'fecha_hora')} AS epp_at,
@@ -122,9 +126,12 @@ $etapas = [
     ['clave' => 'firma',       'nombre' => 'Firma de contrato',            'rol' => 'JAO',
      'desde' => 'porteria1_at',             'hasta' => 'contrato_firmado_at',     'actor' => 'contrato_firmado_por',
      'esperando' => fn ($f) => $f['porteria1_at'] !== null && $f['contrato_firmado_at'] === null],
-    ['clave' => 'irl',         'nombre' => 'IRL (Día 1)',                  'rol' => 'Prevención',
-     'desde' => 'contrato_firmado_at',      'hasta' => 'irl_at',                  'actor' => 'irl_por',
-     'esperando' => fn ($f) => $f['contrato_firmado_at'] !== null && $f['irl_at'] === null],
+    ['clave' => 'irl_sala',    'nombre' => 'Presentes en la sala (Día 1)',  'rol' => 'Prevención',
+     'desde' => 'contrato_firmado_at',      'hasta' => 'irl_sala_at',             'actor' => 'irl_sala_por',
+     'esperando' => fn ($f) => $f['contrato_firmado_at'] !== null && $f['irl_sala_at'] === null],
+    ['clave' => 'irl',         'nombre' => 'IRL realizada (Día 1)',        'rol' => 'Prevención',
+     'desde' => 'irl_sala_at',              'hasta' => 'irl_at',                  'actor' => 'irl_por',
+     'esperando' => fn ($f) => $f['irl_sala_at'] !== null && $f['irl_at'] === null],
     ['clave' => 'epp',         'nombre' => 'Entrega de EPP',               'rol' => 'Bodega',
      'desde' => 'irl_at',                   'hasta' => 'epp_at',                  'actor' => 'epp_por',
      'esperando' => fn ($f) => $f['irl_at'] !== null && $f['epp_at'] === null],

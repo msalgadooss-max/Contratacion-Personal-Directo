@@ -1167,7 +1167,13 @@ const ACCION_NOMINA_LIBERADOS = 'Incluido en la nómina de liberados enviada por
  * marca de la nómina) para no necesitar ninguna columna nueva en la base
  * de datos viva.
  */
+// v10.46 (pedido del usuario, prueba real del 17-11): la IRL del Día 1 tiene DOS confirmaciones de Prevención.
+//   1) Presentes en la sala  -> la marca ANTIGUA (ACCION_IRL_REALIZADA, ya guardada para quienes Paula marcó) pasa a
+//      significar solo esto, y las nuevas se guardan como ACCION_IRL_PRESENTES. Nada se borra ni se migra.
+//   2) IRL realizada         -> ACCION_IRL_COMPLETADA: esta es la que habilita a Bodega.
 const ACCION_IRL_REALIZADA = 'Prevención registró la IRL realizada.';
+const ACCION_IRL_PRESENTES = 'Prevención confirmó que la persona está presente en la sala (IRL).';
+const ACCION_IRL_COMPLETADA = 'Prevención confirmó que la IRL se realizó.';
 
 /**
  * v10.22 (pedido explícito del usuario, 06-10): Bodega recibe UN solo
@@ -1677,7 +1683,7 @@ function faseParaPorteria(PDO $pdo, string $rutCrudo, string $rutNormalizado): ?
           LIMIT 1'
     );
     $stmt->execute([
-        'accion_irl' => ACCION_IRL_REALIZADA,
+        'accion_irl' => ACCION_IRL_COMPLETADA,
         'accion_paso' => ACCION_INGRESO_CONTRATACION,
         'rut_crudo' => $rutCrudo,
         'rut_norm' => $rutNormalizado,
