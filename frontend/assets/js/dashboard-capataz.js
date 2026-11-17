@@ -74,8 +74,9 @@ function actualizarTodo() {
 
 async function cargarCargosConCupo() {
   try {
-    const data = await apiFetch('/public/cargos_disponibles.php');
-    CARGOS_CON_CUPO = data.cargos.filter(c => c.tiene_cupo);
+    // v10.40: los cupos que ve el Capataz son los SUYOS (reservados para él) + los generales.
+    const data = await apiFetch('/terreno/cupos_capataz.php');
+    CARGOS_CON_CUPO = data.cargos.filter(c => c.disponibles > 0).map(c => ({ ...c, cupos_disponibles: c.disponibles }));
     renderZonasCargo();
   } catch (e) {
     CARGOS_CON_CUPO = [];
@@ -95,7 +96,7 @@ function renderZonasCargo() {
       <span class="text-2xl leading-none">⛑️</span>
       <div class="min-w-0">
         <p class="text-sm font-bold text-gray-800 leading-tight truncate">${esc(c.nombre_cargo)}</p>
-        <p class="text-xs text-orange-700 font-semibold">${c.cupos_disponibles} cupo(s)</p>
+        <p class="text-xs text-orange-700 font-semibold">${c.cupos_disponibles} cupo(s)${c.propios > 0 ? ` · <span class="text-green-700">${c.propios} tuyos</span>` : ''}</p>
       </div>
     </div>`).join('');
 }

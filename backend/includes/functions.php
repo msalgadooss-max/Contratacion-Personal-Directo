@@ -461,7 +461,8 @@ function notificarCuposAprobados(
     string $nombreCargo,
     int $cantidadAprobada,
     int $cantidadPedida,
-    ?string $observacion
+    ?string $observacion,
+    ?int $capatazDestinoId = null
 ): void {
     require_once __DIR__ . '/../mailer/Mailer.php';
 
@@ -479,7 +480,10 @@ function notificarCuposAprobados(
     // habilitados"), asi sabe con anticipacion que viene gente en camino.
     // v10.38: sin correos al JAO por ahora (EMAIL_JAO_ACTIVO=1 los vuelve a activar).
     $rolesCupos = interruptorCorreo('EMAIL_JAO_ACTIVO') ? "'Capataz', 'Jefe_Administrativo'" : "'Capataz'";
-    $stmtDestinatarios = $pdo->query("SELECT nombre, correo FROM usuarios WHERE rol IN ($rolesCupos) AND activo = 1");
+    // v10.40: si los cupos van dirigidos a un Capataz, solo se avisa a el (y a quien los pidio).
+    $stmtDestinatarios = $capatazDestinoId !== null
+        ? $pdo->query('SELECT nombre, correo FROM usuarios WHERE id = ' . (int)$capatazDestinoId . ' AND activo = 1')
+        : $pdo->query("SELECT nombre, correo FROM usuarios WHERE rol IN ($rolesCupos) AND activo = 1");
     foreach ($stmtDestinatarios->fetchAll() as $destinatario) {
         $destinatarios[] = $destinatario;
     }
@@ -493,7 +497,14 @@ function notificarCuposAprobados(
     $bloqueObservacion = $observacion !== null && $observacion !== ''
         ? '<p style="background:#f3f4f6;border-radius:6px;padding:10px 14px;color:#374151"><strong>Observación:</strong> ' . htmlspecialchars($observacion, ENT_QUOTES, 'UTF-8') . '</p>'
         : '';
-    $html = (function () use ($nombreCargo, $cantidadAprobada, $cantidadDistinta, $bloqueObservacion) {
+    $bloqueDestino = '';
+    if ($capatazDestinoId !== null) {
+        $stmtNom = $pdo->prepare('SELECT nombre FROM usuarios WHERE id = :id');
+        $stmtNom->execute(['id' => $capatazDestinoId]);
+        $nomCap = htmlspecialchars((string)$stmtNom->fetchColumn(), ENT_QUOTES, 'UTF-8');
+        $bloqueDestino = '<p style="background:#fff7ed;border-radius:6px;padding:10px 14px;color:#9a3412">Estos cupos quedaron <strong>reservados para el Capataz ' . $nomCap . '</strong> (los pidió su Profesional de Terreno para su cuadrilla).</p>';
+    }
+    $html = (function () use ($nombreCargo, $cantidadAprobada, $cantidadDistinta, $bloqueObservacion, $bloqueDestino) {
         return require __DIR__ . '/../mailer/templates/notificacion_cupos_aprobados.php';
     })();
 
@@ -1427,6 +1438,85 @@ function usuariosTieneFrente(PDO $pdo): bool
         $r = (bool)$pdo->query("SHOW COLUMNS FROM usuarios LIKE 'frente'")->fetch();
     }
     return $r;
+}
+
+/**
+ * v10.40: true cuando ya se aplico la migracion v10.40 (cupos por capataz y capataz_id en
+ * postulaciones). Mientras no, todo el codigo se comporta como antes (sin cupos por capataz
+ * y sin filtro por Profesional de Terreno), para que un deploy antes de la migracion no
+ * rompa la seleccion en terreno.
+ */
+function usaCuposPorCapataz(PDO $pdo): bool
+{
+    static $r = null;
+    if ($r === null) {
+        try {
+            $r = (bool)$pdo->query("SHOW TABLES LIKE 'cupos_capataz'")->fetch()
+                && (bool)$pdo->query("SHOW COLUMNS FROM postulaciones LIKE 'capataz_id'")->fetch()
+                && (bool)$pdo->query("SHOW COLUMNS FROM solicitudes_cupo LIKE 'capataz_id'")->fetch();
+        } catch (\Throwable $e) {
+            $r = false;
+        }
+    }
+    return $r;
+}
+
+/** v10.40: ids del equipo de un Profesional de Terreno: el mismo + sus Capataces activos. */
+function idsEquipoDelPT(PDO $pdo, int $ptId): array
+{
+    $stmt = $pdo->prepare("SELECT id FROM usuarios WHERE rol = 'Capataz' AND activo = 1 AND jefe_terreno_id = :pt");
+    $stmt->execute(['pt' => $ptId]);
+    $ids = array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
+    $ids[] = $ptId;
+    return $ids;
+}
+
+/**
+ * v10.40: fragmento SQL (" AND ...") que deja ver a un Profesional de Terreno solo a SU gente:
+ * las personas cuyo capataz es del equipo. Con $conPendientes tambien deja pasar a quienes
+ * aun esperan seleccion (todavia no tienen capataz), salvo los referidos a un capataz ajeno.
+ * Sin la migracion v10.40 no filtra nada. Los ids son enteros (seguro de interpolar).
+ */
+function condicionGentePT(PDO $pdo, int $ptId, bool $conPendientes = false, string $alias = 'p'): string
+{
+    if (!usaCuposPorCapataz($pdo)) {
+        return '';
+    }
+    $in = implode(',', idsEquipoDelPT($pdo, $ptId));
+    $cond = "{$alias}.capataz_id IN ($in)";
+    if ($conPendientes) {
+        $cond .= " OR ({$alias}.estado = 'Pendiente' AND ({$alias}.capataz_esperado_id IS NULL OR {$alias}.capataz_esperado_id IN ($in)))";
+    }
+    return " AND ($cond)";
+}
+
+/**
+ * v10.40: cupos de un Capataz por cargo = los reservados para el + los generales (los que
+ * quedan en el cargo sin reservar para nadie). Devuelve filas
+ * [id, nombre_cargo, propios, generales, disponibles].
+ */
+function cuposDelCapataz(PDO $pdo, int $capatazId): array
+{
+    $cargos = $pdo->query('SELECT id, nombre_cargo, cupos_activos FROM cargos WHERE activo = 1 ORDER BY nombre_cargo')->fetchAll();
+    $propios = [];
+    $reservadoTotal = [];
+    if (usaCuposPorCapataz($pdo)) {
+        foreach ($pdo->query('SELECT capataz_id, cargo_id, reservados FROM cupos_capataz WHERE reservados > 0')->fetchAll() as $r) {
+            $reservadoTotal[(int)$r['cargo_id']] = ($reservadoTotal[(int)$r['cargo_id']] ?? 0) + (int)$r['reservados'];
+            if ((int)$r['capataz_id'] === $capatazId) {
+                $propios[(int)$r['cargo_id']] = (int)$r['reservados'];
+            }
+        }
+    }
+    $out = [];
+    foreach ($cargos as $c) {
+        $id = (int)$c['id'];
+        $generales = max(0, (int)$c['cupos_activos'] - ($reservadoTotal[$id] ?? 0));
+        $mios = $propios[$id] ?? 0;
+        $out[] = ['id' => $id, 'nombre_cargo' => $c['nombre_cargo'], 'propios' => $mios,
+                  'generales' => $generales, 'disponibles' => $mios + $generales];
+    }
+    return $out;
 }
 
 /** Lee desde/hasta de la URL ('Y-m-d'); por defecto, hoy. Corrige el orden. */

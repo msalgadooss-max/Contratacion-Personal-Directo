@@ -99,7 +99,7 @@ async function cargarBanco() {
     let capataces = [];
     try {
       const eq = await apiFetch('/terreno/equipo_listar.php');
-      capataces = [...eq.mis_capataces, ...eq.disponibles, ...eq.de_otro_jefe];
+      capataces = [...eq.mis_capataces];   // v10.40: solo reasigna a Capataces de su propio equipo
     } catch (e) { /* sin reasignación */ }
     tbody.innerHTML = data.postulaciones.map(p => `
       <tr class="border-t">
@@ -288,7 +288,9 @@ function renderEquipo(d) {
         </div>`).join('')
     : '<p class="text-sm text-gray-400">Ninguno.</p>';
   document.getElementById('equipo-disponibles').innerHTML = chips(d.disponibles, true);
-  document.getElementById('equipo-otros').innerHTML = chips(d.de_otro_jefe, false);
+  document.getElementById('equipo-otros').innerHTML = (d.de_otro_jefe_total && !d.de_otro_jefe.length)
+    ? `<p class="text-sm text-gray-500">${d.de_otro_jefe_total} ${d.de_otro_jefe_total === 1 ? 'Capataz está' : 'Capataces están'} a cargo de otros Profesionales de Terreno (no se muestran).</p>`
+    : chips(d.de_otro_jefe, false);
 
   const select = document.getElementById('equipo-select');
   const boton = document.getElementById('equipo-agregar');
@@ -354,6 +356,19 @@ async function cargarCupos() {
     // cargo que todavía no existe en el catálogo.
     select.innerHTML = data.cargos.map(c => `<option value="${c.id}">${esc(c.nombre_cargo)}</option>`).join('')
       + '<option value="__otro__">➕ Otro (agregar cargo nuevo)</option>';
+    // v10.40: pedir los cupos "para" un Capataz de mi equipo (o para todo el equipo).
+    const eq = data.mi_equipo || [];
+    document.getElementById('cupo-capataz-wrap').classList.toggle('hidden', !eq.length);
+    const selCap = document.getElementById('cupo-capataz');
+    const capActual = selCap.value;
+    selCap.innerHTML = '<option value="">Todo mi equipo (cupo general)</option>' + eq
+      .map(c => `<option value="${c.id}">${esc(c.nombre)}${c.frente ? ' · ' + esc(c.frente) : ''}</option>`).join('');
+    selCap.value = eq.some(c => String(c.id) === capActual) ? capActual : '';
+    const reservados = data.reservados || [];
+    document.getElementById('cupos-reservados').classList.toggle('hidden', !reservados.length);
+    document.getElementById('tbody-cupos-reservados').innerHTML = reservados.map(r => `
+      <tr class="border-t"><td class="px-4 py-2 font-medium">${esc(r.capataz)}</td><td class="px-4 py-2">${esc(r.nombre_cargo)}</td>
+      <td class="px-4 py-2 font-semibold text-green-700">${esc(r.reservados)}</td></tr>`).join('');
     tbody.innerHTML = data.cargos.map(c => `
       <tr class="border-t">
         <td class="px-4 py-3">${esc(c.nombre_cargo)}</td>
@@ -390,6 +405,7 @@ async function cargarMisSolicitudes() {
       <tr class="border-t">
         <td class="px-4 py-3">${esc(s.nombre_cargo)}${s.es_cargo_nuevo ? ' <span class="text-[10px] text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded font-semibold align-middle">🆕 nuevo</span>' : ''}</td>
         <td class="px-4 py-3">${esc(s.cantidad)}</td>
+        <td class="px-4 py-3 text-gray-600">${s.para_capataz_nombre ? esc(s.para_capataz_nombre) : '<span class="text-gray-400">Todo el equipo</span>'}</td>
         <td class="px-4 py-3">${ETIQUETA_ESTADO_SOLICITUD[s.estado] || s.estado}
           ${s.estado === 'Rechazada' && s.motivo_rechazo ? `<span class="block text-[11px] text-gray-400 mt-0.5">${esc(s.motivo_rechazo)}</span>` : ''}
         </td>
@@ -423,6 +439,8 @@ document.getElementById('form-cupo').addEventListener('submit', async (e) => {
   const body = esOtro
     ? { cargo_nuevo_nombre: cargoNuevoNombre, cantidad }
     : { cargo_id: Number(cargoSeleccionado), cantidad };
+  const capSel = document.getElementById('cupo-capataz').value;
+  if (capSel) body.capataz_id = Number(capSel);
 
   try {
     const data = await apiFetch('/terreno/solicitar_cupo.php', { method: 'POST', body });

@@ -26,8 +26,9 @@ $pdo = obtenerConexion();
 
 $nombreCapataz = null;
 if ($capatazId > 0) {
-    $stmt = $pdo->prepare("SELECT nombre FROM usuarios WHERE id = :id AND rol = 'Capataz' AND activo = 1");
-    $stmt->execute(['id' => $capatazId]);
+    // v10.40: solo puede reasignar a Capataces de su propio equipo.
+    $stmt = $pdo->prepare("SELECT nombre FROM usuarios WHERE id = :id AND rol = 'Capataz' AND activo = 1" . (usaCuposPorCapataz($pdo) ? ' AND jefe_terreno_id = :pt' : ''));
+    $stmt->execute(usaCuposPorCapataz($pdo) ? ['id' => $capatazId, 'pt' => $usuario['id']] : ['id' => $capatazId]);
     $nombreCapataz = $stmt->fetchColumn();
     if ($nombreCapataz === false) {
         responderError('Ese Capataz no existe o no está activo.', 404);
@@ -35,7 +36,7 @@ if ($capatazId > 0) {
 }
 
 $stmt = $pdo->prepare(
-    "SELECT estado FROM postulaciones WHERE id = :id"
+    "SELECT p.estado FROM postulaciones p WHERE p.id = :id" . condicionGentePT($pdo, (int)$usuario['id'], true)
 );
 $stmt->execute(['id' => $postulacionId]);
 $estado = $stmt->fetchColumn();

@@ -37,7 +37,7 @@ if ($recomienda === 'no' && $comentario === '') {
 }
 
 $pdo = obtenerConexion();
-$stmt = $pdo->prepare("SELECT rut, estado FROM postulaciones WHERE id = :id");
+$stmt = $pdo->prepare("SELECT p.rut, p.estado FROM postulaciones p WHERE p.id = :id" . condicionGentePT($pdo, (int)$usuario['id']));
 $stmt->execute(['id' => $postulacionId]);
 $p = $stmt->fetch();
 if (!$p) {

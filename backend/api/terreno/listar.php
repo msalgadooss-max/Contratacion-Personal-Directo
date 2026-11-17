@@ -41,6 +41,13 @@ if ($usuario['rol'] === 'Capataz') {
     $params['uid'] = $usuario['id'];
 }
 
+// v10.40 (pedido explicito del usuario): cada Profesional de Terreno ve solo a SU gente
+// (las personas cuyo capataz es de su equipo).
+// En la lista de espera: quienes llegaron por el QR (sin capataz) y los referidos a su equipo.
+if ($usuario['rol'] === 'Jefe_Terreno') {
+    $filtroCapataz = condicionGentePT($pdo, (int)$usuario['id'], true);
+}
+
 $stmt = $pdo->prepare(
     "SELECT p.id, p.tipo_documento, p.rut, p.nombre_completo, p.telefono, p.correo, p.comuna,
             c.nombre_cargo, p.creado_at,

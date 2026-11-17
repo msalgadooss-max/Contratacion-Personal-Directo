@@ -107,6 +107,26 @@ try {
     // reserva/descuenta AQUÍ MISMO, en el momento de la selección --
     // terreno/deshacer_seleccion.php lo devuelve si el Capataz se
     // equivoca de cargo.
+    // v10.40 (pedido explícito del usuario): cupos por Capataz. Primero se usan los cupos
+    // RESERVADOS para este Capataz; si no le quedan, los generales (los que no están
+    // reservados para nadie). Si no hay de ninguno, no puede seleccionar para ese cargo.
+    $cuposPorCapataz = usaCuposPorCapataz($pdo);
+    $usaReservado = false;
+    if ($cuposPorCapataz) {
+        $stmtRes = $pdo->prepare('SELECT reservados FROM cupos_capataz WHERE capataz_id = :cap AND cargo_id = :cargo FOR UPDATE');
+        $stmtRes->execute(['cap' => $usuario['id'], 'cargo' => $cargoId]);
+        $propios = (int)($stmtRes->fetchColumn() ?: 0);
+        if ($propios > 0) {
+            $usaReservado = true;
+        } else {
+            $stmtTot = $pdo->prepare('SELECT COALESCE(SUM(reservados), 0) FROM cupos_capataz WHERE cargo_id = :cargo');
+            $stmtTot->execute(['cargo' => $cargoId]);
+            if ((int)$cargo['cupos_activos'] - (int)$stmtTot->fetchColumn() <= 0) {
+                throw new RuntimeException('No tienes cupos de ese cargo. Los que quedan están reservados para otros Capataces: pídele a tu Profesional de Terreno que solicite cupos para ti.|409');
+            }
+        }
+    }
+
     $stmtDescontar = $pdo->prepare('UPDATE cargos SET cupos_activos = cupos_activos - 1 WHERE id = :id AND cupos_activos > 0');
     $stmtDescontar->execute(['id' => $cargoId]);
     if ($stmtDescontar->rowCount() === 0) {
@@ -119,6 +139,17 @@ try {
           WHERE id = :id AND estado = "Pendiente"'
     );
     $stmt->execute(['cargo_id' => $cargoId, 'id' => $postulacionId]);
+
+    // v10.40: la persona queda en la cuadrilla de este Capataz (y, por él, de su Profesional de
+    // Terreno); y se descuenta el cupo reservado si se usó uno.
+    if ($cuposPorCapataz) {
+        $pdo->prepare('UPDATE postulaciones SET capataz_id = :cap, cupo_reservado = :res WHERE id = :id')
+            ->execute(['cap' => $usuario['id'], 'res' => $usaReservado ? 1 : 0, 'id' => $postulacionId]);
+        if ($usaReservado) {
+            $pdo->prepare('UPDATE cupos_capataz SET reservados = reservados - 1 WHERE capataz_id = :cap AND cargo_id = :cargo AND reservados > 0')
+                ->execute(['cap' => $usuario['id'], 'cargo' => $cargoId]);
+        }
+    }
 
     // v10.7: recién ahora el postulante recibe su primer correo para
     // seguir avanzando -- el link de Etapa 2 (datos personales + subir

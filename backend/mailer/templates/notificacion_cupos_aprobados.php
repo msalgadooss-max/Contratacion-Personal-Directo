@@ -13,6 +13,7 @@ return <<<HTML
   <p>El Administrador de Contrato aprobó <strong>{$cantidadAprobada} cupo(s)</strong> de
   <strong>{$nombreCargo}</strong>{$cantidadDistinta}.</p>
   {$bloqueObservacion}
+  {$bloqueDestino}
   <p>Ya están disponibles para que el Capataz los seleccione en portería.</p>
   <p style="font-size:12px;color:#6b7280">
     Este correo fue generado automáticamente por el sistema de reclutamiento ICAFAL.

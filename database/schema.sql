@@ -112,6 +112,8 @@ CREATE TABLE solicitudes_cupo (
     cargo_nuevo_nombre  VARCHAR(100) NULL,
     cantidad            INT UNSIGNED NOT NULL,
     usuario_id          INT UNSIGNED NULL,
+    -- v10.40: capataz al que va dirigida la solicitud (NULL = cupo general del equipo).
+    capataz_id          INT UNSIGNED NULL,
     estado              ENUM('Pendiente', 'Aprobada', 'Rechazada') NOT NULL DEFAULT 'Pendiente',
     resuelta_por        INT UNSIGNED NULL,
     resuelta_at         DATETIME NULL,
@@ -130,7 +132,21 @@ CREATE TABLE solicitudes_cupo (
         ON DELETE SET NULL,
     CONSTRAINT fk_solicitud_resuelta_por
         FOREIGN KEY (resuelta_por) REFERENCES usuarios(id)
+        ON DELETE SET NULL,
+    CONSTRAINT fk_solicitud_capataz
+        FOREIGN KEY (capataz_id) REFERENCES usuarios(id)
         ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- v10.40: cupos reservados que le quedan a cada capataz, por cargo (ver
+-- terreno/solicitar_cupo.php y terreno/aprobar.php).
+CREATE TABLE cupos_capataz (
+    capataz_id  INT UNSIGNED NOT NULL,
+    cargo_id    INT UNSIGNED NOT NULL,
+    reservados  INT UNSIGNED NOT NULL DEFAULT 0,
+    PRIMARY KEY (capataz_id, cargo_id),
+    CONSTRAINT fk_cupos_capataz_usuario FOREIGN KEY (capataz_id) REFERENCES usuarios(id) ON DELETE CASCADE,
+    CONSTRAINT fk_cupos_capataz_cargo   FOREIGN KEY (cargo_id)   REFERENCES cargos(id)   ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ---------------------------------------------------------------------
@@ -286,6 +302,10 @@ CREATE TABLE postulaciones (
     -- Terreno) cuando la persona llegó como REFERIDA, posiblemente a
     -- distancia. NULL = llegó por el QR de la obra, de forma presencial.
     referido_por_id             INT UNSIGNED NULL,
+    -- v10.40: capataz dueño de la persona (el que la selecciono) y si su cupo salio de los
+    -- reservados para ese capataz. Cada Profesional de Terreno ve solo a su gente.
+    capataz_id                  INT UNSIGNED NULL,
+    cupo_reservado              TINYINT(1) NOT NULL DEFAULT 0,
     exportado_at                DATETIME NULL,
     creado_at                   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     actualizado_at              TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -312,6 +332,9 @@ CREATE TABLE postulaciones (
         ON DELETE SET NULL,
     CONSTRAINT fk_postulacion_referido_por
         FOREIGN KEY (referido_por_id) REFERENCES usuarios(id)
+        ON DELETE SET NULL,
+    CONSTRAINT fk_postulacion_capataz
+        FOREIGN KEY (capataz_id) REFERENCES usuarios(id)
         ON DELETE SET NULL,
     INDEX idx_postulaciones_rut (rut),
     INDEX idx_postulaciones_estado (estado),

@@ -38,7 +38,8 @@ $pdo = obtenerConexion();
 $pdo->beginTransaction();
 
 try {
-    $stmtCheck = $pdo->prepare('SELECT estado, cargo_id FROM postulaciones WHERE id = :id FOR UPDATE');
+    $cuposPorCapataz = usaCuposPorCapataz($pdo);
+    $stmtCheck = $pdo->prepare('SELECT estado, cargo_id, ' . ($cuposPorCapataz ? 'capataz_id, cupo_reservado' : 'NULL AS capataz_id, 0 AS cupo_reservado') . ' FROM postulaciones WHERE id = :id FOR UPDATE');
     $stmtCheck->execute(['id' => $postulacionId]);
     $postulacion = $stmtCheck->fetch();
 
@@ -70,6 +71,16 @@ try {
     // que salió, o se perdería silenciosamente.
     $stmtDevolver = $pdo->prepare('UPDATE cargos SET cupos_activos = cupos_activos + 1 WHERE id = :id');
     $stmtDevolver->execute(['id' => (int)$postulacion['cargo_id']]);
+
+    // v10.40: el cupo vuelve al mismo lugar de donde salió (los reservados del Capataz o los
+    // generales) y la persona deja de pertenecer a su cuadrilla.
+    if ($cuposPorCapataz) {
+        if ((int)$postulacion['cupo_reservado'] === 1 && $postulacion['capataz_id'] !== null) {
+            $pdo->prepare('INSERT INTO cupos_capataz (capataz_id, cargo_id, reservados) VALUES (:cap, :cargo, 1) ON DUPLICATE KEY UPDATE reservados = reservados + 1')
+                ->execute(['cap' => (int)$postulacion['capataz_id'], 'cargo' => (int)$postulacion['cargo_id']]);
+        }
+        $pdo->prepare('UPDATE postulaciones SET capataz_id = NULL, cupo_reservado = 0 WHERE id = :id')->execute(['id' => $postulacionId]);
+    }
 
     registrarLog($pdo, $postulacionId, $usuario['id'], 'Capataz deshizo la selección (vuelve a la lista de selección en terreno).');
 

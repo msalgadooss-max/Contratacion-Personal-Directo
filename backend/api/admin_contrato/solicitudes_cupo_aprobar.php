@@ -47,8 +47,9 @@ $pdo = obtenerConexion();
 $pdo->beginTransaction();
 
 try {
+    $conCap = usaCuposPorCapataz($pdo);
     $stmtCheck = $pdo->prepare(
-        'SELECT s.estado, s.cantidad, s.cargo_id, s.cargo_nuevo_nombre, s.usuario_id, c.nombre_cargo
+        'SELECT s.estado, s.cantidad, s.cargo_id, s.cargo_nuevo_nombre, s.usuario_id, ' . ($conCap ? 's.capataz_id' : 'NULL') . ' AS capataz_id, c.nombre_cargo
            FROM solicitudes_cupo s
            LEFT JOIN cargos c ON c.id = s.cargo_id
           WHERE s.id = :id
@@ -125,6 +126,15 @@ try {
         ]);
     }
 
+    // v10.40: si la solicitud iba dirigida a un Capataz, esos cupos quedan RESERVADOS para el:
+    // solo el puede usarlos al seleccionar (los demas ven solo los cupos generales).
+    if ($conCap && $solicitud['capataz_id'] !== null) {
+        $pdo->prepare(
+            'INSERT INTO cupos_capataz (capataz_id, cargo_id, reservados) VALUES (:cap, :cargo, :n)
+             ON DUPLICATE KEY UPDATE reservados = reservados + VALUES(reservados)'
+        )->execute(['cap' => (int)$solicitud['capataz_id'], 'cargo' => (int)$cargoId, 'n' => $cantidadAprobada]);
+    }
+
     $stmtUpdate = $pdo->prepare(
         'UPDATE solicitudes_cupo
             SET estado = "Aprobada", resuelta_por = :uid, resuelta_at = NOW(),
@@ -158,13 +168,14 @@ try {
         $nombreCargo,
         $cantidadAprobada,
         (int)$solicitud['cantidad'],
-        $observacion !== '' ? $observacion : null
+        $observacion !== '' ? $observacion : null,
+        $solicitud['capataz_id'] !== null ? (int)$solicitud['capataz_id'] : null
     );
 } catch (Throwable $e) {
     error_log('notificarCuposAprobados error: ' . $e->getMessage());
 }
 
-$mensaje = "Vacante abierta: {$cantidadAprobada} cupos de \"{$nombreCargo}\".";
+$mensaje = "Vacante abierta: {$cantidadAprobada} cupos de \"{$nombreCargo}\"" . ($solicitud['capataz_id'] !== null ? ' (reservados para el Capataz que pidió el Profesional de Terreno)' : '') . '.';
 if ($cantidadAprobada !== (int)$solicitud['cantidad']) {
     $mensaje .= " (se pidieron {$solicitud['cantidad']})";
 }

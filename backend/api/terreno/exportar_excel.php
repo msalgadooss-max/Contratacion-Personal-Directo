@@ -15,7 +15,7 @@ if (!file_exists($vendorAutoload)) {
 require_once $vendorAutoload;
 
 iniciarSesionSegura();
-requireRol(['Jefe_Terreno']);
+$usuario = requireRol(['Jefe_Terreno']);
 exigirMetodo('GET');
 
 $vista = $_GET['vista'] ?? 'en_proceso';
@@ -55,6 +55,9 @@ $sql = "SELECT p.tipo_documento, p.rut, p.nombre_completo, p.comuna, p.estado,
 if ($desde !== '') { $sql .= ' AND ap.fecha_hora >= ?'; $params[] = $desde . ' 00:00:00'; }
 if ($hasta !== '') { $sql .= ' AND ap.fecha_hora <= ?'; $params[] = $hasta . ' 23:59:59'; }
 if ($aprobadoPor > 0) { $sql .= ' AND u.id = ?'; $params[] = $aprobadoPor; }
+// v10.40 (pedido explicito del usuario): cada Profesional de Terreno ve solo a SU gente
+// (las personas cuyo capataz es de su equipo).
+$sql .= condicionGentePT($pdo, (int)$usuario['id']);
 $sql .= ' ORDER BY ap.fecha_hora DESC';
 
 $stmt = $pdo->prepare($sql);

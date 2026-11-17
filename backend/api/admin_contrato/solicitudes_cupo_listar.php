@@ -17,14 +17,19 @@ requireRol(['Admin_Contrato']);
 exigirMetodo('GET');
 
 $pdo = obtenerConexion();
+// v10.40: a que Capataz va dirigida la solicitud (si la migracion ya esta aplicada).
+$conCap = usaCuposPorCapataz($pdo);
+$selCap = $conCap ? 'capu.nombre' : 'NULL';
+$joinCap = $conCap ? 'LEFT JOIN usuarios capu ON capu.id = s.capataz_id' : '';
 $stmt = $pdo->query(
-    "SELECT s.id, s.cantidad, s.creado_at,
+    "SELECT s.id, s.cantidad, s.creado_at, {$selCap} AS para_capataz_nombre,
             COALESCE(c.nombre_cargo, s.cargo_nuevo_nombre) AS nombre_cargo,
             (s.cargo_id IS NULL) AS es_cargo_nuevo,
             u.nombre AS solicitado_por_nombre
        FROM solicitudes_cupo s
        LEFT JOIN cargos c ON c.id = s.cargo_id
        LEFT JOIN usuarios u ON u.id = s.usuario_id
+       {$joinCap}
       WHERE s.estado = 'Pendiente'
       ORDER BY s.creado_at ASC"
 );

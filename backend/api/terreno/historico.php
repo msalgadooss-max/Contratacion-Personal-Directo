@@ -21,7 +21,7 @@ iniciarSesionSegura();
 // v10.14 (pedido explícito del usuario, item 9): el Capataz también
 // usa este endpoint (solo vista=contratados) para su propia pestaña
 // "Personal Contratado".
-requireRol(['Jefe_Terreno', 'Capataz']);
+$usuario = requireRol(['Jefe_Terreno', 'Capataz']);
 exigirMetodo('GET');
 
 $vista = $_GET['vista'] ?? 'en_proceso';
@@ -76,12 +76,18 @@ if ($aprobadoPor > 0) {
     $sql .= ' AND ap.usuario_id = ?';
     $params[] = $aprobadoPor;
 }
+// v10.40 (pedido explicito del usuario): cada Profesional de Terreno ve solo a SU gente
+// (las personas cuyo capataz es de su equipo).
+if ($usuario['rol'] === 'Jefe_Terreno') {
+    $sql .= condicionGentePT($pdo, (int)$usuario['id']);
+}
 $sql .= ' ORDER BY ap.fecha_hora DESC';
 
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 
-$stmtCapataces = $pdo->query("SELECT id, nombre FROM usuarios WHERE rol = 'Capataz' AND activo = 1 ORDER BY nombre");
+$stmtCapataces = $pdo->query("SELECT id, nombre FROM usuarios WHERE rol = 'Capataz' AND activo = 1"
+    . ($usuario['rol'] === 'Jefe_Terreno' && usaCuposPorCapataz($pdo) ? ' AND jefe_terreno_id = ' . (int)$usuario['id'] : '') . ' ORDER BY nombre');
 
 responderOk([
     'postulaciones' => $stmt->fetchAll(),

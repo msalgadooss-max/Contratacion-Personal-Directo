@@ -14,14 +14,16 @@ $usuario = requireRol(['Jefe_Terreno']);
 exigirMetodo('GET');
 
 $pdo = obtenerConexion();
+$conCap = usaCuposPorCapataz($pdo);
 $stmt = $pdo->prepare(
-    'SELECT s.id, s.cantidad, s.estado, s.motivo_rechazo, s.creado_at, s.resuelta_at,
+    'SELECT ' . ($conCap ? 'capu.nombre' : 'NULL') . ' AS para_capataz_nombre, s.id, s.cantidad, s.estado, s.motivo_rechazo, s.creado_at, s.resuelta_at,
             COALESCE(c.nombre_cargo, s.cargo_nuevo_nombre) AS nombre_cargo,
             (s.cargo_id IS NULL AND s.estado = "Pendiente") AS es_cargo_nuevo,
             uR.nombre AS resuelta_por_nombre
        FROM solicitudes_cupo s
        LEFT JOIN cargos c ON c.id = s.cargo_id
        LEFT JOIN usuarios uR ON uR.id = s.resuelta_por
+       ' . ($conCap ? 'LEFT JOIN usuarios capu ON capu.id = s.capataz_id' : '') . '
       WHERE s.usuario_id = :uid
       ORDER BY s.creado_at DESC
       LIMIT 50'

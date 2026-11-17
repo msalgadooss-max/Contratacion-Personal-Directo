@@ -16,6 +16,11 @@
  * aprueban). Si el nombre escrito coincide con uno ya existente
  * (sin importar mayusculas/tildes de caja), se reusa ese cargo en vez de
  * proponer uno duplicado.
+ *
+ * v10.40 (pedido explicito del usuario): la solicitud puede ir dirigida a un Capataz
+ * de su equipo (capataz_id). Al aprobarse, esos cupos quedan RESERVADOS para ese capataz
+ * (ver admin_contrato/solicitudes_cupo_aprobar.php y terreno/aprobar.php). Sin capataz_id
+ * es un cupo general que cualquiera de los capataces puede usar.
  */
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../includes/auth.php';
@@ -30,6 +35,7 @@ $body = leerJsonBody();
 $cargoId = (int)($body['cargo_id'] ?? 0);
 $cargoNuevoNombre = limpiarTexto($body['cargo_nuevo_nombre'] ?? '', 100);
 $cantidad = (int)($body['cantidad'] ?? 0);
+$capatazId = (int)($body['capataz_id'] ?? 0);
 
 if ($cargoId <= 0 && $cargoNuevoNombre === '') {
     responderError('Debes seleccionar un cargo o escribir el nombre de uno nuevo.', 422);
@@ -43,6 +49,29 @@ if ($cantidad <= 0 || $cantidad > 500) {
 
 $pdo = obtenerConexion();
 
+// v10.40: el Capataz destino debe ser de SU equipo.
+$nombreCapataz = null;
+if ($capatazId > 0) {
+    if (!usaCuposPorCapataz($pdo)) {
+        responderError('Los cupos por capataz se activan al aplicar la actualización de la base de datos. Por ahora pide el cupo general.', 409);
+    }
+    $stmtCap = $pdo->prepare("SELECT nombre FROM usuarios WHERE id = :id AND rol = 'Capataz' AND activo = 1 AND jefe_terreno_id = :pt");
+    $stmtCap->execute(['id' => $capatazId, 'pt' => $usuario['id']]);
+    $nombreCapataz = $stmtCap->fetchColumn();
+    if ($nombreCapataz === false) {
+        responderError('Ese Capataz no está en tu equipo.', 403);
+    }
+}
+$insertarSolicitud = function (?int $cargoIdSol, ?string $cargoNuevo) use ($pdo, $cantidad, $usuario, $capatazId): void {
+    if (usaCuposPorCapataz($pdo)) {
+        $pdo->prepare('INSERT INTO solicitudes_cupo (cargo_id, cargo_nuevo_nombre, cantidad, usuario_id, capataz_id, estado) VALUES (:c, :n, :q, :u, :cap, "Pendiente")')
+            ->execute(['c' => $cargoIdSol, 'n' => $cargoNuevo, 'q' => $cantidad, 'u' => $usuario['id'], 'cap' => $capatazId > 0 ? $capatazId : null]);
+    } else {
+        $pdo->prepare('INSERT INTO solicitudes_cupo (cargo_id, cargo_nuevo_nombre, cantidad, usuario_id, estado) VALUES (:c, :n, :q, :u, "Pendiente")')
+            ->execute(['c' => $cargoIdSol, 'n' => $cargoNuevo, 'q' => $cantidad, 'u' => $usuario['id']]);
+    }
+};
+
 if ($cargoId > 0) {
     $stmtCargo = $pdo->prepare('SELECT id, nombre_cargo FROM cargos WHERE id = :id AND activo = 1');
     $stmtCargo->execute(['id' => $cargoId]);
@@ -51,10 +80,7 @@ if ($cargoId > 0) {
         responderError('El cargo seleccionado no existe.', 404);
     }
 
-    $stmtInsert = $pdo->prepare(
-        'INSERT INTO solicitudes_cupo (cargo_id, cantidad, usuario_id, estado) VALUES (:cargo_id, :cantidad, :usuario_id, "Pendiente")'
-    );
-    $stmtInsert->execute(['cargo_id' => $cargoId, 'cantidad' => $cantidad, 'usuario_id' => $usuario['id']]);
+    $insertarSolicitud($cargoId, null);
     $nombreParaMensaje = $cargo['nombre_cargo'];
 } else {
     // ¿Ya existe un cargo activo con ese mismo nombre (sin distinguir
@@ -64,16 +90,10 @@ if ($cargoId > 0) {
     $existente = $stmtExiste->fetch();
 
     if ($existente) {
-        $stmtInsert = $pdo->prepare(
-            'INSERT INTO solicitudes_cupo (cargo_id, cantidad, usuario_id, estado) VALUES (:cargo_id, :cantidad, :usuario_id, "Pendiente")'
-        );
-        $stmtInsert->execute(['cargo_id' => $existente['id'], 'cantidad' => $cantidad, 'usuario_id' => $usuario['id']]);
+        $insertarSolicitud((int)$existente['id'], null);
         $nombreParaMensaje = $existente['nombre_cargo'] . ' (ya existía en el catálogo)';
     } else {
-        $stmtInsert = $pdo->prepare(
-            'INSERT INTO solicitudes_cupo (cargo_nuevo_nombre, cantidad, usuario_id, estado) VALUES (:nombre, :cantidad, :usuario_id, "Pendiente")'
-        );
-        $stmtInsert->execute(['nombre' => $cargoNuevoNombre, 'cantidad' => $cantidad, 'usuario_id' => $usuario['id']]);
+        $insertarSolicitud(null, $cargoNuevoNombre);
         $nombreParaMensaje = $cargoNuevoNombre . ' (cargo nuevo, no está en el catálogo todavía)';
     }
 }
@@ -83,7 +103,8 @@ if ($cargoId > 0) {
 // claridad que los cupos, aunque se aprueben, van a demorar en
 // liberarse.
 $avisoCierre = mensajeCierreRemuneraciones($pdo);
-$mensaje = "Solicitud de $cantidad cupos para \"$nombreParaMensaje\" enviada. Queda pendiente de aprobación del Administrador de Contrato.";
+$paraQuien = $nombreCapataz !== null ? " para el Capataz {$nombreCapataz}" : ' (cupo general de tu equipo)';
+$mensaje = "Solicitud de $cantidad cupos para \"$nombreParaMensaje\"{$paraQuien} enviada. Queda pendiente de aprobación del Administrador de Contrato.";
 if ($avisoCierre !== null) {
     $mensaje .= ' ' . $avisoCierre;
 }

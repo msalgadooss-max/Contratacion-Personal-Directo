@@ -164,6 +164,12 @@
               <option value="__otro__">➕ Otro (agregar cargo nuevo)</option>
             </select>
           </div>
+          <div id="cupo-capataz-wrap" class="flex-1 min-w-[220px] hidden">
+            <label class="block text-xs text-gray-600 mb-1">Para el Capataz</label>
+            <select id="cupo-capataz" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+              <option value="">Todo mi equipo (cupo general)</option>
+            </select>
+          </div>
           <div class="w-32">
             <label class="block text-xs text-gray-600 mb-1">Cantidad</label>
             <input id="cupo-cantidad" type="number" min="1" max="500" required
@@ -194,6 +200,15 @@
         </table>
       </div>
 
+      <div id="cupos-reservados" class="bg-white rounded-xl shadow-sm p-5 mb-6 hidden">
+        <h2 class="text-sm font-semibold text-gray-700 mb-1">Cupos reservados por Capataz</h2>
+        <p class="text-xs text-gray-500 mb-3">Cupos aprobados que solo puede usar el Capataz indicado. Se descuentan cuando él selecciona a alguien.</p>
+        <div class="overflow-x-auto"><table class="w-full text-sm">
+          <thead class="bg-gray-50 text-gray-500 text-left"><tr><th class="px-4 py-2">Capataz</th><th class="px-4 py-2">Cargo</th><th class="px-4 py-2">Cupos que le quedan</th></tr></thead>
+          <tbody id="tbody-cupos-reservados"></tbody>
+        </table></div>
+      </div>
+
       <h2 class="text-sm font-semibold text-gray-700 mb-3">Mis solicitudes</h2>
       <div class="bg-white rounded-xl shadow-sm overflow-x-auto">
         <table class="w-full text-sm">
@@ -201,6 +216,7 @@
             <tr>
               <th class="px-4 py-3">Cargo</th>
               <th class="px-4 py-3">Cantidad</th>
+              <th class="px-4 py-3">Para</th>
               <th class="px-4 py-3">Estado</th>
               <th class="px-4 py-3">Fecha</th>
             </tr>

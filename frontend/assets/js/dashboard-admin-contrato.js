@@ -67,7 +67,7 @@ async function cargarSolicitudesCupo() {
       <tr class="border-t">
         <td class="px-4 py-3">${esc(s.nombre_cargo)}${s.es_cargo_nuevo ? ' <span class="text-[10px] text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded font-semibold align-middle">🆕 cargo nuevo</span>' : ''}</td>
         <td class="px-4 py-3 font-semibold">${esc(s.cantidad)}</td>
-        <td class="px-4 py-3">${esc(s.solicitado_por_nombre || '-')}</td>
+        <td class="px-4 py-3">${esc(s.solicitado_por_nombre || '-')}${s.para_capataz_nombre ? `<span class="block text-[11px] font-semibold text-orange-700">→ para el Capataz ${esc(s.para_capataz_nombre)}</span>` : ''}</td>
         <td class="px-4 py-3 text-gray-500">${new Date(s.creado_at).toLocaleString('es-CL')}</td>
         <td class="px-4 py-3 text-right space-x-2">
           <button class="bg-green-600 hover:bg-green-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg" onclick="aprobarSolicitudCupo(${s.id})">Aprobar</button>

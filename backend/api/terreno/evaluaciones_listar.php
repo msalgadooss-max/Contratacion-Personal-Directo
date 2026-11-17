@@ -9,7 +9,7 @@ require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../includes/auth.php';
 
 iniciarSesionSegura();
-requireRol(['Jefe_Terreno']);
+$usuario = requireRol(['Jefe_Terreno']);
 exigirMetodo('GET');
 
 $pdo = obtenerConexion();
@@ -23,7 +23,7 @@ try {
            JOIN cargos c ON c.id = p.cargo_id
            LEFT JOIN evaluaciones_trabajador e ON e.postulacion_id = p.id
            LEFT JOIN usuarios u ON u.id = e.evaluado_por
-          WHERE p.estado IN ('Contratado', 'Proceso_completo')
+          WHERE p.estado IN ('Contratado', 'Proceso_completo')" . condicionGentePT($pdo, (int)$usuario['id']) . "
           ORDER BY (e.id IS NULL) DESC, contratado_at DESC
           LIMIT 300"
     );

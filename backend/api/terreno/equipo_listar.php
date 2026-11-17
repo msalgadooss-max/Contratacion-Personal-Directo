@@ -40,8 +40,14 @@ foreach ($stmt->fetchAll() as $c) {
     } elseif ((int)$c['jefe_terreno_id'] === (int)$usuario['id']) {
         $mios[] = $c;
     } else {
+        // v10.40: cada Profesional de Terreno ve solo a su gente; los Capataces de otro
+        // Profesional ya no se listan (solo se cuentan).
         $deOtros[] = $c;
     }
+}
+$totalDeOtros = count($deOtros);
+if (usaCuposPorCapataz($pdo)) {
+    $deOtros = [];
 }
 
 responderOk([
@@ -49,4 +55,5 @@ responderOk([
     'mis_capataces' => $mios,
     'disponibles' => $disponibles,
     'de_otro_jefe' => $deOtros,
+    'de_otro_jefe_total' => $totalDeOtros,
 ]);

@@ -68,7 +68,8 @@ $pdo = obtenerConexion();
 $marcasIds = implode(',', array_fill(0, count($ids), '?'));
 $stmt = $pdo->prepare(
     "SELECT p.id, p.rut, p.nombre, p.apellido, p.segundo_apellido, p.codigo_seguimiento, p.cv_ruta_archivo,
-            p.cargo_id, (c.nombre_cargo <> 'Por asignar') AS ocupa_cupo
+            p.cargo_id, (c.nombre_cargo <> 'Por asignar') AS ocupa_cupo,
+            " . (usaCuposPorCapataz($pdo) ? 'p.capataz_id, p.cupo_reservado' : 'NULL AS capataz_id, 0 AS cupo_reservado') . "
        FROM postulaciones p JOIN cargos c ON c.id = p.cargo_id
       WHERE p.id IN ($marcasIds)"
 );
@@ -117,6 +118,11 @@ try {
         if ((int)$f['ocupa_cupo'] === 1) {
             $r = $pdo->prepare('UPDATE cargos SET cupos_activos = LEAST(cupos_totales, cupos_activos + 1) WHERE id = :id');
             $r->execute(['id' => $f['cargo_id']]);
+            // v10.40: si el cupo salio de los reservados de un Capataz, vuelve a el.
+            if ((int)$f['cupo_reservado'] === 1 && $f['capataz_id'] !== null) {
+                $pdo->prepare('INSERT INTO cupos_capataz (capataz_id, cargo_id, reservados) VALUES (:cap, :cargo, 1) ON DUPLICATE KEY UPDATE reservados = reservados + 1')
+                    ->execute(['cap' => (int)$f['capataz_id'], 'cargo' => (int)$f['cargo_id']]);
+            }
             $cuposDevueltos++;
         }
     }
