@@ -60,6 +60,22 @@ $stmt->execute([
 ]);
 
 $nuevoId = (int)$pdo->lastInsertId();
+// v10.39: un Capataz puede nacer ya con su frente y su Profesional de Terreno (organigrama).
+if ($rol === 'Capataz') {
+    try {
+        $frente = limpiarTexto((string)($body['frente'] ?? ''), 100);
+        if ($frente !== '' && usuariosTieneFrente($pdo)) {
+            $pdo->prepare('UPDATE usuarios SET frente = :f WHERE id = :id')->execute(['f' => $frente, 'id' => $nuevoId]);
+        }
+        $jefeId = (int)($body['jefe_terreno_id'] ?? 0);
+        if ($jefeId > 0) {
+            $pdo->prepare("UPDATE usuarios SET jefe_terreno_id = :j WHERE id = :id AND EXISTS (SELECT 1 FROM (SELECT id FROM usuarios WHERE id = :j2 AND rol = 'Jefe_Terreno' AND activo = 1) q)")
+                ->execute(['j' => $jefeId, 'j2' => $jefeId, 'id' => $nuevoId]);
+        }
+    } catch (PDOException $e) {
+        error_log('usuario_crear: no se pudo asignar frente/jefe: ' . $e->getMessage());
+    }
+}
 // v10.31: la clave inicial es temporal: la persona debe cambiarla en su primer ingreso.
 try {
     $pdo->prepare('UPDATE usuarios SET debe_cambiar_password = 1 WHERE id = :id')->execute(['id' => $nuevoId]);

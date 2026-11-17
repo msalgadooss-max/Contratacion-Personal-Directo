@@ -13,9 +13,10 @@ $usuario = requireRol(['Jefe_Terreno']);
 exigirMetodo('GET');
 
 $pdo = obtenerConexion();
+$colFrente = usuariosTieneFrente($pdo) ? 'u.frente' : 'NULL';
 
 $stmt = $pdo->query(
-    "SELECT u.id, u.nombre, u.correo, u.jefe_terreno_id, jt.nombre AS jefe_terreno_nombre,
+    "SELECT u.id, u.nombre, u.correo, u.jefe_terreno_id, {$colFrente} AS frente, jt.nombre AS jefe_terreno_nombre,
             (SELECT COUNT(*) FROM postulaciones p
               WHERE p.estado = 'Pendiente' AND p.capataz_esperado_id = u.id) AS esperando_referidos,
             (SELECT COUNT(*) FROM trazabilidad_logs t

@@ -1360,6 +1360,111 @@ function liberadosSinNomina(PDO $pdo): array
 }
 
 /**
+ * v10.39 (pedido explicito del usuario): "que Bodega vea quienes ya estan
+ * liberados para el dia siguiente y pueda descargar el Excel por dia".
+ *
+ * "Liberado" = Prevencion hizo el check del Dia 0 (estado Induccion_ok); desde ahi
+ * la persona queda lista para ingresar al dia siguiente y para armar su kit. Se
+ * incluyen tambien quienes ya avanzaron (EPP_listo, Contratado, Proceso_completo)
+ * para que el historial del dia no desaparezca al entregar el EPP.
+ * El dia de liberacion es el dia del check de Prevencion; "ingresa" es la fecha que
+ * puso el JAO o, si todavia no la puso, el dia siguiente.
+ * Incluye el capataz que lo selecciono, su Profesional de Terreno y el frente.
+ * $desde / $hasta: 'Y-m-d' (ambos inclusive).
+ */
+function liberadosPorDia(PDO $pdo, string $desde, string $hasta): array
+{
+    $tieneFrente = usuariosTieneFrente($pdo);
+    $colFrente = $tieneFrente ? 'cap.frente' : 'NULL';
+    $stmt = $pdo->prepare(
+        "SELECT x.* FROM (
+            SELECT p.id, p.nombre_completo, p.rut, c.nombre_cargo, p.estado,
+                   d.talla_calzado, d.talla_overol, j.ingreso_compania,
+                   cap.nombre AS capataz, {$colFrente} AS frente,
+                   COALESCE(pt.nombre, IF(cap.rol = 'Jefe_Terreno', cap.nombre, NULL)) AS profesional_terreno,
+                   (SELECT MAX(t.fecha_hora) FROM trazabilidad_logs t
+                     WHERE t.postulacion_id = p.id
+                       AND t.accion LIKE 'Cambio de estado: % -> Induccion_ok') AS liberado_at
+              FROM postulaciones p
+              JOIN cargos c ON c.id = p.cargo_id
+              LEFT JOIN datos_contratacion d ON d.postulacion_id = p.id
+              LEFT JOIN datos_jao j ON j.postulacion_id = p.id
+              LEFT JOIN usuarios cap ON cap.id = (
+                    SELECT t2.usuario_id FROM trazabilidad_logs t2
+                     WHERE t2.postulacion_id = p.id
+                       AND t2.accion LIKE 'Cambio de estado: % -> Pre_aprobado_terreno'
+                     ORDER BY t2.fecha_hora ASC, t2.id ASC LIMIT 1)
+              LEFT JOIN usuarios pt ON pt.id = cap.jefe_terreno_id
+             WHERE p.estado IN ('Induccion_ok', 'EPP_listo', 'Contratado', 'Proceso_completo')
+         ) x
+         WHERE DATE(x.liberado_at) BETWEEN :desde AND :hasta
+         ORDER BY x.liberado_at ASC, x.id ASC"
+    );
+    $stmt->execute(['desde' => $desde, 'hasta' => $hasta]);
+    $filas = $stmt->fetchAll();
+    $etiquetas = [
+        'Induccion_ok'     => 'Liberado: ingresa mañana',
+        'EPP_listo'        => 'EPP entregado',
+        'Contratado'       => 'Contratado',
+        'Proceso_completo' => 'En terreno',
+    ];
+    foreach ($filas as &$f) {
+        $f['id'] = (int)$f['id'];
+        $f['estado_texto'] = $etiquetas[$f['estado']] ?? $f['estado'];
+        $f['dia_liberacion'] = substr((string)$f['liberado_at'], 0, 10);
+        $f['fecha_ingreso'] = $f['ingreso_compania']
+            ?: (new DateTime($f['dia_liberacion']))->modify('+1 day')->format('Y-m-d');
+    }
+    unset($f);
+    return $filas;
+}
+
+/** v10.39: la columna usuarios.frente existe solo despues de la migracion v10.39 (el codigo no se cae sin ella). */
+function usuariosTieneFrente(PDO $pdo): bool
+{
+    static $r = null;
+    if ($r === null) {
+        $r = (bool)$pdo->query("SHOW COLUMNS FROM usuarios LIKE 'frente'")->fetch();
+    }
+    return $r;
+}
+
+/** Lee desde/hasta de la URL ('Y-m-d'); por defecto, hoy. Corrige el orden. */
+function rangoFechasDeUrl(): array
+{
+    $valida = static function ($v): bool {
+        if (!is_string($v)) {
+            return false;
+        }
+        $d = DateTime::createFromFormat('Y-m-d', $v);
+        return $d !== false && $d->format('Y-m-d') === $v;
+    };
+    $hoy = date('Y-m-d');
+    $desde = $valida($_GET['desde'] ?? null) ? $_GET['desde'] : $hoy;
+    $hasta = $valida($_GET['hasta'] ?? null) ? $_GET['hasta'] : $desde;
+    if ($hasta < $desde) {
+        [$desde, $hasta] = [$hasta, $desde];
+    }
+    return [$desde, $hasta];
+}
+
+/** Aplica los filtros opcionales de la URL (cargo, capataz, estado, texto) a la lista. */
+function filtrarLiberadosDeUrl(array $filas): array
+{
+    $cargo = trim((string)($_GET['cargo'] ?? ''));
+    $capataz = trim((string)($_GET['capataz'] ?? ''));
+    $estado = trim((string)($_GET['estado'] ?? ''));
+    $q = mb_strtolower(trim((string)($_GET['q'] ?? '')));
+    return array_values(array_filter($filas, function ($f) use ($cargo, $capataz, $estado, $q) {
+        if ($cargo !== '' && $f['nombre_cargo'] !== $cargo) return false;
+        if ($capataz !== '' && (string)$f['capataz'] !== $capataz) return false;
+        if ($estado !== '' && $f['estado'] !== $estado) return false;
+        if ($q !== '' && mb_strpos(mb_strtolower($f['nombre_completo'] . ' ' . $f['rut']), $q) === false) return false;
+        return true;
+    }));
+}
+
+/**
  * Envía UN solo correo (tabla con todos los liberados recibidos) a cada
  * rol que participa del proceso, y deja la marca en trazabilidad_logs de
  * cada trabajador incluido -- pero solo si el correo salió al menos a un

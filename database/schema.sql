@@ -74,6 +74,9 @@ CREATE TABLE usuarios (
     -- está (NULL = todavía sin asignar). Lo configura el propio Jefe de
     -- Terreno desde su pestaña "Mi equipo".
     jefe_terreno_id INT UNSIGNED NULL,
+    -- v10.39: frente o sector de obra de un Capataz (ej. 'Frente 1-A'). Los capataces
+    -- que comparten frente se agrupan juntos en el organigrama del panel Desarrollador.
+    frente          VARCHAR(100) NULL,
     -- v10.31: 1 = clave temporal (la puso el Desarrollador); la persona debe
     -- cambiarla en su primer ingreso antes de usar cualquier pantalla.
     debe_cambiar_password TINYINT(1) NOT NULL DEFAULT 0,

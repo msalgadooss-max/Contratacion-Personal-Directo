@@ -58,6 +58,20 @@ $activo = array_key_exists('activo', $body) ? (int)(bool)$body['activo'] : (int)
 if ($nombre === '') {
     responderError('El nombre no puede quedar vacío.', 422);
 }
+
+// v10.39: frente y Profesional de Terreno de un Capataz (organigrama).
+$cambiaFrente = array_key_exists('frente', $body);
+$frente = $cambiaFrente ? limpiarTexto((string)$body['frente'], 100) : null;
+$cambiaJefe = array_key_exists('jefe_terreno_id', $body);
+$jefeId = null;
+if ($cambiaJefe && $body['jefe_terreno_id'] !== null && $body['jefe_terreno_id'] !== '') {
+    $jefeId = (int)$body['jefe_terreno_id'];
+    $chk = $pdo->prepare("SELECT COUNT(*) FROM usuarios WHERE id = :id AND rol = 'Jefe_Terreno' AND activo = 1");
+    $chk->execute(['id' => $jefeId]);
+    if (!(int)$chk->fetchColumn()) {
+        responderError('Ese Profesional de Terreno no existe o no está activo.', 422);
+    }
+}
 if (!in_array($rol, $ROLES, true)) {
     responderError('Elige un rol válido.', 422);
 }
@@ -73,6 +87,16 @@ $pdo->beginTransaction();
 try {
     $stmt = $pdo->prepare('UPDATE usuarios SET nombre = :nombre, correo = :correo, rol = :rol, activo = :activo WHERE id = :id');
     $stmt->execute(['nombre' => $nombre, 'correo' => $correo, 'rol' => $rol, 'activo' => $activo, 'id' => $id]);
+
+    if ($rol === 'Capataz' && ($cambiaFrente || $cambiaJefe)) {
+        if ($cambiaFrente && usuariosTieneFrente($pdo)) {
+            $pdo->prepare('UPDATE usuarios SET frente = :f WHERE id = :id')
+                ->execute(['f' => $frente === '' ? null : $frente, 'id' => $id]);
+        }
+        if ($cambiaJefe) {
+            $pdo->prepare('UPDATE usuarios SET jefe_terreno_id = :j WHERE id = :id')->execute(['j' => $jefeId, 'id' => $id]);
+        }
+    }
 
     $dejaDeSerCapataz = $u['rol'] === 'Capataz' && ($rol !== 'Capataz' || !$activo);
     if ($dejaDeSerCapataz) {

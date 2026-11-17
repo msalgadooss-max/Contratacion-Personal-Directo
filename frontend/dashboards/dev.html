@@ -121,6 +121,17 @@
           <label class="block text-xs text-gray-600 mb-1">Rol</label>
           <select id="usr-rol" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"></select>
         </div>
+        <div id="usr-capataz-wrap" class="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-3 hidden">
+          <div>
+            <label class="block text-xs text-gray-600 mb-1">Profesional de Terreno <span class="text-gray-400">(solo Capataces)</span></label>
+            <select id="usr-jefe" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"><option value="">Sin asignar</option></select>
+          </div>
+          <div>
+            <label class="block text-xs text-gray-600 mb-1">Frente / sector <span class="text-gray-400">(ej. Frente 1-A; los del mismo frente se agrupan)</span></label>
+            <input id="usr-frente" type="text" maxlength="100" list="usr-frentes-lista" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+            <datalist id="usr-frentes-lista"></datalist>
+          </div>
+        </div>
         <div id="usr-clave-wrap">
           <label class="block text-xs text-gray-600 mb-1">Clave inicial <span class="text-gray-400">(mín. 8; anótala, no se vuelve a mostrar)</span></label>
           <div class="flex gap-2">
@@ -142,6 +153,24 @@
           <tbody id="usr-tabla"></tbody>
         </table>
       </div>
+    </section>
+
+    <!-- v10.39 (pedido del usuario): organigrama de cada Profesional de Terreno con sus Capataces, agrupados por frente -->
+    <style>
+      .org-ramas { position: relative; margin-left: 28px; flex: 1; min-width: 0; }
+      .org-ramas::before { content: ''; position: absolute; left: -28px; top: 50%; width: 28px; border-top: 2px solid #d1d5db; }
+      .org-rama { position: relative; padding: 5px 0 5px 28px; }
+      .org-rama::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; border-left: 2px solid #d1d5db; }
+      .org-rama:first-child::before { top: 50%; }
+      .org-rama:last-child::before { bottom: 50%; }
+      .org-rama:only-child::before { display: none; }
+      .org-rama::after { content: ''; position: absolute; left: 0; top: 50%; width: 28px; border-top: 2px solid #d1d5db; }
+      @media (max-width: 640px) { .org-pt { flex-direction: column; align-items: stretch !important; } .org-ramas { margin-left: 14px; } .org-ramas::before { display: none; } }
+    </style>
+    <section class="bg-white rounded-xl shadow-sm p-5 mb-6">
+      <h2 class="text-sm font-semibold text-gray-700 mb-1">Organigrama de terreno</h2>
+      <p class="text-xs text-gray-500 mb-4 max-w-2xl">Cada Profesional de Terreno con sus Capataces. Los que comparten frente quedan juntos en el mismo recuadro. Para cambiar el frente o el Profesional de un Capataz, usa «Editar» en la lista de Usuarios.</p>
+      <div id="organigrama" class="space-y-6 text-sm text-gray-500">Cargando...</div>
     </section>
 
     <!-- v10.27: cambio de claves de los usuarios internos -->

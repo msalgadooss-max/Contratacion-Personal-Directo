@@ -12,8 +12,9 @@ requireRol(['Desarrollador']);
 exigirMetodo('GET');
 
 $pdo = obtenerConexion();
+$colFrente = usuariosTieneFrente($pdo) ? 'u.frente' : 'NULL';
 $stmt = $pdo->query(
-    "SELECT u.id, u.nombre, u.correo, u.rol, u.activo, u.creado_at, jt.nombre AS jefe_terreno_nombre
+    "SELECT u.id, u.nombre, u.correo, u.rol, u.activo, u.creado_at, u.jefe_terreno_id, {$colFrente} AS frente, jt.nombre AS jefe_terreno_nombre
        FROM usuarios u
        LEFT JOIN usuarios jt ON jt.id = u.jefe_terreno_id
       ORDER BY u.activo DESC,
@@ -24,6 +25,7 @@ $stmt = $pdo->query(
 $usuarios = array_map(function ($u) {
     $u['id'] = (int)$u['id'];
     $u['activo'] = (bool)$u['activo'];
+    $u['jefe_terreno_id'] = $u['jefe_terreno_id'] !== null ? (int)$u['jefe_terreno_id'] : null;
     return $u;
 }, $stmt->fetchAll());
 

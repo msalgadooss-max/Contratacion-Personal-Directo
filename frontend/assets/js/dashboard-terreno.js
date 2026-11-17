@@ -247,12 +247,16 @@ async function cargarEquipo() {
 }
 
 function renderEquipo(d) {
+  // v10.39: los Capataces del mismo frente quedan juntos (orden por frente, "sin frente" al final).
+  d.mis_capataces.sort((x, y) => (x.frente ? 0 : 1) - (y.frente ? 0 : 1)
+    || (x.frente || '').localeCompare(y.frente || '', 'es', { numeric: true }) || x.nombre.localeCompare(y.nombre, 'es'));
   const hijos = d.mis_capataces.map(c => `
     <div class="org-hijo">
       <div class="w-44 bg-white border-2 border-gray-200 rounded-xl p-3 text-center cursor-grab select-none"
            draggable="true" data-capataz-id="${c.id}" data-origen="equipo">
         <p class="text-sm font-bold text-gray-900 truncate">${esc(c.nombre)}</p>
-        <p class="text-[11px] text-gray-500 mb-2">Capataz</p>
+        <p class="text-[11px] text-gray-500 mb-1">Capataz</p>
+        ${c.frente ? `<p class="text-[11px] font-semibold text-orange-800 bg-orange-50 border border-orange-200 rounded-full px-2 py-0.5 mb-2 truncate" title="${esc(c.frente)}">${esc(c.frente)}</p>` : '<p class="mb-2"></p>'}
         <div class="flex justify-center gap-1 flex-wrap mb-2">
           <span class="text-[11px] font-semibold bg-amber-50 text-amber-800 border border-amber-200 rounded-full px-2 py-0.5" title="Referidos esperando que él los seleccione">⏳ ${c.esperando_referidos}</span>
           <span class="text-[11px] font-semibold bg-green-50 text-green-700 border border-green-200 rounded-full px-2 py-0.5" title="Personas que seleccionó hoy">✓ ${c.seleccionados_hoy} hoy</span>

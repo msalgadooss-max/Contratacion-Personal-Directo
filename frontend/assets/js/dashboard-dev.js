@@ -194,6 +194,7 @@ const ROLES_ADMINISTRABLES = ['Jefe_Terreno', 'Capataz', 'Admin_Contrato', 'Jefe
 let USUARIOS_ADMIN = [];
 
 function inicializarAdminUsuarios() {
+  document.getElementById('usr-rol').addEventListener('change', actualizarCamposCapataz);
   document.getElementById('usr-rol').innerHTML = ROLES_ADMINISTRABLES
     .map(r => `<option value="${r}">${ETIQUETAS_ROL[r] || r}</option>`).join('');
   document.getElementById('usr-generar').addEventListener('click', () => {
@@ -202,12 +203,14 @@ function inicializarAdminUsuarios() {
   document.getElementById('usr-cancelar').addEventListener('click', salirEdicionUsuario);
   document.getElementById('form-usuario').addEventListener('submit', guardarUsuario);
   cargarUsuariosAdmin();
+  cargarOrganigrama();
 }
 
 async function cargarUsuariosAdmin() {
   try {
     const data = await apiFetch('/dev/usuarios_listar.php');
     USUARIOS_ADMIN = data.usuarios;
+    poblarSelectoresCapataz();
     document.getElementById('usr-tabla').innerHTML = data.usuarios.map(u => {
       const esDev = u.rol === 'Desarrollador';
       const acciones = esDev
@@ -218,7 +221,7 @@ async function cargarUsuariosAdmin() {
         <tr class="border-b border-gray-100 ${u.activo ? '' : 'opacity-60'}">
           <td class="py-2 pr-3 font-medium text-gray-800">${esc(u.nombre)}</td>
           <td class="py-2 pr-3 text-gray-600">${esc(u.correo)}</td>
-          <td class="py-2 pr-3 text-gray-600">${esc(ETIQUETAS_ROL[u.rol] || u.rol)}${u.jefe_terreno_nombre ? `<span class="block text-[11px] text-gray-400">a cargo de ${esc(u.jefe_terreno_nombre)}</span>` : ''}</td>
+          <td class="py-2 pr-3 text-gray-600">${esc(ETIQUETAS_ROL[u.rol] || u.rol)}${u.jefe_terreno_nombre ? `<span class="block text-[11px] text-gray-400">a cargo de ${esc(u.jefe_terreno_nombre)}${u.frente ? ' · ' + esc(u.frente) : ''}</span>` : (u.frente ? `<span class="block text-[11px] text-gray-400">${esc(u.frente)}</span>` : '')}</td>
           <td class="py-2 pr-3">${u.activo
             ? '<span class="text-[11px] font-semibold bg-green-50 text-green-700 border border-green-200 rounded-full px-2 py-0.5">Activo</span>'
             : '<span class="text-[11px] font-semibold bg-gray-100 text-gray-500 border border-gray-200 rounded-full px-2 py-0.5">Desactivado</span>'}</td>
@@ -237,6 +240,7 @@ function salirEdicionUsuario() {
   document.getElementById('usr-clave').required = true;
   document.getElementById('usr-guardar').textContent = 'Crear usuario';
   document.getElementById('usr-cancelar').classList.add('hidden');
+  actualizarCamposCapataz();
 }
 
 function editarUsuario(id) {
@@ -246,6 +250,9 @@ function editarUsuario(id) {
   document.getElementById('usr-nombre').value = u.nombre;
   document.getElementById('usr-correo').value = u.correo;
   document.getElementById('usr-rol').value = u.rol;
+  document.getElementById('usr-jefe').value = u.jefe_terreno_id ? String(u.jefe_terreno_id) : '';
+  document.getElementById('usr-frente').value = u.frente || '';
+  actualizarCamposCapataz();
   // En edición no se toca la clave (para eso está "Claves de los usuarios").
   document.getElementById('usr-clave-wrap').classList.add('hidden');
   document.getElementById('usr-clave').required = false;
@@ -262,6 +269,10 @@ async function guardarUsuario(e) {
     correo: document.getElementById('usr-correo').value,
     rol: document.getElementById('usr-rol').value,
   };
+  if (base.rol === 'Capataz') {
+    base.frente = document.getElementById('usr-frente').value.trim();
+    base.jefe_terreno_id = document.getElementById('usr-jefe').value ? Number(document.getElementById('usr-jefe').value) : null;
+  }
   try {
     let data;
     if (id) {
@@ -299,6 +310,70 @@ function recargarListasUsuarios() {
   cargarUsuariosAdmin();
   cargarUsuarios();        // "Entrar como..."
   cargarUsuariosClaves();  // selector de "Claves de los usuarios"
+  cargarOrganigrama();
+}
+
+// --- v10.39: organigrama de terreno y frente de cada Capataz -------------------
+function actualizarCamposCapataz() {
+  document.getElementById('usr-capataz-wrap').classList.toggle('hidden', document.getElementById('usr-rol').value !== 'Capataz');
+}
+
+function poblarSelectoresCapataz() {
+  const sel = document.getElementById('usr-jefe');
+  const actual = sel.value;
+  sel.innerHTML = '<option value="">Sin asignar</option>' + USUARIOS_ADMIN.filter(u => u.rol === 'Jefe_Terreno' && u.activo)
+    .map(u => `<option value="${u.id}">${esc(u.nombre)}</option>`).join('');
+  sel.value = actual;
+  const frentes = [...new Set(USUARIOS_ADMIN.map(u => u.frente).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es', { numeric: true }));
+  document.getElementById('usr-frentes-lista').innerHTML = frentes.map(f => `<option value="${esc(f)}">`).join('');
+}
+
+function tarjetaFrente(g) {
+  const sinFrente = !g.frente;
+  const chips = g.capataces.map(c => `
+    <li class="flex items-center justify-between gap-2 bg-white border border-gray-200 rounded-lg px-2.5 py-1.5" title="${esc(c.correo)}">
+      <span class="text-[13px] text-gray-800">${esc(c.nombre)}</span>
+      ${c.esperando ? `<span class="text-[10px] font-semibold bg-amber-100 text-amber-800 rounded-full px-1.5 py-0.5 shrink-0">${c.esperando} esperando</span>` : ''}
+    </li>`).join('');
+  return `
+    <div class="org-rama">
+      <div class="rounded-xl border ${sinFrente ? 'border-dashed border-gray-300 bg-gray-50' : 'border-orange-200 bg-orange-50/60'} p-3">
+        <p class="text-xs font-bold ${sinFrente ? 'text-gray-500' : 'text-orange-800'} mb-2">${sinFrente ? 'Sin frente asignado' : esc(g.frente)}
+          <span class="ml-1 font-semibold text-gray-400">· ${g.capataces.length} ${g.capataces.length === 1 ? 'capataz' : 'capataces'}</span></p>
+        <ul class="grid grid-cols-1 lg:grid-cols-2 gap-1.5">${chips}</ul>
+      </div>
+    </div>`;
+}
+
+async function cargarOrganigrama() {
+  const cont = document.getElementById('organigrama');
+  try {
+    const data = await apiFetch('/dev/organigrama.php');
+    if (!data.profesionales.length && !data.total_sin_profesional) {
+      cont.innerHTML = '<p class="text-sm text-gray-400">Todavía no hay Profesionales de Terreno ni Capataces.</p>';
+      return;
+    }
+    const pts = data.profesionales.map(pt => `
+      <div class="org-pt flex items-center gap-0">
+        <div class="shrink-0 w-full sm:w-56 bg-gray-900 text-white rounded-xl px-4 py-3">
+          <p class="text-[10px] uppercase tracking-wide text-orange-300 font-semibold">Profesional de Terreno</p>
+          <p class="font-bold text-sm leading-snug mt-0.5">${esc(pt.nombre)}</p>
+          <p class="text-[11px] text-gray-400 mt-1">${pt.total_capataces} ${pt.total_capataces === 1 ? 'capataz' : 'capataces'} · ${pt.frentes.filter(f => f.frente).length} frentes</p>
+        </div>
+        <div class="org-ramas">${pt.frentes.length ? pt.frentes.map(tarjetaFrente).join('') : '<p class="text-xs text-gray-400 pl-2">Sin capataces asignados.</p>'}</div>
+      </div>`).join('');
+    const sin = data.total_sin_profesional ? `
+      <div class="org-pt flex items-center gap-0">
+        <div class="shrink-0 w-full sm:w-56 border-2 border-dashed border-gray-300 rounded-xl px-4 py-3">
+          <p class="text-[10px] uppercase tracking-wide text-gray-500 font-semibold">Sin Profesional de Terreno</p>
+          <p class="text-[11px] text-gray-400 mt-1">${data.total_sin_profesional} capataces por asignar</p>
+        </div>
+        <div class="org-ramas">${data.sin_profesional.map(tarjetaFrente).join('')}</div>
+      </div>` : '';
+    cont.innerHTML = pts + sin;
+  } catch (err) {
+    cont.innerHTML = `<p class="text-sm text-red-600">${esc(err.message)}</p>`;
+  }
 }
 
 // --- v10.28: tiempos por rol y etapa -----------------------------------------

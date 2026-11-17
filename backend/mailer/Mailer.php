@@ -48,6 +48,14 @@ final class Mailer
     public static function enviar(string $destinatario, string $nombreDestinatario, string $asunto, string $htmlBody, bool $registrarFallo = true, array $adjuntos = []): bool
     {
         self::$ultimoError = null;
+        // v10.39: las cuentas ficticias de prueba usan el dominio reservado ".invalid"
+        // (por ejemplo pt1-c01@ph4-ficticio.invalid): nunca existen, así que no se
+        // intenta enviarles nada (evita rebotes que dañan la reputación del remitente
+        // y entradas inútiles en "correos fallidos").
+        if (preg_match('/@[^@]+\.invalid$/i', trim($destinatario))) {
+            error_log('Mailer: correo omitido para cuenta ficticia ' . $destinatario);
+            return true;
+        }
         $ok = false;
         try {
             $ok = self::despachar($destinatario, $nombreDestinatario, $asunto, $htmlBody, $adjuntos);

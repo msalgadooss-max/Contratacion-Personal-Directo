@@ -2,6 +2,7 @@
   const usuario = await protegerDashboard('Jefe_Bodega');
   if (!usuario) return;
   await cargarLista();
+  iniciarLiberados();
   iniciarEstadoVivo();
 })();
 
@@ -10,6 +11,7 @@
 // la página ni salir del panel.
 function actualizarTodo() {
   cargarLista();
+  cargarLiberados();
   mostrarAlerta('alerta', 'Actualizado.', 'exito');
 }
 
@@ -246,5 +248,162 @@ async function enviarNomina() {
     mostrarAlerta('alerta', err.message);
     boton.disabled = false;
     boton.textContent = '✉ Enviar nómina por correo';
+  }
+}
+
+// --- v10.39 (pedido del usuario): liberados por día, listos para ingresar mañana ---
+// "Liberado" = Prevención ya hizo el check del Día 0. Se ve por día (o rango), se
+// filtra en pantalla y se baja en Excel con los mismos filtros (el Excel además trae
+// filtros de columna propios).
+let LIB = { filas: [], desde: '', hasta: '' };
+
+function hoyIso() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+function sumarDias(iso, n) {
+  const [y, m, d] = iso.split('-').map(Number);
+  const f = new Date(y, m - 1, d + n);
+  return `${f.getFullYear()}-${String(f.getMonth() + 1).padStart(2, '0')}-${String(f.getDate()).padStart(2, '0')}`;
+}
+function fechaCorta(iso) {
+  if (!iso) return '-';
+  const [y, m, d] = iso.slice(0, 10).split('-');
+  return `${d}-${m}-${y}`;
+}
+
+function iniciarLiberados() {
+  const cont = document.getElementById('liberados-dia');
+  const hoy = hoyIso();
+  cont.innerHTML = `
+    <div class="flex items-start justify-between gap-4 flex-wrap">
+      <div>
+        <p class="text-sm font-bold text-gray-900">Liberados para ingresar <span id="lib-contador" class="ml-2 text-xs font-semibold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full"></span></p>
+        <p class="text-xs text-gray-500 mt-1 max-w-xl">Personas con el check de Prevención hecho (Día 0): quedan listas para entrar mañana. Elige el día, filtra y descarga el Excel.</p>
+      </div>
+      <button onclick="descargarLiberadosExcel()" class="bg-gray-900 hover:bg-gray-800 text-white text-sm font-semibold px-4 py-2 rounded-lg">📥 Descargar Excel</button>
+    </div>
+    <div class="flex flex-wrap items-end gap-3 mt-4 text-sm">
+      <label class="flex flex-col text-xs text-gray-500">Desde
+        <input id="lib-desde" type="date" value="${hoy}" class="border rounded-lg px-2 py-1.5 text-sm text-gray-900" onchange="cargarLiberados()"></label>
+      <label class="flex flex-col text-xs text-gray-500">Hasta
+        <input id="lib-hasta" type="date" value="${hoy}" class="border rounded-lg px-2 py-1.5 text-sm text-gray-900" onchange="cargarLiberados()"></label>
+      <div class="flex gap-1.5">
+        <button class="border border-gray-300 hover:bg-gray-50 text-xs font-semibold px-3 py-2 rounded-lg" onclick="liberadosRapido(0)">Hoy</button>
+        <button class="border border-gray-300 hover:bg-gray-50 text-xs font-semibold px-3 py-2 rounded-lg" onclick="liberadosRapido(1)">Ayer</button>
+        <button class="border border-gray-300 hover:bg-gray-50 text-xs font-semibold px-3 py-2 rounded-lg" onclick="liberadosRapido(7)">Últimos 7 días</button>
+      </div>
+      <label class="flex flex-col text-xs text-gray-500">Buscar
+        <input id="lib-q" type="search" placeholder="Nombre o RUT" class="border rounded-lg px-2 py-1.5 text-sm text-gray-900 w-40" oninput="renderLiberados()"></label>
+      <label class="flex flex-col text-xs text-gray-500">Cargo
+        <select id="lib-cargo" class="border rounded-lg px-2 py-1.5 text-sm text-gray-900" onchange="renderLiberados()"><option value="">Todos</option></select></label>
+      <label class="flex flex-col text-xs text-gray-500">Capataz
+        <select id="lib-capataz" class="border rounded-lg px-2 py-1.5 text-sm text-gray-900" onchange="renderLiberados()"><option value="">Todos</option></select></label>
+      <label class="flex flex-col text-xs text-gray-500">Estado
+        <select id="lib-estado" class="border rounded-lg px-2 py-1.5 text-sm text-gray-900" onchange="renderLiberados()">
+          <option value="">Todos</option>
+          <option value="Induccion_ok">Ingresa mañana</option>
+          <option value="EPP_listo">EPP entregado</option>
+          <option value="Contratado">Contratado</option>
+          <option value="Proceso_completo">En terreno</option>
+        </select></label>
+    </div>
+    <div class="overflow-x-auto mt-4">
+      <table class="w-full text-sm">
+        <thead class="bg-gray-50 text-gray-500 text-left">
+          <tr>
+            <th class="px-3 py-2">Nombre</th><th class="px-3 py-2">RUT</th><th class="px-3 py-2">Cargo</th>
+            <th class="px-3 py-2">Capataz</th><th class="px-3 py-2">Frente</th><th class="px-3 py-2">Prof. de Terreno</th>
+            <th class="px-3 py-2">Liberado</th><th class="px-3 py-2">Ingresa</th>
+            <th class="px-3 py-2">Calzado</th><th class="px-3 py-2">Overol</th><th class="px-3 py-2">Estado</th>
+          </tr>
+        </thead>
+        <tbody id="lib-tbody"></tbody>
+      </table>
+      <p id="lib-vacio" class="text-center text-gray-400 text-sm py-6 hidden">No hay personas liberadas en ese período.</p>
+    </div>`;
+  cargarLiberados();
+}
+
+function liberadosRapido(diasAtras) {
+  const hoy = hoyIso();
+  document.getElementById('lib-hasta').value = diasAtras === 1 ? sumarDias(hoy, -1) : hoy;
+  document.getElementById('lib-desde').value = diasAtras === 7 ? sumarDias(hoy, -6) : sumarDias(hoy, -diasAtras);
+  cargarLiberados();
+}
+
+async function cargarLiberados() {
+  const desde = document.getElementById('lib-desde').value;
+  const hasta = document.getElementById('lib-hasta').value;
+  try {
+    const data = await apiFetch(`/bodega/liberados_dia.php?desde=${encodeURIComponent(desde)}&hasta=${encodeURIComponent(hasta)}`);
+    LIB = { filas: data.liberados || [], desde: data.desde, hasta: data.hasta };
+    // Las listas de filtro se arman con lo que realmente hay en el período.
+    const opciones = (id, valores) => {
+      const sel = document.getElementById(id);
+      const actual = sel.value;
+      sel.innerHTML = '<option value="">Todos</option>' + [...new Set(valores.filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'))
+        .map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join('');
+      sel.value = [...sel.options].some(o => o.value === actual) ? actual : '';
+    };
+    opciones('lib-cargo', LIB.filas.map(f => f.nombre_cargo));
+    opciones('lib-capataz', LIB.filas.map(f => f.capataz));
+    renderLiberados();
+  } catch (err) {
+    mostrarAlerta('alerta', err.message);
+  }
+}
+
+function liberadosFiltrados() {
+  const q = document.getElementById('lib-q').value.trim().toLowerCase();
+  const cargo = document.getElementById('lib-cargo').value;
+  const capataz = document.getElementById('lib-capataz').value;
+  const estado = document.getElementById('lib-estado').value;
+  return LIB.filas.filter(f =>
+    (!cargo || f.nombre_cargo === cargo) && (!capataz || f.capataz === capataz) && (!estado || f.estado === estado) &&
+    (!q || `${f.nombre_completo} ${f.rut}`.toLowerCase().includes(q)));
+}
+
+function renderLiberados() {
+  const filas = liberadosFiltrados();
+  document.getElementById('lib-contador').textContent =
+    filas.length === LIB.filas.length ? `${filas.length}` : `${filas.length} de ${LIB.filas.length}`;
+  document.getElementById('lib-vacio').classList.toggle('hidden', filas.length > 0);
+  const color = { Induccion_ok: 'bg-amber-100 text-amber-800', EPP_listo: 'bg-sky-100 text-sky-800', Contratado: 'bg-emerald-100 text-emerald-800', Proceso_completo: 'bg-gray-100 text-gray-700' };
+  document.getElementById('lib-tbody').innerHTML = filas.map(f => `
+    <tr class="border-t">
+      <td class="px-3 py-2 font-medium">${esc(f.nombre_completo)}</td>
+      <td class="px-3 py-2 font-mono">${esc(f.rut)}</td>
+      <td class="px-3 py-2">${esc(f.nombre_cargo)}</td>
+      <td class="px-3 py-2">${esc(f.capataz || '-')}</td>
+      <td class="px-3 py-2">${esc(f.frente || '-')}</td>
+      <td class="px-3 py-2 text-gray-600">${esc(f.profesional_terreno || '-')}</td>
+      <td class="px-3 py-2 text-gray-600">${fechaCorta(f.dia_liberacion)}</td>
+      <td class="px-3 py-2 text-gray-600">${fechaCorta(f.fecha_ingreso)}</td>
+      <td class="px-3 py-2">${esc(f.talla_calzado || '-')}</td>
+      <td class="px-3 py-2">${esc(f.talla_overol || '-')}</td>
+      <td class="px-3 py-2"><span class="text-xs font-semibold px-2 py-0.5 rounded-full ${color[f.estado] || 'bg-gray-100 text-gray-700'}">${esc(f.estado_texto)}</span></td>
+    </tr>`).join('');
+}
+
+async function descargarLiberadosExcel() {
+  const p = new URLSearchParams({
+    desde: document.getElementById('lib-desde').value, hasta: document.getElementById('lib-hasta').value,
+    cargo: document.getElementById('lib-cargo').value, capataz: document.getElementById('lib-capataz').value,
+    estado: document.getElementById('lib-estado').value, q: document.getElementById('lib-q').value.trim(),
+  });
+  try {
+    const res = await apiFetch('/bodega/exportar_liberados_excel.php?' + p.toString());
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `liberados_${p.get('desde')}${p.get('hasta') !== p.get('desde') ? '_a_' + p.get('hasta') : ''}.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+  } catch (err) {
+    mostrarAlerta('alerta', err.message || 'No fue posible descargar el Excel.');
   }
 }
