@@ -207,7 +207,7 @@ function enlacesDocumentos(p) {
     }
 
     const chip = subido
-      ? `<a href="${url}" target="_blank" class="inline-block bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-medium px-2.5 py-1 rounded-md">${etiqueta}</a>`
+      ? `<a href="${url}" target="_blank" class="inline-block bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-medium px-2.5 py-1 rounded-md">${etiqueta}</a><a href="${url}&descargar=1" title="Descargar en PDF (con el nombre y RUT de la persona)" class="text-[12px] text-gray-500 hover:text-gray-900 px-1">⬇</a>`
       : (tipo === 'ultimo_finiquito' && !marca
           ? `<span class="inline-block bg-gray-50 text-gray-400 text-xs px-2.5 py-1 rounded-md" title="Es opcional: si nunca trabajó antes no lo tiene">${etiqueta} · no adjunto</span>`
           : `<span class="inline-block bg-gray-100 text-gray-500 text-xs px-2.5 py-1 rounded-md line-through decoration-gray-300">${etiqueta}</span>${!marca ? '<span class="text-[10px] text-red-600 bg-red-50 px-1.5 py-0.5 rounded font-semibold">falta</span>' : ''}`);

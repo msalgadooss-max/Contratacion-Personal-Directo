@@ -39,15 +39,15 @@
 </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
-  <header class="bg-white border-b px-6 py-4 flex justify-between items-center">
-    <div class="flex items-center gap-4">
+  <header class="bg-white border-b px-4 sm:px-6 py-3 sm:py-4 flex justify-between items-center flex-wrap gap-3">
+    <div class="flex items-center gap-3 sm:gap-4 min-w-0">
       <img src="../assets/img/logo-icafal.png" alt="ICAFAL" class="h-9">
       <div>
         <h1 class="font-bold text-gray-900">Panel de Subgerente</h1>
         <p class="text-xs text-gray-500">Vista global de todo el proceso · Solo lectura</p>
       </div>
     </div>
-    <div class="flex items-center gap-4">
+    <div class="flex items-center flex-wrap gap-2 sm:gap-4 w-full sm:w-auto">
       <span class="text-sm text-gray-600" data-usuario-nombre></span>
       <button onclick="actualizarTodo()" class="text-sm text-gray-600 font-medium border border-gray-200 hover:bg-gray-50 px-3 py-1.5 rounded-lg" title="Refresca los datos sin recargar la página">🔄 Actualizar</button>
       <button onclick="cerrarSesion()" class="text-sm text-red-600 font-medium">Cerrar sesión</button>

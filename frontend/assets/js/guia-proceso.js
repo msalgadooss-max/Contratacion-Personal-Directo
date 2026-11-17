@@ -147,6 +147,417 @@ const GUIA_POR_ROL = {
   },
 };
 
+// v10.37 (pedido del usuario: "mucha información" en las guías): la guía de cada panel
+// ahora abre con (1) un flujo compacto que marca en rojo dónde el proceso puede
+// detenerse o rechazarse, y (2) solo los pasos del propio rol. El texto largo anterior
+// sigue ahí, pero plegado ("Ver el detalle completo"). Este contenido sale del mismo
+// origen que el PDF de "Guía rápida", así que ambos dicen lo mismo.
+const GUIA_CORTA = {
+ "terreno": {
+  "mision": "Pides los cupos y sigues el avance. Ya no apruebas postulantes uno por uno: eso lo hace el capataz, en persona.",
+  "hitos": [
+   0,
+   12
+  ],
+  "pasos": [
+   [
+    "P",
+    "Solicita los cupos",
+    "Pestaña <b>Solicitar Cupos</b>: elige cargo y cantidad (ej. 5 jornales) y aprieta «Solicitar cupos». Queda <b>Pendiente</b> hasta que el Administrador apruebe. Si el cargo no existe, elige «Otro» y escribe su nombre."
+   ],
+   [
+    "P",
+    "Arma tu equipo",
+    "Pestaña <b>Mi equipo</b>: agrega a tus capataces con la lista desplegable o arrástralos desde «Capataces sin asignar»."
+   ],
+   [
+    "P",
+    "Invita a un referido",
+    "Pestaña <b>Invitar referido</b>: copia tu enlace o QR personal, o envíalo por WhatsApp o correo. Quien postula por tu enlace elige un capataz de tu equipo."
+   ],
+   [
+    "P",
+    "Sigue a los postulantes",
+    "Pestañas <b>Banco de Postulantes</b> y <b>Postulantes</b>: solo lectura. En «Asignado a» puedes pasar un referido a otro capataz si el suyo no está."
+   ],
+   [
+    "P",
+    "Confirma el retiro (Día 1)",
+    "Pestaña <b>Personal Contratado</b>: cuando alguien queda listo te aparece una franja verde y un contador rojo. Aprieta <b>«Ya lo retiré»</b> cuando lo vayas a buscar."
+   ],
+   [
+    "P",
+    "Evalúa al terminar el contrato",
+    "Pestaña <b>Evaluaciones</b>: Recomendado, Con reservas o No recomendado, con comentario obligatorio si no lo recomiendas (máx. 500 caracteres). Es de uso interno."
+   ]
+  ],
+  "falla": [
+   "Si el Administrador rechaza la solicitud, no se abre ningún cupo: vuelve a pedirla.",
+   "Si no ves el cargo que necesitas, usa «Otro»: se crea cuando se aprueba.",
+   "Tu clave: enlace «Mi clave», junto a tu nombre."
+  ]
+ },
+ "admin_contrato": {
+  "mision": "Apruebas los cupos que pide el Jefe de Terreno. Ahí termina tu parte: no autorizas persona por persona.",
+  "hitos": [
+   1
+  ],
+  "pasos": [
+   [
+    "P",
+    "Abre «Solicitudes de Cupo»",
+    "Ves cada solicitud con su cargo, cantidad, quién la pidió y la fecha."
+   ],
+   [
+    "P",
+    "Aprueba o rechaza",
+    "Puedes abrir una cantidad distinta a la pedida (pidieron 5, hay presupuesto para 3) y dejar una observación."
+   ],
+   [
+    "P",
+    "Se abre la vacante",
+    "Al aprobar, el cargo muestra esos cupos como disponibles y se avisa por correo al Jefe de Terreno, a los capataces y al JAO."
+   ],
+   [
+    "P",
+    "Consulta «Estado del proceso»",
+    "Cada trabajador activo con la etapa exacta en la que está ahora: sirve para responder «¿cómo va tal persona?» sin llamar a nadie."
+   ],
+   [
+    "P",
+    "Mira los tiempos",
+    "Arriba, un resumen de tiempos del proceso con filtro Desde / Hasta y botón «Excel»."
+   ]
+  ],
+  "falla": [
+   "Mientras no apruebes, el capataz no puede asignar ese cargo: no aparece su caja.",
+   "Si aprobaste una cantidad equivocada, avísale al Jefe de Terreno y aprueba una nueva solicitud."
+  ]
+ },
+ "capataz": {
+  "mision": "Eres el único filtro de selección: ves a quien llegó por el QR, confirmas su cédula y lo asignas a un cargo.",
+  "hitos": [
+   3,
+   12
+  ],
+  "pasos": [
+   [
+    "H",
+    "PERSONAS QUE LLEGAN POR EL QR DE LA OBRA"
+   ],
+   [
+    "P",
+    "Compara con la cédula",
+    "Cada persona tiene una tarjeta numerada con su RUT y nombre bien grandes: revísalos contra la cédula física."
+   ],
+   [
+    "P",
+    "Marca «Trae sus documentos»",
+    "Esa tarjeta se ilumina y las demás se apagan: trabajas una persona a la vez."
+   ],
+   [
+    "P",
+    "Arrastra al cargo",
+    "Mantén apretada la franja naranja y suéltala en la caja del cargo (las cajas quedan fijas arriba). Se reserva un cupo y le sale un correo a la persona."
+   ],
+   [
+    "P",
+    "Si te equivocas",
+    "«Me equivoqué, deshacer» aparece justo al soltar y dura poco. Para no seleccionar, usa «No selecciona a esta persona» y elige un motivo."
+   ],
+   [
+    "H",
+    "REFERIDOS (PUEDEN ESTAR LEJOS DE LA OBRA)"
+   ],
+   [
+    "P",
+    "Solo tú ves a los tuyos",
+    "Llevan la etiqueta «Referido por…». En vez de «Trae sus documentos» marcas <b>«Confirmo a esta persona»</b>: no necesita estar frente a ti, su cédula se verifica en su primer día."
+   ],
+   [
+    "P",
+    "Invita con tu enlace",
+    "Pestaña <b>Invitar referido</b>: enlace y QR personal por WhatsApp o correo."
+   ],
+   [
+    "H",
+    "DÍA 1"
+   ],
+   [
+    "P",
+    "Retira al contratado",
+    "Pestaña <b>Personal Contratado</b>: aprieta <b>«Ya lo retiré»</b> cuando lo vayas a buscar (franja verde y contador rojo)."
+   ]
+  ],
+  "falla": [
+   "Si no ves el cargo, no tiene vacante: pídele al Jefe de Terreno que solicite cupos.",
+   "La pantalla se actualiza sola cada 15 s sin desmarcar tu tarjeta.",
+   "«Ya trabajó antes» muestra la recomendación del Jefe de Terreno: ayuda, no orden."
+  ]
+ },
+ "porteria": {
+  "mision": "Dos tareas en dos días: controlar la puerta el Día 0 y autorizar el paso a contratación el Día 1.",
+  "hitos": [
+   4,
+   8
+  ],
+  "pasos": [
+   [
+    "H",
+    "DÍA 0 · CONTROL DE LA PUERTA"
+   ],
+   [
+    "P",
+    "Recibe a la persona con su QR",
+    "Le llegó por correo cuando el capataz la seleccionó."
+   ],
+   [
+    "P",
+    "Escanea el QR",
+    "Si no funciona, escribe su RUT y su código de seguimiento en la tarjeta. Verifica que esté habilitada y déjala pasar a la sala de espera."
+   ],
+   [
+    "H",
+    "DÍA 1 · 8:00 · AUTORIZAR EL PASO"
+   ],
+   [
+    "P",
+    "Busca su fase",
+    "En la tarjeta «Día 1 · Contratación» escribe su RUT o cédula y aprieta <b>«Ver fase»</b>: ves en qué paso está."
+   ],
+   [
+    "P",
+    "Autoriza su paso",
+    "Si está lista, aparece el botón para autorizarla: el JAO recibe un aviso y se le habilita la firma del contrato."
+   ],
+   [
+    "P",
+    "Si no está lista, no la autorices",
+    "El sistema te dice qué le falta (por ejemplo, el check de Prevención del Día 0)."
+   ]
+  ],
+  "falla": [
+   "Si no alcanzas a autorizar a alguien, el JAO puede confirmarlo manualmente: la persona no queda detenida.",
+   "Si no encuentras a alguien por RUT, pídele su código de seguimiento."
+  ]
+ },
+ "jao": {
+  "mision": "Verificas identidad y documentos el Día 0, completas la nómina y firmas el contrato el Día 1.",
+  "hitos": [
+   6,
+   9
+  ],
+  "pasos": [
+   [
+    "H",
+    "DÍA 0"
+   ],
+   [
+    "P",
+    "Verifica la identidad",
+    "Cuando la persona termina su Etapa 2 aparece <b>«Coincide» / «No coincide»</b>: compara su RUT con la cédula. Sin tu «Coincide», Prevención no la ve."
+   ],
+   [
+    "P",
+    "Revisa los documentos",
+    "<b>Observar</b> frena la firma y el postulante recibe un correo para corregir solo ese. <b>Pendiente</b> y <b>Opcional</b> no frenan nada. La cédula no puede quedar pendiente."
+   ],
+   [
+    "P",
+    "Completa los datos de nómina",
+    "Los necesitas completos antes de firmar. Si la persona ya trabajó antes, verás «Ya trabajó antes» con su historial y la ficha anterior prellenada."
+   ],
+   [
+    "H",
+    "DÍA 1 · 8:00"
+   ],
+   [
+    "P",
+    "Espera el aviso de Portería",
+    "Verás «Paso autorizado por Portería». Si no alcanzó, usa <b>«Confirmar manualmente»</b>."
+   ],
+   [
+    "P",
+    "Firma el contrato",
+    "Se habilita solo con: identidad verificada, check de Prevención del Día 0, nómina completa y ningún documento observado."
+   ],
+   [
+    "H",
+    "DESPUÉS"
+   ],
+   [
+    "P",
+    "Exporta a Buk",
+    "<b>Exportador Carga Masiva Buk</b>: elige a quiénes y descarga «Empleado (Excel)» y «Trabajo (Excel)». También puedes bajar las carpetas en ZIP."
+   ],
+   [
+    "P",
+    "Fija las fechas de cierre",
+    "Cierre mensual y de quincena (Desde / Hasta) y «Guardar fechas». En ese período no se firman contratos ni se entrega EPP."
+   ]
+  ],
+  "falla": [
+   "Si el botón de firmar no se habilita, el panel te dice qué falta.",
+   "Para ver cuánto tardó cada paso de una persona: «Ver tiempos» en su tarjeta."
+  ]
+ },
+ "prevencion": {
+  "mision": "Tienes dos checks, uno por día, cada uno en su pestaña. En ambos marcas a la persona y confirmas.",
+  "hitos": [
+   7,
+   10
+  ],
+  "pasos": [
+   [
+    "H",
+    "DÍA 0 · PESTAÑA «DÍA 0 · POSTULACIÓN»"
+   ],
+   [
+    "P",
+    "Espera a la persona",
+    "Aparece apenas el JAO verifica su identidad. Si alguien no te aparece, es porque el JAO aún no le da «Coincide»."
+   ],
+   [
+    "P",
+    "Marca su casillero y confirma",
+    "No se puede deshacer. Con tu check termina su día, y ella recibe el correo «preséntate mañana a las 8:00»."
+   ],
+   [
+    "H",
+    "DÍA 1 · PESTAÑA «DÍA 1 · CONTRATACIÓN (IRL)»"
+   ],
+   [
+    "P",
+    "Espera la firma del contrato",
+    "La persona aparece ahí apenas el JAO firma."
+   ],
+   [
+    "P",
+    "Haz la IRL y márcala",
+    "Con eso la persona pasa a Bodega para recibir su kit."
+   ],
+   [
+    "P",
+    "Cursos de inducción",
+    "Si el catálogo de cursos está activo, al confirmar tu check del Día 0 esos cursos quedan aprobados automáticamente."
+   ]
+  ],
+  "falla": [
+   "Solo ves lo necesario para identificar a la persona: no ves AFP, banco ni datos sensibles.",
+   "Cada pestaña muestra un número con los pendientes."
+  ]
+ },
+ "bodega": {
+  "mision": "Entregas el kit de EPP: el paso que cierra el ciclo y deja a la persona «Contratado».",
+  "hitos": [
+   11
+  ],
+  "pasos": [
+   [
+    "H",
+    "PREPARACIÓN (DÍA 0)"
+   ],
+   [
+    "P",
+    "Envía las tallas",
+    "Botón <b>«Enviar tallas por correo»</b>, idealmente a las 14:00. Sale en un solo correo; si alguien completa después, va en otro envío."
+   ],
+   [
+    "P",
+    "Descarga el Excel",
+    "En la misma tarjeta, <b>«Descargar Excel»</b>: nombre, RUT, cargo, tallas y cuántos kits de cada medida preparar."
+   ],
+   [
+    "H",
+    "ENTREGA (DÍA 1)"
+   ],
+   [
+    "P",
+    "Espera que se habilite",
+    "El botón se habilita cuando el JAO firmó y Prevención registró la IRL. Antes ves «esperando firma» o «esperando IRL»."
+   ],
+   [
+    "P",
+    "Entrega el kit y confirma",
+    "La persona queda <b>Contratado</b> y recibe su QR final de acceso."
+   ],
+   [
+    "P",
+    "Envía la nómina",
+    "Al terminar el grupo, <b>«Enviar nómina por correo»</b>: un solo correo con la tabla a Jefe de Terreno, capataces, Administrador, JAO y Prevención."
+   ]
+  ],
+  "falla": [
+   "Pasadas las 14:00 la tarjeta de tallas se pone roja si quedan tallas sin enviar.",
+   "Si el cierre de remuneraciones está activo, el sistema no deja entregar EPP hasta que se reabra."
+  ]
+ }
+};
+
+const FLUJO_HITOS = [
+  ['Jefe de Terreno', 'Pide cupos', '#2e6ebe'], ['Administrador', 'Aprueba cupos', '#7054ac'], ['Postulante', 'Postula', '#f15a22'],
+  ['Capataz', 'Selecciona', '#d68c0a'], ['Portería', 'Sala de espera', '#1e9696'], ['Postulante', 'Etapa 2', '#f15a22'],
+  ['JAO', 'Verifica identidad', '#3c5c96'], ['Prevención', 'Check 1', '#34a058'],
+  ['Portería', 'Autoriza paso', '#1e9696'], ['JAO', 'Firma contrato', '#3c5c96'], ['Prevención', 'IRL', '#34a058'],
+  ['Bodega', 'Entrega EPP', '#96643c'], ['Capataz', 'Retira', '#d68c0a'],
+];
+// Nodos donde el proceso puede detenerse (índice base 0) y por qué.
+const FLUJO_RECHAZOS = {
+  1: 'El Administrador puede rechazar la solicitud: no se abre ningún cupo.',
+  3: 'El Capataz puede no seleccionar a la persona (motivo estandarizado): el postulante recibe un aviso genérico.',
+  6: 'JAO: «No coincide» o un documento observado: el postulante corrige solo ese y se retoma.',
+  8: 'Portería no autoriza el paso si falta algún paso del Día 0.',
+  9: 'JAO no firma si falta identidad, el check de Prevención, la nómina o hay un documento observado.',
+  11: 'Bodega no entrega el EPP hasta que Prevención registre la IRL.',
+};
+
+function flujoCompactoHtml(resaltar) {
+  const fila = (titulo, desde, hasta) => `
+    <p class="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1 mt-2">${titulo}</p>
+    <div class="flex flex-wrap gap-x-1 gap-y-2">
+      ${FLUJO_HITOS.slice(desde, hasta).map((h, k) => {
+        const i = desde + k;
+        const activo = resaltar.includes(i);
+        const rech = FLUJO_RECHAZOS[i];
+        return `<div class="relative w-[64px] text-center" title="${rech ? rech.replace(/"/g, '&quot;') : ''}">
+          <span class="mx-auto flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold ${activo ? 'text-white' : 'text-gray-500 bg-gray-100 border border-gray-200'}" style="${activo ? 'background:' + h[2] : ''}">${i + 1}</span>
+          ${rech ? '<span class="absolute -top-1 right-3 w-4 h-4 rounded-full bg-red-600 text-white text-[9px] font-bold flex items-center justify-center">✕</span>' : ''}
+          <span class="block text-[10px] leading-tight mt-1 ${activo ? 'font-bold text-gray-900' : 'text-gray-500'}">${h[1]}</span>
+          <span class="block text-[9px] leading-tight text-gray-400">${h[0]}</span>
+        </div>`;
+      }).join('')}
+    </div>`;
+  const motivos = Object.keys(FLUJO_RECHAZOS).map(i => `<li><b>${Number(i) + 1}.</b> ${FLUJO_RECHAZOS[i]}</li>`).join('');
+  return `
+    ${fila('Preparación y Día 0', 0, 8)}
+    ${fila('Día 1 · 8:00', 8, 13)}
+    <details class="mt-3 text-xs text-gray-600">
+      <summary class="cursor-pointer text-red-700 font-semibold">✕ Dónde el proceso puede detenerse o rechazarse</summary>
+      <ul class="mt-2 space-y-1 list-none">${motivos}
+        <li><b>Cierre de remuneraciones:</b> durante las fechas de cierre no se firman contratos ni se entrega el EPP.</li>
+      </ul>
+    </details>`;
+}
+
+function guiaCortaHtml(rol) {
+  const g = GUIA_CORTA[rol];
+  if (!g) return '';
+  let n = 0;
+  const pasos = g.pasos.map(it => {
+    if (it[0] === 'H') return `<p class="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mt-4 mb-1">${it[1]}</p>`;
+    n += 1;
+    return `<div class="flex gap-3 py-1.5"><span class="shrink-0 w-6 h-6 rounded-full bg-gray-900 text-white text-xs font-bold flex items-center justify-center">${n}</span>
+      <div><p class="font-semibold text-gray-900">${it[1]}</p><p class="text-gray-600 text-[13px] leading-snug">${it[2]}</p></div></div>`;
+  }).join('');
+  return `
+    <p class="text-gray-700 mb-3">${g.mision}</p>
+    ${pasos}
+    <div class="mt-4 bg-orange-50 border border-orange-100 rounded-xl px-4 py-3">
+      <p class="text-[11px] font-semibold text-orange-700 uppercase tracking-wide mb-1">Si algo falla</p>
+      <ul class="list-disc pl-5 space-y-1 text-[13px] text-gray-700">${g.falla.map(f => `<li>${f}</li>`).join('')}</ul>
+    </div>`;
+}
+
 function abrirGuia(rol) {
   const datos = GUIA_POR_ROL[rol];
   if (!datos) return;
@@ -164,13 +575,24 @@ function abrirGuia(rol) {
     <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-6 relative max-h-[85vh] overflow-y-auto">
       <button onclick="cerrarGuia()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-xl leading-none">✕</button>
       <h2 class="text-lg font-bold text-gray-900 mb-1">${datos.titulo}</h2>
-      <p class="text-xs text-gray-400 mb-5">Cómo funciona el proceso completo y qué te toca hacer a ti en cada etapa.</p>
+      <p class="text-xs text-gray-400 mb-4">Tu parte, en breve. El detalle completo está más abajo.</p>
 
-      <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Proceso completo, de punta a punta</p>
-      <div class="bg-gray-50 rounded-xl p-4 mb-6 text-sm">${GUIA_RESUMEN_GENERAL}</div>
+      <div class="bg-gray-50 rounded-xl p-4 mb-5">${flujoCompactoHtml(GUIA_CORTA[rol] ? GUIA_CORTA[rol].hitos : [])}</div>
 
-      <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Tu parte en el proceso</p>
-      <div class="text-sm">${datos.contenido}</div>
+      <div class="text-sm">${guiaCortaHtml(rol)}</div>
+
+      <div class="flex flex-wrap gap-2 mt-5">
+        <button onclick="window.open(API_BASE_URL + '/auth/guia.php', '_blank')" class="text-sm font-semibold text-orange-700 border border-orange-200 bg-orange-50 hover:bg-orange-100 px-3 py-1.5 rounded-lg">📄 Guía rápida (PDF)</button>
+        <button onclick="cerrarGuia(); abrirFlujo()" class="text-sm font-semibold text-indigo-700 border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg">🔀 Ver flujo detallado</button>
+      </div>
+
+      <details class="mt-5 border-t border-gray-100 pt-3">
+        <summary class="cursor-pointer text-xs font-semibold text-gray-500">Ver el detalle completo (texto largo)</summary>
+        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mt-4 mb-3">Proceso completo, de punta a punta</p>
+        <div class="bg-gray-50 rounded-xl p-4 mb-6 text-sm">${GUIA_RESUMEN_GENERAL}</div>
+        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Tu parte en el proceso (detalle)</p>
+        <div class="text-sm">${datos.contenido}</div>
+      </details>
     </div>`;
 
   modal.classList.remove('hidden');

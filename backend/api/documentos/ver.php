@@ -67,6 +67,36 @@ $extension = strtolower(pathinfo($rutaCompleta, PATHINFO_EXTENSION));
 $tiposMime = ['pdf' => 'application/pdf', 'jpg' => 'image/jpeg', 'png' => 'image/png'];
 $mime = $tiposMime[$extension] ?? 'application/octet-stream';
 
+// v10.37: "Descargar" -- siempre como PDF (si el documento quedó guardado como imagen se
+// envuelve en un PDF de una página) y con un nombre útil: <documento>_<RUT>_<Apellido Nombre>.pdf
+// para que al guardarlo en el PC quede identificado sin tener que abrirlo.
+if (!empty($_GET['descargar'])) {
+    $etiquetas = [
+        'cv' => 'CV', 'cedula_identidad' => 'Cedula_frente', 'cedula_identidad_reverso' => 'Cedula_reverso',
+        'certificado_afp' => 'Certificado_AFP', 'cotizaciones_afp' => 'Cotizaciones_AFP', 'certificado_salud' => 'Certificado_salud',
+        'ultimo_finiquito' => 'Ultimo_finiquito', 'certificado_residencia' => 'Certificado_residencia',
+    ];
+    $stmtP = $pdo->prepare('SELECT rut, nombre, apellido FROM postulaciones WHERE id = :id');
+    $stmtP->execute(['id' => $postulacionId]);
+    $per = $stmtP->fetch() ?: ['rut' => '', 'nombre' => '', 'apellido' => ''];
+    $limpiar = fn (string $t) => trim(preg_replace('/_+/', '_', preg_replace('/[^A-Za-z0-9]+/', '_', iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $t) ?: $t)), '_');
+    $nombreArchivo = implode('_', array_filter([$etiquetas[$tipo], $limpiar((string)$per['rut']), $limpiar($per['apellido'] . ' ' . $per['nombre'])])) . '.pdf';
+
+    $bytes = (string)file_get_contents($rutaCompleta);
+    if ($extension !== 'pdf') {
+        require_once __DIR__ . '/../../includes/pdf_simple.php';
+        $bytes = generarPdfDeImagen($bytes) ?? '';
+        if ($bytes === '') {
+            responderError('No fue posible convertir el documento a PDF.', 500);
+        }
+    }
+    header('Content-Type: application/pdf');
+    header('Content-Disposition: attachment; filename="' . $nombreArchivo . '"');
+    header('Content-Length: ' . strlen($bytes));
+    echo $bytes;
+    exit;
+}
+
 header('Content-Type: ' . $mime);
 header('Content-Disposition: inline; filename="' . $tipo . '-postulacion-' . $postulacionId . '.' . $extension . '"');
 header('Content-Length: ' . filesize($rutaCompleta));

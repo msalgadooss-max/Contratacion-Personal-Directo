@@ -158,3 +158,60 @@ function generarPdfExperiencia(string $nombre, string $rut, string $experiencia,
     $pdf .= "trailer\n<< /Size {$total} /Root 1 0 R >>\nstartxref\n{$inicioXref}\n%%EOF\n";
     return $pdf;
 }
+
+/**
+ * v10.37 - Envuelve una imagen (JPG o PNG) en un PDF de una página (A4, horizontal o
+ * vertical según la foto), para poder descargar cualquier documento como PDF aunque
+ * se haya guardado como imagen. Devuelve null si la imagen no se puede leer.
+ * (La orientación ya viene corregida desde el formulario del postulante.)
+ */
+function generarPdfDeImagen(string $bytesImagen): ?string
+{
+    if (!function_exists('imagecreatefromstring')) {
+        return null;
+    }
+    $im = @imagecreatefromstring($bytesImagen);
+    if (!$im) {
+        return null;
+    }
+    $w = imagesx($im);
+    $h = imagesy($im);
+    $lienzo = imagecreatetruecolor($w, $h);
+    imagefill($lienzo, 0, 0, imagecolorallocate($lienzo, 255, 255, 255)); // PNG con transparencia: fondo blanco
+    imagecopy($lienzo, $im, 0, 0, 0, 0, $w, $h);
+    ob_start();
+    imagejpeg($lienzo, null, 88);
+    $jpg = (string)ob_get_clean();
+
+    $vertical = $h >= $w;
+    $pw = $vertical ? 595 : 842;
+    $ph = $vertical ? 842 : 595;
+    $margen = 24;
+    $esc = min(($pw - 2 * $margen) / $w, ($ph - 2 * $margen) / $h);
+    $dw = $w * $esc;
+    $dh = $h * $esc;
+    $contenido = sprintf("q %.2f 0 0 %.2f %.2f %.2f cm /Im0 Do Q\n", $dw, $dh, ($pw - $dw) / 2, ($ph - $dh) / 2);
+
+    $objetos = [
+        1 => '<< /Type /Catalog /Pages 2 0 R >>',
+        2 => '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+        3 => "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 {$pw} {$ph}] /Resources << /XObject << /Im0 5 0 R >> >> /Contents 4 0 R >>",
+        4 => '<< /Length ' . strlen($contenido) . " >>\nstream\n" . $contenido . 'endstream',
+        5 => "<< /Type /XObject /Subtype /Image /Width {$w} /Height {$h} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length "
+            . strlen($jpg) . " >>\nstream\n" . $jpg . "\nendstream",
+    ];
+    $pdf = "%PDF-1.4\n";
+    $offsets = [];
+    foreach ($objetos as $id => $cuerpo) {
+        $offsets[$id] = strlen($pdf);
+        $pdf .= "{$id} 0 obj\n{$cuerpo}\nendobj\n";
+    }
+    $inicioXref = strlen($pdf);
+    $total = count($objetos) + 1;
+    $pdf .= "xref\n0 {$total}\n0000000000 65535 f \n";
+    foreach ($offsets as $off) {
+        $pdf .= sprintf("%010d 00000 n \n", $off);
+    }
+    $pdf .= "trailer\n<< /Size {$total} /Root 1 0 R >>\nstartxref\n{$inicioXref}\n%%EOF\n";
+    return $pdf;
+}
