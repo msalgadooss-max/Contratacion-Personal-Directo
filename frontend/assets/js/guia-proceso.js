@@ -33,8 +33,8 @@ const GUIA_RESUMEN_GENERAL = `
       <div><p class="font-semibold text-gray-900">Día 0 (postulación): el JAO verifica y Prevención verifica</p>
       <p class="text-gray-600">Portería confirma su ingreso con el QR (control de la puerta). El JAO verifica que el RUT coincida con la cédula y le da su check -- sin depender de que Portería haya escaneado. Después Prevención hace su verificación y también le da su check -- ahí termina su día de postulación y el postulante recibe un correo: "preséntate mañana a las 8 am".</p></div></li>
     <li class="flex gap-3"><span class="shrink-0 w-6 h-6 rounded-full bg-gray-200 text-gray-700 text-xs font-bold flex items-center justify-center">7</span>
-      <div><p class="font-semibold text-gray-900">Día 1 (contratación, 8 am): Portería autoriza, JAO firma y enrola, Prevención hace la IRL y Bodega entrega el EPP</p>
-      <p class="text-gray-600">El trabajador vuelve al otro día: Portería ve su fase por cédula y autoriza su paso a contratación (el JAO recibe el aviso), firma el contrato y su enrolamiento de asistencia con el JAO, pasa con Prevención a la IRL (segundo check) y luego a Bodega por su kit. Al entregarlo, el postulante queda <b>✔ Contratado</b> y listo para incorporarse a la cuadrilla del Capataz que lo reclutó, y Bodega envía una nómina con todos los liberados a Capataz, Jefe de Terreno y el resto del equipo.</p></div></li>
+      <div><p class="font-semibold text-gray-900">Día 1 (contratación, 8 am): Portería autoriza, JAO firma y enrola, Prevención confirma la IRL en dos pasos y Bodega entrega el EPP</p>
+      <p class="text-gray-600">El trabajador vuelve al otro día: Portería ve su fase por cédula y autoriza su paso a contratación (el JAO recibe el aviso), firma el contrato y su enrolamiento de asistencia con el JAO, pasa con Prevención a la IRL (primero se confirma que está presente en la sala y después que la IRL se realizó) y recién ahí va a Bodega por su kit. Al entregarlo, el postulante queda <b>✔ Contratado</b> y listo para incorporarse a la cuadrilla del Capataz que lo reclutó, y Bodega envía una nómina con todos los liberados a Capataz, Jefe de Terreno y el resto del equipo.</p></div></li>
     <li class="flex gap-3"><span class="shrink-0 w-6 h-6 rounded-full bg-green-100 text-green-700 text-xs font-bold flex items-center justify-center">8</span>
       <div><p class="font-semibold text-gray-900">Cierre: Capataz/Jefe de Terreno lo van a buscar</p>
       <p class="text-gray-600">Con el EPP entregado, a Capataz y Jefe de Terreno les aparece un aviso en su panel (franja verde y contador rojo en "Personal Contratado") para que lo busquen en sala de reuniones o Bodega. Al confirmar que lo recibieron, el proceso queda <b>✔ completo</b> de punta a punta.</p></div></li>
@@ -49,7 +49,7 @@ const GUIA_POR_ROL = {
       <p class="text-xs text-gray-500 mb-3">🔑 <b>Tu clave:</b> la primera vez que entres con la clave temporal que te dieron, la plataforma te pide cambiarla. Puedes cambiarla cuando quieras con el enlace <b>"Mi clave"</b> junto a tu nombre.</p>
       <p class="text-gray-700 mb-4">Tu rol es <b>solicitar cupos y hacer seguimiento</b> -- ya no apruebas ni rechazas postulantes uno por uno; eso lo hace el Capataz, en persona, en portería.</p>
       <ul class="space-y-2.5 text-gray-700">
-        <li>• <b>Pestaña "Solicitar Cupos":</b> pide, por ejemplo, "5 jornales". La solicitud queda <b>Pendiente</b> hasta que el Administrador de Contrato la aprueba -- recién ahí se abre la vacante y el cargo muestra cupos disponibles. En la tabla de abajo ves el estado de tus solicitudes (Pendiente/Aprobada/Rechazada).</li>
+        <li>• <b>Pestaña "Solicitar Cupos":</b> pide, por ejemplo, "5 jornales". En «Para el Capataz» puedes reservar los cupos a uno de tu equipo, o usar «Repartir entre varios Capataces» (por ejemplo 3 a uno y 2 a otro, en un solo envío). La solicitud queda <b>Pendiente</b> hasta que el Administrador de Contrato la aprueba -- recién ahí se abre la vacante y el cargo muestra cupos disponibles. En la tabla de abajo ves el estado de tus solicitudes (Pendiente/Aprobada/Rechazada).</li>
         <li>• <b>¿El cargo que necesitas no está en la lista?</b> Elige "➕ Otro (agregar cargo nuevo)" y escribe su nombre -- el cargo se crea en el catálogo recién cuando el Administrador de Contrato apruebe esa solicitud, no antes.</li>
         <li>• <b>Pestaña "Banco de Postulantes":</b> de solo lectura -- todos los que acaban de llegar por el formulario público (QR), esperando que el Capataz los seleccione en persona. La única acción es la columna <b>Asignado a</b>: si alguien llegó referido a un Capataz que hoy no está en la obra, puedes pasarlo a otro Capataz o devolverlo al banco común.</li>
         <li>• <b>Pestaña "Postulantes":</b> quienes el Capataz ya seleccionó y siguen avanzando (completando Etapa 2, en revisión del JAO, etc.).</li>
@@ -85,7 +85,8 @@ const GUIA_POR_ROL = {
     contenido: `
       <p class="text-gray-700 mb-4">Tu tarea es <b>aprobar los cupos</b> que pide Jefe de Terreno -- ahí termina tu parte del proceso. Ya no autorizas contratación por contratación: eso lo maneja el Capataz al seleccionar, y el JAO se entera directo.</p>
       <ul class="space-y-2.5 text-gray-700">
-        <li>• <b>Pestaña "Solicitudes de Cupo":</b> Jefe de Terreno pide cupos por cargo. Al aprobar, se abre la vacante (el cargo pasa a mostrar esos cupos como disponibles) y se avisa por correo a Jefe de Terreno, a los Capataz y al JAO.</li>
+        <li>• <b>Pestaña "Solicitudes de Cupo":</b> Jefe de Terreno pide cupos por cargo. Al aprobar, se abre la vacante (el cargo pasa a mostrar esos cupos como disponibles) y se avisa por correo a Jefe de Terreno, a los Capataz y al JAO. Si la solicitud era para un Capataz en particular, esos cupos quedan reservados solo para él.</li>
+        <li>• <b>Pestaña "Mi equipo":</b> mapa de la gente de la obra: cada Profesional de Terreno con sus capataces agrupados por frente y, al mismo nivel, Prevención, el JAO y el Jefe de Bodega (que no tienen equipo a cargo).</li>
         <li>• Puedes abrir una cantidad distinta a la pedida (ej. pidieron 5, solo hay presupuesto para 3) y dejar una observación.</li>
         <li>• <b>Pestaña "Estado del proceso":</b> cada trabajador activo, individualizado, con la etapa exacta en la que está ahora mismo -- útil para responder "¿cómo va tal persona?" sin tener que preguntarle a otro rol. Arriba, un resumen de tiempos promedio (postulante llenando Etapa 2, JAO hasta finalizar) con filtro por fecha y exportación a Excel.</li>
       </ul>`,
@@ -101,7 +102,7 @@ const GUIA_POR_ROL = {
         <li>• <b>Todos los documentos, siempre a la vista:</b> en cada tarjeta ves los 7 documentos (cédula frente y reverso, certificado de AFP, <b>últimas 12 cotizaciones AFP</b>, Fonasa/Isapre, finiquito y residencia), estén subidos o no. Junto a cada uno: ✕ observar (esto sí frena la firma hasta que el postulante lo corrija), <b>⏳ pendiente de entrega</b>, <b>○ opcional</b> (para esta persona no se exige), <b>✓ entregado</b> y ↺ quitar la marca. Pendiente y opcional <b>no frenan nada</b>: la persona sigue su camino y al firmar queda anotado en la bitácora qué faltaba. La cédula no se puede dejar pendiente.</li>
         <li>• <b>Pendientes que entrega el postulante:</b> si dejó algo "pendiente de entrega", lo puede subir él mismo desde su seguimiento (útil si postula a distancia); en cuanto lo sube, el documento aparece solo en tu tarjeta como entregado.</li>
         <li>• <b>CV:</b> si la persona no subió CV y contó su experiencia, "CV" abre un PDF con su nombre, RUT y la experiencia que declaró. Si ya trabajó antes, su tarjeta muestra <b>♻ Ya trabajó antes</b> con la recomendación del Jefe de Terreno, un botón <b>"Ver historial"</b> con todas sus contrataciones anteriores, y el código de ficha de la última viene prellenado en los datos de nómina.</li>
-        <li>• <b>Día 1, 8am -- Firmar Contrato (y enrolamiento de asistencia):</b> cuando Portería autoriza el paso de la persona a contratación te llega un aviso por correo y su tarjeta muestra "✓ Paso autorizado por Portería" (si Portería no alcanzó, usa "Confirmar manualmente" en la tarjeta). Se habilita recién cuando ya verificaste la identidad, Prevención hizo su verificación del Día 0, completaste los datos de nómina Y no queda ningún documento observado. Al firmar, la persona pasa con Prevención a la <b>IRL</b> y después a Bodega -- queda Contratado recién cuando Bodega entrega el kit de EPP.</li>
+        <li>• <b>Día 1, 8am -- Firmar Contrato (y enrolamiento de asistencia):</b> cuando Portería autoriza el paso de la persona a contratación te llega un aviso por correo y su tarjeta muestra "✓ Paso autorizado por Portería" (si Portería no alcanzó, usa "Confirmar manualmente" en la tarjeta). Se habilita recién cuando ya verificaste la identidad, Prevención hizo su verificación del Día 0, completaste los datos de nómina Y no queda ningún documento observado. Si tiene documentos <b>pendientes</b> de entrega, el sistema te los muestra y pregunta «¿Firmar igual?» (no impiden firmar, pero quedan anotados). Al firmar, la persona pasa con Prevención a la <b>IRL</b> y después a Bodega -- queda Contratado recién cuando Bodega entrega el kit de EPP.</li>
         <li>• <b>⏱ "Ver tiempos":</b> en cada tarjeta, el detalle de cuándo se hizo cada paso y cuánto demoró, desde que el Capataz seleccionó a la persona.</li>
         <li>• <b>Ventana de contratación:</b> tú fijas las fechas en que se puede contratar (Desde / Hasta); fuera de ellas no se puede firmar contrato ni entregar EPP. Debe incluir el día en que se contrata.</li>
         <li>• <b>Estado en vivo:</b> arriba ves en qué paso va cada persona y cuáles están "pendientes en tu bandeja".</li>
@@ -115,7 +116,7 @@ const GUIA_POR_ROL = {
       <p class="text-gray-700 mb-4">Tienes <b>dos check, uno por día, cada uno en su pestaña</b> (con un número de pendientes). En ambos, marcas el casillero de la persona y confirmas (no se puede deshacer).</p>
       <ul class="space-y-2.5 text-gray-700">
         <li>• <b>Pestaña "Día 0 · Postulación" (verificación):</b> ves a cada persona apenas el JAO verifica su identidad. Al confirmar tu check termina su día: el postulante recibe el correo "preséntate mañana a las 8 am".</li>
-        <li>• <b>Pestaña "Día 1 · Contratación (IRL)", 8 am:</b> aparece ahí apenas el JAO firma su contrato. Cuando hiciste la IRL, la marcas -- ahí la persona pasa a Bodega para la entrega del kit.</li>
+        <li>• <b>Pestaña "Día 1 · Contratación (IRL)", 8 am:</b> aparece ahí apenas el JAO firma su contrato. Marca primero <b>"Presentes en la sala"</b> (la persona sigue en tu lista) y, cuando se haga la IRL, <b>"IRL realizada"</b> -- recién ahí pasa a Bodega para la entrega del kit.</li>
         <li>• Si el catálogo de cursos está activo, al confirmar tu check del Día 0 esos cursos quedan <b>aprobados</b> automáticamente para esa persona.</li>
         <li>• Si alguien no te aparece en el Día 0, es porque el JAO todavía no le da su "Coincide".</li>
         <li>• No ves datos sensibles de la persona (AFP, banco, etc.) -- solo lo necesario para identificarla.</li>
@@ -126,9 +127,10 @@ const GUIA_POR_ROL = {
     contenido: `
       <p class="text-gray-700 mb-4">Tu parte es <b>entregar el kit de EPP</b> -- el paso que cierra el ciclo completo y deja a la persona ✔ Contratada.</p>
       <ul class="space-y-2.5 text-gray-700">
-        <li>• Las tallas (calzado y overol) de quienes completan su postulación te llegan en <b>un solo correo</b>, que tú mismo envías con el botón "Enviar tallas por correo" de tu panel -- lo ideal es a las 14:00, cuando ya no entran más postulantes (pasada esa hora, la tarjeta se pone <b>roja</b> mientras queden tallas sin enviar). Si alguien completa después, queda pendiente y sale en un envío aparte. Así preparas los kits con anticipación, antes de que las personas vuelvan al día siguiente.</li>
+        <li>• Las tallas (calzado y overol) de quienes completan su postulación te llegan en <b>un solo correo con el Excel adjunto</b>, que sale solo a las 14:00 (o antes, con el botón "Enviar tallas por correo" de tu panel), cuando ya no entran más postulantes (pasada esa hora, la tarjeta se pone <b>roja</b> mientras queden tallas sin enviar). Si alguien completa después, queda pendiente y sale en un envío aparte. Así preparas los kits con anticipación, antes de que las personas vuelvan al día siguiente.</li>
         <li>• <b>Excel de tallas:</b> en esa misma tarjeta, el botón <b>"Descargar Excel"</b> baja la lista con nombre, RUT, cargo y tallas, y una hoja con cuántos kits de cada medida debes preparar. Aunque ya hayas enviado el correo, puedes bajar el Excel de todo el personal en proceso.</li>
-        <li>• <b>El botón de entrega se habilita recién cuando el JAO ya firmó el contrato Y Prevención registró la IRL</b> (día 1, 8 am) -- antes de eso ves qué falta: "esperando firma de contrato" o "esperando IRL". Cuando se habilita, te llega el aviso "Entrega EPP ahora".</li>
+        <li>• <b>Liberados para ingresar:</b> tarjeta arriba con las personas que ya tienen el check de Prevención del Día 0. Elige el día (o un rango), filtra por cargo, capataz o estado y descarga el Excel con nombre, RUT, cargo, capataz, frente, tallas y estado.</li>
+        <li>• <b>El botón de entrega se habilita recién cuando el JAO ya firmó el contrato Y Prevención confirmó "IRL realizada"</b> (día 1, 8 am; no basta con "presentes en la sala") -- antes de eso ves qué falta: "esperando firma de contrato" o "esperando IRL realizada". Cuando se habilita, te llega el aviso "Entrega EPP ahora".</li>
         <li>• Al confirmar la entrega, el cupo ya estaba reservado desde que el Capataz seleccionó a la persona -- tu acción deja el estado en <b>Contratado</b> y le avisa al postulante con su QR final de acceso.</li>
         <li>• <b>Nómina de liberados:</b> arriba de la lista aparece una tabla con todos los que ya liberaste y todavía no avisaste. Cuando termines de entregar el grupo, aprieta <b>"Enviar nómina por correo"</b>: sale UN solo correo con la tabla a Jefe de Terreno, Capataces, Administrador de Contrato, JAO y Prevención (no un aviso por cada trabajador). Cada persona aparece una sola vez.</li>
       </ul>`,
@@ -163,7 +165,7 @@ const GUIA_CORTA = {
    [
     "P",
     "Solicita los cupos",
-    "Pestaña <b>Solicitar Cupos</b>: elige cargo y cantidad (ej. 5 jornales) y aprieta «Solicitar cupos». Queda <b>Pendiente</b> hasta que el Administrador apruebe. Si el cargo no existe, elige «Otro» y escribe su nombre."
+    "Pestaña <b>Solicitar Cupos</b>: cargo y cantidad. «Para el Capataz» los reserva a uno de tu equipo; <b>«Repartir entre varios Capataces»</b> divide el pedido (3 a uno, 2 a otro). Queda <b>Pendiente</b> hasta que el Administrador apruebe. Si el cargo no existe, elige «Otro»."
    ],
    [
     "P",
@@ -177,8 +179,8 @@ const GUIA_CORTA = {
    ],
    [
     "P",
-    "Sigue a los postulantes",
-    "Pestañas <b>Banco de Postulantes</b> y <b>Postulantes</b>: solo lectura. En «Asignado a» puedes pasar un referido a otro capataz si el suyo no está."
+    "Sigue a tu gente",
+    "Pestañas <b>Banco de Postulantes</b> y <b>Postulantes</b>: solo lectura, y solo ves a las personas de tus capataces. En «Asignado a» pasas un referido a otro capataz de tu equipo."
    ],
    [
     "P",
@@ -193,7 +195,7 @@ const GUIA_CORTA = {
   ],
   "falla": [
    "Si el Administrador rechaza la solicitud, no se abre ningún cupo: vuelve a pedirla.",
-   "Si no ves el cargo que necesitas, usa «Otro»: se crea cuando se aprueba.",
+   "Si alguien no entra a «Continúa tu postulación», usa «Enlace de Etapa 2» en su fila (dura 7 días).",
    "Tu clave: enlace «Mi clave», junto a tu nombre."
   ]
  },
@@ -216,7 +218,7 @@ const GUIA_CORTA = {
    [
     "P",
     "Se abre la vacante",
-    "Al aprobar, el cargo muestra esos cupos como disponibles y se avisa por correo al Jefe de Terreno, a los capataces y al JAO."
+    "Al aprobar, el cargo muestra esos cupos como disponibles y se avisa por correo. Si la solicitud decía «para el Capataz X», esos cupos quedan reservados solo para él."
    ],
    [
     "P",
@@ -226,7 +228,12 @@ const GUIA_CORTA = {
    [
     "P",
     "Mira los tiempos",
-    "Arriba, un resumen de tiempos del proceso con filtro Desde / Hasta y botón «Excel»."
+    "Arriba, un resumen de tiempos del proceso con filtro Desde / Hasta y botón «Excel». «Ver tiempos» en cada persona muestra cada paso, de qué rol son los minutos y a quién le toca ahora."
+   ],
+   [
+    "P",
+    "Revisa «Mi equipo»",
+    "Mapa de tu gente: cada Profesional de Terreno con sus capataces agrupados por frente y, al mismo nivel, Prevención, JAO y Bodega."
    ]
   ],
   "falla": [
@@ -258,7 +265,7 @@ const GUIA_CORTA = {
    [
     "P",
     "Arrastra al cargo",
-    "Mantén apretada la franja naranja y suéltala en la caja del cargo (las cajas quedan fijas arriba). Se reserva un cupo y le sale un correo a la persona."
+    "Mantén apretada la franja naranja y suéltala en la caja del cargo (las cajas quedan fijas arriba). Cada caja muestra los cupos que puedes usar y cuántos son «tuyos» (reservados por tu Profesional de Terreno). Se reserva un cupo y le sale un correo a la persona."
    ],
    [
     "P",
@@ -286,11 +293,11 @@ const GUIA_CORTA = {
    [
     "P",
     "Retira al contratado",
-    "Pestaña <b>Personal Contratado</b>: aprieta <b>«Ya lo retiré»</b> cuando lo vayas a buscar (franja verde y contador rojo)."
+    "Pestaña <b>Personal Contratado</b>: solo aparecen las personas que tú seleccionaste (tu cuadrilla). Aprieta <b>«Ya lo retiré»</b> cuando lo vayas a buscar (franja verde y contador rojo)."
    ]
   ],
   "falla": [
-   "Si no ves el cargo, no tiene vacante: pídele al Jefe de Terreno que solicite cupos.",
+   "Si no ves el cargo, no tiene vacante para ti: pídele a tu Profesional de Terreno que solicite cupos (para ti o generales).",
    "La pantalla se actualiza sola cada 15 s sin desmarcar tu tarjeta.",
    "«Ya trabajó antes» muestra la recomendación del Jefe de Terreno: ayuda, no orden."
   ]
@@ -379,7 +386,7 @@ const GUIA_CORTA = {
    [
     "P",
     "Firma el contrato",
-    "Se habilita solo con: identidad verificada, check de Prevención del Día 0, nómina completa y ningún documento observado."
+    "Se habilita solo con: identidad verificada, check de Prevención del Día 0, nómina completa y ningún documento observado. Si la persona tiene documentos <b>pendientes</b>, el sistema te los muestra y pregunta «¿Firmar igual?»: no impiden firmar, pero quedan anotados."
    ],
    [
     "H",
@@ -398,11 +405,11 @@ const GUIA_CORTA = {
   ],
   "falla": [
    "Si el botón de firmar no se habilita, el panel te dice qué falta.",
-   "Para ver cuánto tardó cada paso de una persona: «Ver tiempos» en su tarjeta."
+   "Para ver cuánto tardó cada paso de una persona, de qué rol son los minutos y a quién le toca ahora: «Ver tiempos» en su tarjeta."
   ]
  },
  "prevencion": {
-  "mision": "Tienes dos checks, uno por día, cada uno en su pestaña. En ambos marcas a la persona y confirmas.",
+  "mision": "El Día 0 tienes un check; el Día 1, dos: «Presentes en la sala» y «IRL realizada». Marcas a la persona y confirmas.",
   "hitos": [
    7,
    10
@@ -433,17 +440,17 @@ const GUIA_CORTA = {
    ],
    [
     "P",
-    "Haz la IRL y márcala",
-    "Con eso la persona pasa a Bodega para recibir su kit."
+    "1.º Marca «Presentes en la sala»",
+    "Cuando ya están en la sala. Siguen en tu lista: aún no pasan a Bodega."
    ],
    [
     "P",
-    "Cursos de inducción",
-    "Si el catálogo de cursos está activo, al confirmar tu check del Día 0 esos cursos quedan aprobados automáticamente."
+    "2.º Marca «IRL realizada»",
+    "Cuando se haga la IRL (se habilita tras el 1.º). Recién ahí pasan a Bodega por su kit."
    ]
   ],
   "falla": [
-   "Solo ves lo necesario para identificar a la persona: no ves AFP, banco ni datos sensibles.",
+   "Solo ves lo necesario para identificar a la persona: no ves AFP, banco ni datos sensibles. Si hay cursos de inducción activos, tu check del Día 0 los aprueba.",
    "Cada pestaña muestra un número con los pendientes."
   ]
  },
@@ -459,13 +466,18 @@ const GUIA_CORTA = {
    ],
    [
     "P",
-    "Envía las tallas",
-    "Botón <b>«Enviar tallas por correo»</b>, idealmente a las 14:00. Sale en un solo correo; si alguien completa después, va en otro envío."
+    "Revisa las tallas",
+    "Salen solas a las 14:00 en un solo correo, con el Excel adjunto (también puedes apretar <b>«Enviar tallas por correo»</b> antes). Si alguien completa después, va en otro envío."
    ],
    [
     "P",
     "Descarga el Excel",
     "En la misma tarjeta, <b>«Descargar Excel»</b>: nombre, RUT, cargo, tallas y cuántos kits de cada medida preparar."
+   ],
+   [
+    "P",
+    "Mira quién ingresa mañana",
+    "Tarjeta <b>«Liberados para ingresar»</b>: personas con el check de Prevención del Día 0. Elige el día, filtra por cargo, capataz o estado y descarga el Excel (nombre, RUT, cargo, capataz, frente, tallas y estado)."
    ],
    [
     "H",
@@ -474,7 +486,7 @@ const GUIA_CORTA = {
    [
     "P",
     "Espera que se habilite",
-    "El botón se habilita cuando el JAO firmó y Prevención registró la IRL. Antes ves «esperando firma» o «esperando IRL»."
+    "El botón se habilita cuando el JAO firmó y Prevención confirmó «IRL realizada» (no basta con «presentes en la sala»). Antes ves «esperando firma» o «esperando IRL realizada»."
    ],
    [
     "P",
@@ -484,7 +496,7 @@ const GUIA_CORTA = {
    [
     "P",
     "Envía la nómina",
-    "Al terminar el grupo, <b>«Enviar nómina por correo»</b>: un solo correo con la tabla a Jefe de Terreno, capataces, Administrador, JAO y Prevención."
+    "Al terminar el grupo, <b>«Enviar nómina por correo»</b>: un solo correo con la tabla y el Excel adjunto (nombre, RUT, cargo, fecha de ingreso y tallas) a Jefe de Terreno, capataces, Administrador, JAO y Prevención."
    ]
   ],
   "falla": [
@@ -508,7 +520,7 @@ const FLUJO_RECHAZOS = {
   6: 'JAO: «No coincide» o un documento observado: el postulante corrige solo ese y se retoma.',
   8: 'Portería no autoriza el paso si falta algún paso del Día 0.',
   9: 'JAO no firma si falta identidad, el check de Prevención, la nómina o hay un documento observado.',
-  11: 'Bodega no entrega el EPP hasta que Prevención registre la IRL.',
+  11: 'Bodega no entrega el EPP hasta que Prevención confirme «IRL realizada» (después de «presentes en la sala»).',
 };
 
 function flujoCompactoHtml(resaltar) {
@@ -651,8 +663,8 @@ const FLUJO_DIAGRAMA_HTML = `
     ${pasoFlujo(8, 'Día 0: Prevención verifica (primer check)', 'Cuando el JAO ya verificó identidad, Prevención marca con un check que su verificación quedó realizada -- ahí termina el día de postulación y el postulante recibe el correo: "preséntate mañana a las 8 am para avanzar en tu proceso".')}
     ${pasoFlujo(9, 'Día 1, 8 am: Portería autoriza su paso a contratación', 'La persona llega a Portería, que la busca por su cédula y ve en qué fase está. Si figura "lista para contratación", Portería autoriza su paso -- ahí el JAO recibe un aviso y a la persona le aparece disponible para firma de contrato en su panel. (Si Portería no alcanza, el JAO puede confirmarlo manualmente desde la tarjeta.)')}
     ${pasoFlujo(10, 'Día 1: JAO firma el contrato y enrola su asistencia', 'Se habilita recién cuando Portería autorizó su paso, ya verificó identidad, Prevención hizo su verificación del Día 0, completó los datos de nómina Y no queda ningún documento observado. Al firmar, la persona pasa con Prevención a la IRL.')}
-    ${pasoFlujo(11, 'Día 1: Prevención hace la IRL (segundo check)', 'Apenas el JAO firma, la persona aparece en la segunda lista de Prevención. Cuando la IRL quedó realizada, Prevención la marca -- ahí pasa a Bodega y Bodega recibe el aviso "Entrega EPP ahora".')}
-    ${pasoFlujo(12, 'Día 1: Bodega entrega el kit de EPP y libera', 'Se habilita recién cuando el JAO firmó Y Prevención registró la IRL. Al entregarlo, el postulante queda ✔ Contratado (el cupo ya se había reservado antes, al momento de la selección del Capataz) y recibe el QR final de acceso a la obra.')}
+    ${pasoFlujo(11, 'Día 1: Prevención confirma la IRL (dos confirmaciones)', 'Apenas el JAO firma, la persona aparece en la segunda lista de Prevención. Primero se marca "Presentes en la sala" (sigue en su lista) y, cuando la IRL quedó realizada, "IRL realizada" -- ahí pasa a Bodega y Bodega recibe el aviso "Entrega EPP ahora".')}
+    ${pasoFlujo(12, 'Día 1: Bodega entrega el kit de EPP y libera', 'Se habilita recién cuando el JAO firmó Y Prevención confirmó "IRL realizada". Al entregarlo, el postulante queda ✔ Contratado (el cupo ya se había reservado antes, al momento de la selección del Capataz) y recibe el QR final de acceso a la obra.')}
     ${pasoFlujo(13, 'Bodega envía la nómina de liberados', 'Cuando termina de entregar el grupo, Bodega envía UN solo correo con la tabla de todos los trabajadores liberados (nombre, RUT, cargo, hora y quién los seleccionó) a Jefe de Terreno, Capataces, Administrador de Contrato, JAO y Prevención -- en vez de un aviso suelto por cada trabajador.')}
     ${pasoFlujo(14, 'Capataz o Jefe de Terreno confirman que lo retiraron', 'Lo van a buscar a la sala de espera y confirman en su panel ("Ya lo retiré"), en la pestaña Personal Contratado (les aparece un aviso verde en el panel apenas hay alguien listo). La persona queda en condiciones de incorporarse a la cuadrilla del Capataz que la reclutó, y el ciclo completo queda cerrado, desde la postulación hasta su primer día de trabajo.', { ultimo: true })}
   </div>`;
