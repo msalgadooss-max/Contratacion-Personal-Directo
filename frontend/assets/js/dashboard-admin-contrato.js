@@ -45,6 +45,84 @@ function cambiarTab(tab) {
   if (tab === 'solicitudes_cupo') {
     cargarSolicitudesCupo();
   }
+  // v10.42: el mapa de equipo es ancho; solo en esa pestaña el contenido usa casi todo el ancho de la pantalla.
+  const principal = document.querySelector('main');
+  principal.classList.toggle('max-w-6xl', tab !== 'equipo');
+  principal.classList.toggle('max-w-[2200px]', tab === 'equipo');
+  if (tab === 'equipo') {
+    cargarOrganigramaAdmin();
+  }
+}
+
+// --- v10.42: "Mi equipo" -- mapa general de la gente de la obra ------------
+function ogGrupo(g) {
+  const sin = !g.frente;
+  const nombres = g.capataces.map(c => `<li class="text-[13px] text-gray-800 bg-white border border-gray-200 rounded-lg px-2.5 py-1">${esc(c.nombre)}</li>`).join('');
+  return `
+    <div class="og-grupo">
+      <div class="rounded-xl border ${sin ? 'border-dashed border-gray-300 bg-gray-50' : 'border-orange-200 bg-orange-50/60'} p-3">
+        <p class="text-xs font-bold ${sin ? 'text-gray-500' : 'text-orange-800'} mb-1.5">${sin ? 'Sin frente asignado' : esc(g.frente)}
+          <span class="ml-1 font-semibold text-gray-400">· ${g.capataces.length}</span></p>
+        <ul class="space-y-1">${nombres}</ul>
+      </div>
+    </div>`;
+}
+
+function ogColumnaPT(titulo, nombre, detalle, grupos, claseTitulo) {
+  const cuerpo = grupos.length ? grupos.map(ogGrupo).join('') : '<p class="text-xs text-gray-400 py-1">Sin capataces asignados.</p>';
+  return `
+    <div class="og-hijo">
+      <div class="${claseTitulo} rounded-xl px-4 py-3">
+        <p class="text-[10px] uppercase tracking-wide font-semibold opacity-80">${titulo}</p>
+        <p class="font-bold text-sm leading-snug mt-0.5">${nombre}</p>
+        <p class="text-[11px] opacity-70 mt-1">${detalle}</p>
+      </div>
+      <div class="og-cuerpo">${cuerpo}</div>
+    </div>`;
+}
+
+async function cargarOrganigramaAdmin() {
+  const cont = document.getElementById('og-contenido');
+  try {
+    const d = await apiFetch('/admin_contrato/organigrama.php');
+    const nFrentes = (pt) => pt.frentes.filter(f => f.frente).length;
+    const plural = (n, uno, varios) => `${n} ${n === 1 ? uno : varios}`;
+    const cols = d.profesionales.map(pt => ogColumnaPT(
+      'Profesional de Terreno', esc(pt.nombre),
+      `${plural(pt.total_capataces, 'capataz', 'capataces')} · ${plural(nFrentes(pt), 'frente', 'frentes')}`,
+      pt.frentes, 'bg-gray-900 text-white'));
+    if (d.total_sin_profesional) {
+      cols.push(ogColumnaPT('Sin Profesional de Terreno', 'Por asignar', `${d.total_sin_profesional} capataces`,
+        d.sin_profesional, 'border-2 border-dashed border-gray-300 text-gray-700'));
+    }
+    const colores = {
+      Prevencionista: 'bg-green-50 border-green-200 text-green-900',
+      Jefe_Administrativo: 'bg-indigo-50 border-indigo-200 text-indigo-900',
+      Jefe_Bodega: 'bg-amber-50 border-amber-200 text-amber-900',
+    };
+    const apoyo = d.apoyo.map(a => `
+      <div class="og-hijo og-apoyo">
+        <div class="rounded-xl border ${colores[a.rol] || 'bg-gray-50 border-gray-200'} px-4 py-3">
+          <p class="text-[10px] uppercase tracking-wide font-semibold opacity-80">${esc(a.etiqueta)}</p>
+          <p class="font-bold text-sm leading-snug mt-0.5">${esc(a.nombre)}</p>
+          <p class="text-[11px] opacity-70 mt-1">Sin equipo a cargo</p>
+        </div>
+      </div>`);
+    document.getElementById('og-resumen').textContent =
+      `${plural(d.profesionales.length, 'Profesional de Terreno', 'Profesionales de Terreno')} · ${d.total_capataces} capataces · ${d.apoyo.length} de apoyo (Prevención, JAO y Bodega)`;
+    cont.innerHTML = `
+      <div class="og-arbol">
+        <div class="bg-orange-600 text-white rounded-xl px-5 py-3 text-center min-w-[240px]">
+          <p class="text-[10px] uppercase tracking-wide font-semibold opacity-80">Administrador de Contrato</p>
+          <p class="font-bold text-sm mt-0.5">${esc(d.administrador.nombre)}</p>
+          <p class="text-[11px] opacity-80 mt-0.5">${esc(d.obra)}</p>
+        </div>
+        <div class="og-linea-v"></div>
+        <div class="og-nivel">${cols.join('')}${apoyo.join('')}</div>
+      </div>`;
+  } catch (err) {
+    cont.innerHTML = `<p class="text-sm text-red-600">${esc(err.message)}</p>`;
+  }
 }
 
 // --- v6.9: aprobar/rechazar solicitudes de cupo de Jefe de Terreno --------

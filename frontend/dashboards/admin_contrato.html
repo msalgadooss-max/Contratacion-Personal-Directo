@@ -62,7 +62,33 @@
     <div class="flex gap-1 border-b border-gray-200 mb-6" id="tabs">
       <button data-tab="solicitudes_cupo" class="tab-btn px-4 py-2 text-sm font-semibold border-b-2 border-blue-600 text-blue-600">Solicitudes de Cupo</button>
       <button data-tab="estado_proceso" class="tab-btn px-4 py-2 text-sm font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700">Estado del proceso</button>
+      <button data-tab="equipo" class="tab-btn px-4 py-2 text-sm font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700">Mi equipo</button>
     </div>
+
+    <!-- Tab: Mi equipo (v10.42, pedido del usuario): mapa de la gente de la obra -->
+    <style>
+      .og-arbol { display: inline-flex; flex-direction: column; align-items: center; min-width: 100%; }
+      .og-linea-v { width: 2px; height: 26px; background: #cbd5e1; }
+      .og-nivel { display: flex; justify-content: center; align-items: flex-start; gap: 20px; }
+      .og-hijo { position: relative; padding-top: 26px; width: 272px; display: flex; flex-direction: column; align-items: stretch; flex-shrink: 0; }
+      .og-hijo.og-apoyo { width: 210px; }
+      .og-hijo::before, .og-hijo::after { content: ''; position: absolute; top: 0; width: calc(50% + 10px); height: 26px; border-top: 2px solid #cbd5e1; }
+      .og-hijo::before { right: 50%; border-right: 2px solid #cbd5e1; }
+      .og-hijo::after { left: 50%; }
+      .og-hijo:first-child::before { border-top: none; }
+      .og-hijo:last-child::after { border-top: none; }
+      .og-cuerpo { position: relative; margin: 10px 0 0 22px; padding-left: 14px; border-left: 2px solid #cbd5e1; display: flex; flex-direction: column; gap: 10px; }
+      .og-grupo { position: relative; }
+      .og-grupo::before { content: ''; position: absolute; left: -14px; top: 18px; width: 14px; border-top: 2px solid #cbd5e1; }
+    </style>
+    <section id="panel-equipo" class="tab-panel hidden">
+      <p class="text-xs text-gray-500 mb-1 max-w-2xl">Mapa de la gente de la obra: cada Profesional de Terreno con sus Capataces, agrupados por frente. Al mismo nivel están Prevención, el JAO y el Jefe de Bodega, que no tienen equipo a cargo.</p>
+      <p id="og-resumen" class="text-xs font-semibold text-gray-700 mb-4"></p>
+      <div class="overflow-x-auto pb-4 bg-white rounded-xl shadow-sm p-5">
+        <div id="og-contenido" class="text-sm text-gray-500">Cargando...</div>
+      </div>
+      <p class="text-[11px] text-gray-400 mt-2 sm:hidden">Desliza hacia los lados para ver todo el mapa.</p>
+    </section>
 
     <!-- Tab: Solicitudes de Cupo -->
     <section id="panel-solicitudes_cupo" class="tab-panel">
