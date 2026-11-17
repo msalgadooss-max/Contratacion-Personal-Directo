@@ -188,13 +188,19 @@ function renderCamposDocumentos() {
         return;
       }
       if (archivo.type === 'image/jpeg' || archivo.type === 'image/png') {
-        preview.textContent = '⏳ Convirtiendo a PDF...';
+        preview.textContent = '⏳ Preparando la foto...';
         preview.classList.remove('hidden');
-        archivo = await convertirImagenAPdf(archivo);
-        const dt = new DataTransfer();
-        dt.items.add(archivo);
-        e.target.files = dt.files;
+        try {
+          FOTOS[d.id] = { canvas: await imagenACanvas(archivo), nombre: archivo.name };
+          await aplicarFotoDocumento(d.id);
+        } catch (err) {
+          // Si algo falla se sigue con el archivo original (el servidor acepta JPG/PNG).
+          delete FOTOS[d.id];
+          preview.textContent = `✓ ${archivo.name}`;
+        }
+        return;
       }
+      delete FOTOS[d.id];
       preview.textContent = `✓ ${archivo.name}`;
       preview.classList.remove('hidden');
     });
@@ -300,8 +306,18 @@ function calcularRecorteVideo() {
   };
 }
 
+let FORMATO_ACTUAL = 'documento';
+window.addEventListener('resize', () => {
+  // v10.37: si giran el teléfono con la cámara abierta, el marco se vuelve a medir.
+  const modal = document.getElementById('modal-camara');
+  if (modal && !modal.classList.contains('hidden') && !document.getElementById('marco-vivo').classList.contains('hidden')) {
+    actualizarMarcoEncuadre(FORMATO_ACTUAL);
+  }
+});
+
 async function abrirGuiaCaptura(inputObjetivo, formato = 'documento') {
   INPUT_OBJETIVO_CAPTURA = inputObjetivo;
+  FORMATO_ACTUAL = formato;
   const modal = document.getElementById('modal-camara');
   const video = document.getElementById('video-camara');
   const guiaEstatica = document.getElementById('guia-estatica');
@@ -430,41 +446,98 @@ document.getElementById('btn-usar-foto').addEventListener('click', () => {
 // v10: toda foto (venga de la cámara guiada, de la cámara nativa del
 // celular, o de "elegir archivo") se convierte a PDF de una sola página
 // ANTES de guardarse -- así lo que llega a Bodega/JAO y lo que después
-// se sube a Buk es siempre un PDF, nunca una foto suelta. Si algo falla
-// en la conversión, se sigue con la imagen original (el backend igual
-// acepta JPG/PNG) para no dejar al postulante bloqueado.
-function convertirImagenAPdf(archivo) {
-  return new Promise((resolve) => {
-    if (archivo.type !== 'image/jpeg' && archivo.type !== 'image/png') {
-      resolve(archivo); // ya es PDF u otro tipo permitido: no se toca
-      return;
-    }
-    const lector = new FileReader();
-    lector.onerror = () => resolve(archivo);
-    lector.onload = () => {
+// se sube a Buk es siempre un PDF, nunca una foto suelta.
+//
+// v10.37 (pedido explícito del usuario: "la foto de frente debe salir de
+// frente y no de lado, aunque la persona gire el teléfono"): las fotos que
+// entrega la cámara nativa del celular traen la orientación guardada como
+// una etiqueta EXIF (los píxeles siguen "acostados"). jsPDF incrustaba esos
+// píxeles tal cual, así que el PDF salía de lado o girado según cómo se
+// sostenía el teléfono. Ahora CADA imagen se dibuja primero en un canvas
+// respetando esa etiqueta (queda derecha, sin EXIF), se reduce a un tamaño
+// razonable y recién entonces se arma el PDF. Además, cada foto muestra una
+// miniatura de lo que realmente se enviará y un botón "Girar" por si aun así
+// hubiera que enderezarla.
+const FOTOS = {};            // id del campo -> { canvas, nombre }
+function escaparTextoFoto(t) {
+  return String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+const LADO_MAX_FOTO = 2400;  // px del lado largo: legible y liviano
+
+async function imagenACanvas(archivo) {
+  let fuente;
+  try {
+    // 'from-image' aplica la orientación EXIF; es el comportamiento que queremos.
+    fuente = await createImageBitmap(archivo, { imageOrientation: 'from-image' });
+  } catch (e) {
+    // Navegadores sin esa opción: el <img> ya dibuja respetando EXIF.
+    fuente = await new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(archivo);
       const img = new Image();
-      img.onerror = () => resolve(archivo);
-      img.onload = () => {
-        try {
-          const { jsPDF } = window.jspdf;
-          const vertical = img.height >= img.width;
-          const pdf = new jsPDF({
-            orientation: vertical ? 'portrait' : 'landscape',
-            unit: 'px',
-            format: [img.width, img.height],
-          });
-          const tipo = archivo.type === 'image/png' ? 'PNG' : 'JPEG';
-          pdf.addImage(lector.result, tipo, 0, 0, img.width, img.height);
-          const blob = pdf.output('blob');
-          const nombrePdf = archivo.name.replace(/\.[^.]+$/, '') + '.pdf';
-          resolve(new File([blob], nombrePdf, { type: 'application/pdf' }));
-        } catch (e) {
-          resolve(archivo); // conversión falló: seguimos con la imagen
-        }
-      };
-      img.src = lector.result;
-    };
-    lector.readAsDataURL(archivo);
+      img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('imagen ilegible')); };
+      img.src = url;
+    });
+  }
+  const w0 = fuente.width || fuente.naturalWidth;
+  const h0 = fuente.height || fuente.naturalHeight;
+  const escala = Math.min(1, LADO_MAX_FOTO / Math.max(w0, h0));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.max(1, Math.round(w0 * escala));
+  canvas.height = Math.max(1, Math.round(h0 * escala));
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#fff';           // un PNG con transparencia no debe quedar negro
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(fuente, 0, 0, canvas.width, canvas.height);
+  if (fuente.close) fuente.close();
+  return canvas;
+}
+
+function girarCanvas90(canvas) {
+  const salida = document.createElement('canvas');
+  salida.width = canvas.height;
+  salida.height = canvas.width;
+  const ctx = salida.getContext('2d');
+  ctx.translate(salida.width, 0);
+  ctx.rotate(Math.PI / 2);          // horario
+  ctx.drawImage(canvas, 0, 0);
+  return salida;
+}
+
+function canvasAPdf(canvas, nombreBase) {
+  const { jsPDF } = window.jspdf;
+  const vertical = canvas.height >= canvas.width;
+  const pdf = new jsPDF({ orientation: vertical ? 'portrait' : 'landscape', unit: 'px', format: [canvas.width, canvas.height] });
+  pdf.addImage(canvas.toDataURL('image/jpeg', 0.9), 'JPEG', 0, 0, canvas.width, canvas.height);
+  return new File([pdf.output('blob')], nombreBase.replace(/\.[^.]+$/, '') + '.pdf', { type: 'application/pdf' });
+}
+
+// Deja en el campo el PDF de la foto actual (ya derecha) y muestra miniatura + "Girar".
+async function aplicarFotoDocumento(id) {
+  const foto = FOTOS[id];
+  const input = document.getElementById(id);
+  const preview = document.getElementById(`preview-${id}`);
+  const archivo = canvasAPdf(foto.canvas, foto.nombre);
+  const dt = new DataTransfer();
+  dt.items.add(archivo);
+  input.files = dt.files;
+  const mini = document.createElement('canvas');
+  const k = 120 / Math.max(foto.canvas.width, foto.canvas.height);
+  mini.width = Math.round(foto.canvas.width * k);
+  mini.height = Math.round(foto.canvas.height * k);
+  mini.getContext('2d').drawImage(foto.canvas, 0, 0, mini.width, mini.height);
+  preview.innerHTML = `
+    <span class="flex items-center gap-3">
+      <img src="${mini.toDataURL('image/jpeg', 0.7)}" alt="Foto lista para enviar" class="rounded border border-gray-300 bg-white">
+      <span class="flex flex-col items-start gap-1">
+        <span>✓ ${escaparTextoFoto(archivo.name)}</span>
+        <button type="button" data-girar="${id}" class="text-xs font-semibold text-blue-700 border border-blue-200 bg-blue-50 hover:bg-blue-100 px-2.5 py-1 rounded-lg">↻ Girar si se ve de lado</button>
+      </span>
+    </span>`;
+  preview.classList.remove('hidden');
+  preview.querySelector('[data-girar]').addEventListener('click', async () => {
+    FOTOS[id].canvas = girarCanvas90(FOTOS[id].canvas);
+    await aplicarFotoDocumento(id);
   });
 }
 

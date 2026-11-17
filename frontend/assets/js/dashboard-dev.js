@@ -38,6 +38,7 @@ const ETIQUETAS_ROL = {
   inicializarDatosPrueba();
   cargarTiempos();
   document.getElementById('tiempos-dias').addEventListener('change', cargarTiempos);
+  document.getElementById('tiempos-origen').addEventListener('change', cargarTiempos);
   configurarTabs();
   mostrarQr();
   mostrarQrEncuesta();
@@ -316,7 +317,8 @@ async function cargarTiempos() {
   const dias = document.getElementById('tiempos-dias').value;
   const resumen = document.getElementById('tiempos-resumen');
   try {
-    const data = await apiFetch(`/dev/tiempos_resumen.php?dias=${encodeURIComponent(dias)}`);
+    const origen = document.getElementById('tiempos-origen').value;
+    const data = await apiFetch(`/dev/tiempos_resumen.php?dias=${encodeURIComponent(dias)}&origen=${encodeURIComponent(origen)}`);
     const total = data.proceso_completo;
     resumen.innerHTML = `${data.postulaciones_consideradas} postulaciones consideradas · Proceso completo (selección → retiro): ` +
       (total.n ? `<strong class="text-gray-800">${formatearDuracion(total.mediana)}</strong> de mediana (${total.n} casos)` : 'todavía sin casos terminados');
