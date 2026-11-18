@@ -289,6 +289,21 @@ else
   echo "[entrypoint] ATENCION: www-data NO puede escribir en $UPLOADS_BASE/app_uploads. Las postulaciones con documentos fallaran. Revisa el montaje del disco."
 fi
 
+# v10.48: las sesiones (quien tiene la sesión iniciada) viven en el mismo disco
+# persistente, no en /tmp del contenedor: así un deploy ya no saca a todos.
+# Carpeta 700 de www-data; si no se puede crear, PHP sigue con su carpeta por defecto.
+SESIONES_DIR="$UPLOADS_BASE/app_sesiones"
+if mkdir -p "$SESIONES_DIR" 2>/dev/null; then
+  chown www-data:www-data "$SESIONES_DIR" 2>/dev/null || true
+  chmod 700 "$SESIONES_DIR" 2>/dev/null || true
+  if su -s /bin/sh www-data -c "touch '$SESIONES_DIR/.probe' && rm -f '$SESIONES_DIR/.probe'" 2>/dev/null; then
+    echo "session.save_path=$SESIONES_DIR" > /usr/local/etc/php/conf.d/zz-sesiones.ini
+    echo "[entrypoint] Sesiones guardadas en $SESIONES_DIR (sobreviven a los deploys)."
+  else
+    echo "[entrypoint] AVISO: www-data no puede escribir en $SESIONES_DIR; las sesiones siguen en la carpeta temporal (se pierden en cada deploy)."
+  fi
+fi
+
 rm -rf /app/backend/uploads /app/backend/carpetas_postulantes
 ln -s "$UPLOADS_BASE/app_uploads" /app/backend/uploads
 ln -s "$UPLOADS_BASE/app_carpetas_postulantes" /app/backend/carpetas_postulantes

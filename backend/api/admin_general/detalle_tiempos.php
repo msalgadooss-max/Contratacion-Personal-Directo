@@ -161,7 +161,11 @@ if ($postulacion['admin_autorizado_at'] !== null) {
 }
 $ingresoFaena = $postulacion['ingreso_faena_at'] ?? ($logsExtra['faena']['fecha_hora'] ?? null);
 if ($ingresoFaena !== null) {
-    $hitos[] = ['clave' => 'faena', 'etiqueta' => 'Ingreso a la obra confirmado (Portería)',
+    // v10.48: si lo registró el JAO (a mano o al verificar la identidad) no se dice "Portería".
+    $textoFaena = (string)($logsExtra['faena']['accion'] ?? '');
+    $faenaPorJao = stripos($textoFaena, 'JAO confirmó') !== false || stripos($textoFaena, 'al verificar la identidad') !== false;
+    $hitos[] = ['clave' => 'faena',
+                'etiqueta' => $faenaPorJao ? 'Ingreso a la obra confirmado a mano por el JAO' : 'Ingreso a la obra confirmado (Portería)',
                 'fecha_hora' => $ingresoFaena, 'quien' => $logsExtra['faena']['usuario_nombre'] ?? null];
 }
 if ($postulacion['etapa2_completada_at'] !== null) {

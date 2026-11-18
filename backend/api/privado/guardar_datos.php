@@ -62,6 +62,11 @@ $campos = [
     'talla_overol'                 => limpiarTexto($_POST['talla_overol'] ?? '', 10),
 ];
 
+// v10.48: la ciudad ya no se pregunta; si no viene, se usa la comuna (Buk no trae lista de ciudades).
+if ($campos['ciudad'] === '') {
+    $campos['ciudad'] = $campos['comuna'];
+}
+
 // v10.29: formato de tallas y teléfono de contacto (las tallas le llegan a
 // Bodega para armar el kit de EPP, no pueden venir como texto libre).
 if (($v = normalizarTallaCalzado($campos['talla_calzado'])) === null) {

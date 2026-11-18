@@ -224,6 +224,7 @@ async function cargarUsuariosAdmin() {
           <td class="py-2 pr-3 text-gray-600">${esc(ETIQUETAS_ROL[u.rol] || u.rol)}${u.jefe_terreno_nombre ? `<span class="block text-[11px] text-gray-400">a cargo de ${esc(u.jefe_terreno_nombre)}${u.frente ? ' · ' + esc(u.frente) : ''}</span>` : (u.frente ? `<span class="block text-[11px] text-gray-400">${esc(u.frente)}</span>` : '')}</td>
           <td class="py-2 pr-3">${u.activo
             ? '<span class="text-[11px] font-semibold bg-green-50 text-green-700 border border-green-200 rounded-full px-2 py-0.5">Activo</span>'
+            + (u.activo && u.clave_temporal ? ' <span class="text-[11px] font-semibold bg-amber-50 text-amber-800 border border-amber-200 rounded-full px-2 py-0.5" title="Todavía no cambió su clave temporal">Clave temporal</span>' : '')
             : '<span class="text-[11px] font-semibold bg-gray-100 text-gray-500 border border-gray-200 rounded-full px-2 py-0.5">Desactivado</span>'}</td>
           <td class="py-2 text-right whitespace-nowrap">${acciones}</td>
         </tr>`;
@@ -396,13 +397,13 @@ async function cargarTiempos() {
     const data = await apiFetch(`/dev/tiempos_resumen.php?dias=${encodeURIComponent(dias)}&origen=${encodeURIComponent(origen)}`);
     const total = data.proceso_completo;
     resumen.innerHTML = `${data.postulaciones_consideradas} postulaciones consideradas · Proceso completo (selección → retiro): ` +
-      (total.n ? `<strong class="text-gray-800">${formatearDuracion(total.mediana)}</strong> de mediana (${total.n} casos)` : 'todavía sin casos terminados');
+      (total.n ? `<strong class="text-gray-800">${formatearDuracion(total.mediana)}</strong> de tiempo típico (${total.n} casos)` : 'todavía sin casos terminados');
 
     document.getElementById('tiempos-etapas').innerHTML = `
       <table class="w-full text-sm">
         <thead><tr class="text-left text-xs text-gray-500 border-b border-gray-200">
           <th class="py-2 pr-3 font-semibold">Etapa</th><th class="py-2 pr-3 font-semibold">Rol</th>
-          <th class="py-2 pr-3 font-semibold text-right">Mediana</th><th class="py-2 pr-3 font-semibold text-right">Promedio</th>
+          <th class="py-2 pr-3 font-semibold text-right">Tiempo típico</th><th class="py-2 pr-3 font-semibold text-right">Promedio</th>
           <th class="py-2 pr-3 font-semibold text-right">Más rápido / más lento</th><th class="py-2 pr-3 font-semibold text-right">Casos</th>
           <th class="py-2 font-semibold text-right">Esperando ahora</th>
         </tr></thead>
@@ -427,7 +428,7 @@ async function cargarTiempos() {
       <div class="overflow-x-auto"><table class="w-full text-sm">
         <thead><tr class="text-left text-xs text-gray-500 border-b border-gray-200">
           <th class="py-2 pr-3 font-semibold">Persona</th><th class="py-2 pr-3 font-semibold">Etapa</th>
-          <th class="py-2 pr-3 font-semibold text-right">Mediana</th><th class="py-2 pr-3 font-semibold text-right">Promedio</th>
+          <th class="py-2 pr-3 font-semibold text-right">Tiempo típico</th><th class="py-2 pr-3 font-semibold text-right">Promedio</th>
           <th class="py-2 font-semibold text-right">Casos</th>
         </tr></thead>
         <tbody>${filasUsuarios.map(u => `
