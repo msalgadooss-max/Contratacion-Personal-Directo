@@ -104,7 +104,7 @@ regionSelect.addEventListener('change', () => {
   comunaSelect.innerHTML = '<option value="">Selecciona tu comuna</option>' +
     comunas.map(c => `<option value="${c}">${c}</option>`).join('');
   comunaSelect.disabled = false;
-  document.getElementById('ciudad').value = '';
+  if (!CIUDAD_EDITADA) document.getElementById('ciudad').value = '';
 });
 
 // v10.48: la talla de overol se escribe siempre en mayúsculas (sin espacios).
@@ -113,9 +113,12 @@ document.getElementById('talla_overol').addEventListener('input', (ev) => {
   if (limpio !== ev.target.value) ev.target.value = limpio;
 });
 
-// v10.48: la ciudad se completa sola con la comuna (ya no se pregunta).
+// v10.50: la ciudad se completa sola con la comuna elegida, pero sigue visible y se puede corregir.
+// Si la persona ya la escribió o corrigió a mano, no se le pisa al cambiar la comuna.
+let CIUDAD_EDITADA = false;
+document.getElementById('ciudad').addEventListener('input', () => { CIUDAD_EDITADA = true; });
 comunaSelect.addEventListener('change', () => {
-  document.getElementById('ciudad').value = comunaSelect.value;
+  if (!CIUDAD_EDITADA) document.getElementById('ciudad').value = comunaSelect.value;
 });
 
 // --- v5.1/v6: campos de documento, generados una vez, con captura guiada --
