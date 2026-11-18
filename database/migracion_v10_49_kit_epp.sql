@@ -11,6 +11,9 @@
 -- Catálogo y kits iniciales: SUGERIDOS según el EPP básico habitual en obras de edificación en Chile
 -- (DS 594, Ley 16.744 y Ley 20.096 de radiación UV). Prevención los revisa y ajusta desde su panel.
 
+-- Importante: los nombres llevan tildes; sin esto un cliente mysql con juego de caracteres latin1 los dejaría ilegibles.
+SET NAMES utf8mb4;
+
 CREATE TABLE IF NOT EXISTS epp_items (
     id         INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     nombre     VARCHAR(120) NOT NULL,
