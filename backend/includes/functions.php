@@ -1192,9 +1192,9 @@ const ACCION_TALLAS_ENVIADAS = 'Tallas incluidas en el correo consolidado a Bode
 function tallasSinEnviar(PDO $pdo): array
 {
     $stmt = $pdo->prepare(
-        "SELECT x.id, x.nombre_completo, x.rut, x.nombre_cargo, x.talla_calzado, x.talla_overol, x.ingreso_compania, x.completado_at
+        "SELECT x.id, x.nombre_completo, x.rut, x.cargo_id, x.nombre_cargo, x.talla_calzado, x.talla_overol, x.ingreso_compania, x.completado_at
            FROM (
-                SELECT p.id, p.nombre_completo, p.rut, c.nombre_cargo, d.talla_calzado, d.talla_overol, j.ingreso_compania,
+                SELECT p.id, p.nombre_completo, p.rut, p.cargo_id, c.nombre_cargo, d.talla_calzado, d.talla_overol, j.ingreso_compania,
                        (SELECT MAX(t.fecha_hora) FROM trazabilidad_logs t
                          WHERE t.postulacion_id = p.id
                            AND t.accion LIKE 'Cambio de estado: % -> Aprobado_admin') AS completado_at
@@ -1241,6 +1241,24 @@ function enviarTallasABodega(PDO $pdo, array $personas, ?int $usuarioId): int
     }
 
     $esc = fn ($v) => htmlspecialchars((string)($v === null || $v === '' ? '-' : $v), ENT_QUOTES, 'UTF-8');
+    // v10.49: el kit de EPP de cada persona (según su cargo) y el total a preparar. Si algo falla, el correo sale igual.
+    $kitTotales = [];
+    try {
+        $kitTotales = adjuntarKitEpp($pdo, $personas);
+    } catch (\Throwable $e) {
+        error_log('enviarTallasABodega kit EPP error: ' . $e->getMessage());
+    }
+    $kitTotalesHtml = '';
+    if ($kitTotales) {
+        $kitTotalesHtml = '<h3 style="margin:22px 0 6px;font-size:14px;color:#111827">Total a preparar</h3>'
+            . '<table style="border-collapse:collapse;border:1px solid #e5e7eb;font-size:13px">';
+        foreach ($kitTotales as $t) {
+            $detalle = $t['tallas'] ? ' <span style="color:#6b7280">(' . $esc(implode(', ', array_map(fn ($k, $n) => "{$k}: {$n}", array_keys($t['tallas']), $t['tallas']))) . ')</span>' : '';
+            $kitTotalesHtml .= '<tr><td style="padding:5px 10px;border-bottom:1px solid #e5e7eb">' . $esc($t['nombre']) . $detalle
+                . '</td><td style="padding:5px 10px;border-bottom:1px solid #e5e7eb;font-weight:bold;text-align:right">' . (int)$t['total'] . '</td></tr>';
+        }
+        $kitTotalesHtml .= '</table>';
+    }
     $filasHtml = '';
     foreach (array_values($personas) as $i => $p) {
         $fondo = $i % 2 === 0 ? '#ffffff' : '#f9fafb';
@@ -1252,6 +1270,7 @@ function enviarTallasABodega(PDO $pdo, array $personas, ?int $usuarioId): int
             . '<td style="' . $celda . '">' . $esc($p['nombre_cargo']) . '</td>'
             . '<td style="' . $celda . 'font-weight:bold;text-align:center">' . $esc($p['talla_calzado']) . '</td>'
             . '<td style="' . $celda . 'font-weight:bold;text-align:center">' . $esc($p['talla_overol']) . '</td>'
+            . '<td style="' . $celda . 'font-size:11px;color:#374151">' . $esc($p['kit_texto'] ?? '') . '</td>'
             . '</tr>';
     }
 
@@ -1259,14 +1278,14 @@ function enviarTallasABodega(PDO $pdo, array $personas, ?int $usuarioId): int
     $hora = (new DateTime())->format('H:i');
     $total = count($personas);
     $obra = OBRA_NOMBRE;
-    $html = (function () use ($fecha, $hora, $total, $obra, $filasHtml) {
+    $html = (function () use ($fecha, $hora, $total, $obra, $filasHtml, $kitTotalesHtml) {
         return require __DIR__ . '/../mailer/templates/tallas_bodega.php';
     })();
 
     $asunto = "Tallas de postulantes para preparar kits de EPP - {$fecha} ({$total}) - ICAFAL";
     // v10.38: el mismo listado, en Excel adjunto (nombre, RUT, cargo, fecha de ingreso y tallas).
-    $excel = excelEnMemoria('Tallas EPP', ['N°', 'Nombre', 'RUT', 'Cargo', 'Fecha de ingreso', 'N° calzado', 'Talla overol'],
-        array_map(fn ($i, $p) => [$i + 1, $p['nombre_completo'], $p['rut'], $p['nombre_cargo'], fechaIngresoTexto($p['ingreso_compania'] ?? null), $p['talla_calzado'], $p['talla_overol']],
+    $excel = excelEnMemoria('Tallas EPP', ['N°', 'Nombre', 'RUT', 'Cargo', 'Fecha de ingreso', 'N° calzado', 'Talla overol', 'Kit de EPP'],
+        array_map(fn ($i, $p) => [$i + 1, $p['nombre_completo'], $p['rut'], $p['nombre_cargo'], fechaIngresoTexto($p['ingreso_compania'] ?? null), $p['talla_calzado'], $p['talla_overol'], $p['kit_texto'] ?? ''],
             array_keys(array_values($personas)), array_values($personas)));
     $adjuntos = adjuntoExcel('Tallas_EPP_' . (new DateTime())->format('Ymd_Hi') . '.xlsx', $excel);
     $enviados = 0;
@@ -1963,4 +1982,112 @@ function resumenHistorialPorRut(PDO $pdo, array $postulaciones): array
         ];
     }
     return $resultado;
+}
+
+// ---------------------------------------------------------------------
+// v10.49 - Kit de EPP por cargo (lo configura Prevención; Bodega lo ve desde el Día 0).
+// Modelo: epp_items (catálogo) + epp_kit_cargo (cantidades). cargo_id = 0 es el KIT BASE; para un
+// cargo solo se guardan las diferencias contra el base (extra / otra cantidad / 0 = no lo lleva).
+// Todo es a prueba de bases sin la migración v10.49: sin las tablas, el kit simplemente es vacío.
+// ---------------------------------------------------------------------
+
+/** ¿Existen las tablas del kit de EPP? (migración v10.49) */
+function usaKitEpp(PDO $pdo): bool
+{
+    static $existe = null;
+    if ($existe === null) {
+        try {
+            $pdo->query('SELECT 1 FROM epp_items LIMIT 1');
+            $pdo->query('SELECT 1 FROM epp_kit_cargo LIMIT 1');
+            $existe = true;
+        } catch (\Throwable $e) {
+            $existe = false;
+        }
+    }
+    return $existe;
+}
+
+/** Carga una vez por petición: catálogo activo, kit base y diferencias por cargo. */
+function eppMapa(PDO $pdo): array
+{
+    static $mapa = null;
+    if ($mapa !== null) {
+        return $mapa;
+    }
+    $mapa = ['items' => [], 'base' => [], 'cargo' => []];
+    if (!usaKitEpp($pdo)) {
+        return $mapa;
+    }
+    try {
+        foreach ($pdo->query('SELECT id, nombre, categoria, tipo_talla, orden FROM epp_items WHERE activo = 1 ORDER BY orden, id') as $i) {
+            $mapa['items'][(int)$i['id']] = $i;
+        }
+        foreach ($pdo->query('SELECT cargo_id, item_id, cantidad FROM epp_kit_cargo') as $r) {
+            if ((int)$r['cargo_id'] === 0) {
+                $mapa['base'][(int)$r['item_id']] = (int)$r['cantidad'];
+            } else {
+                $mapa['cargo'][(int)$r['cargo_id']][(int)$r['item_id']] = (int)$r['cantidad'];
+            }
+        }
+    } catch (\Throwable $e) {
+        error_log('eppMapa error: ' . $e->getMessage());
+        $mapa = ['items' => [], 'base' => [], 'cargo' => []];
+    }
+    return $mapa;
+}
+
+/**
+ * Kit efectivo de un cargo: kit base + diferencias del cargo (cantidad 0 = lo quita).
+ * Devuelve [['item_id','nombre','categoria','tipo_talla','cantidad'], ...] en el orden del catálogo.
+ */
+function kitEppDelCargo(PDO $pdo, int $cargoId): array
+{
+    $m = eppMapa($pdo);
+    $cantidades = $m['base'];
+    foreach (($m['cargo'][$cargoId] ?? []) as $itemId => $cant) {
+        $cantidades[$itemId] = $cant;
+    }
+    $kit = [];
+    foreach ($m['items'] as $itemId => $i) {
+        $cant = $cantidades[$itemId] ?? 0;
+        if ($cant > 0) {
+            $kit[] = ['item_id' => $itemId, 'nombre' => $i['nombre'], 'categoria' => $i['categoria'],
+                      'tipo_talla' => $i['tipo_talla'], 'cantidad' => $cant];
+        }
+    }
+    return $kit;
+}
+
+/**
+ * Agrega a cada persona (con cargo_id, talla_calzado, talla_overol) su kit ya resuelto:
+ *   'kit'       => [['nombre','cantidad','talla'], ...]   (talla = N° de calzado / talla de overol, o '')
+ *   'kit_texto' => "Casco ×1 · Zapatos ×1 (N° 42) · ..."
+ * y devuelve el total a preparar por elemento: [['nombre','categoria','total','tallas'=>['42'=>2,...]], ...].
+ */
+function adjuntarKitEpp(PDO $pdo, array &$personas): array
+{
+    $totales = [];
+    foreach ($personas as &$p) {
+        $kit = [];
+        foreach (kitEppDelCargo($pdo, (int)($p['cargo_id'] ?? 0)) as $it) {
+            $talla = $it['tipo_talla'] === 'calzado' ? (string)($p['talla_calzado'] ?? '')
+                   : ($it['tipo_talla'] === 'overol' ? (string)($p['talla_overol'] ?? '') : '');
+            $kit[] = ['nombre' => $it['nombre'], 'cantidad' => $it['cantidad'], 'talla' => $talla];
+            $k = $it['item_id'];
+            $totales[$k] = $totales[$k] ?? ['nombre' => $it['nombre'], 'categoria' => $it['categoria'], 'total' => 0, 'tallas' => []];
+            $totales[$k]['total'] += $it['cantidad'];
+            if ($talla !== '') {
+                $totales[$k]['tallas'][$talla] = ($totales[$k]['tallas'][$talla] ?? 0) + $it['cantidad'];
+            }
+        }
+        $p['kit'] = $kit;
+        $p['kit_texto'] = implode(' · ', array_map(
+            fn ($x) => $x['nombre'] . ' ×' . $x['cantidad'] . ($x['talla'] !== '' ? ' (' . $x['talla'] . ')' : ''), $kit));
+    }
+    unset($p);
+    foreach ($totales as &$t) {
+        ksort($t['tallas'], SORT_NATURAL);
+    }
+    unset($t);
+    return array_values($totales);
 }

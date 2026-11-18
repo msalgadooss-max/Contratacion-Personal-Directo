@@ -31,6 +31,7 @@ async function cargarLista() {
     const data = await apiFetch('/bodega/listar.php');
     renderTallas(data.tallas_pendientes || []);
     renderNomina(data.liberados_pendientes || []);
+    renderKitTotales(data.kit_totales || []);
     if (!data.postulaciones.length) {
       tbody.innerHTML = '';
       vacio.classList.remove('hidden');
@@ -44,6 +45,7 @@ async function cargarLista() {
         <td class="px-4 py-3">${esc(p.nombre_cargo)}</td>
         <td class="px-4 py-3">${esc(p.talla_calzado)}</td>
         <td class="px-4 py-3">${esc(p.talla_overol)}</td>
+        <td class="px-4 py-3">${kitDetalleHtml(p)}</td>
         <td class="px-4 py-3 text-right">
           ${p.puede_entregar
             ? `<button class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg" onclick="marcarEpp(${Number(p.id)})">Entregar EPP</button>`
@@ -127,6 +129,7 @@ function renderTallas(personas) {
             <th class="px-3 py-2">Cargo</th>
             <th class="px-3 py-2">Calzado</th>
             <th class="px-3 py-2">Overol</th>
+            <th class="px-3 py-2">Kit de EPP</th>
             <th class="px-3 py-2">Completó</th>
           </tr>
         </thead>
@@ -138,6 +141,7 @@ function renderTallas(personas) {
               <td class="px-3 py-2">${esc(p.nombre_cargo)}</td>
               <td class="px-3 py-2">${esc(p.talla_calzado)}</td>
               <td class="px-3 py-2">${esc(p.talla_overol)}</td>
+              <td class="px-3 py-2">${kitDetalleHtml(p)}</td>
               <td class="px-3 py-2 text-gray-600">${horaCorta(p.completado_at)}</td>
             </tr>`).join('')}
         </tbody>
@@ -406,4 +410,36 @@ async function descargarLiberadosExcel() {
   } catch (err) {
     mostrarAlerta('alerta', err.message || 'No fue posible descargar el Excel.');
   }
+}
+
+// --- v10.49: kit de EPP por cargo (lo configura Prevención) ---------------------
+function kitDetalleHtml(p) {
+  const kit = p.kit || [];
+  if (!kit.length) return '<span class="text-xs text-gray-400" title="Prevención todavía no configura el kit de este cargo">Sin kit definido</span>';
+  return `<details><summary class="cursor-pointer text-xs font-semibold text-blue-700">Ver kit (${kit.length})</summary>
+    <ul class="mt-1 text-xs text-gray-700 space-y-0.5">${kit.map(k =>
+      `<li>${esc(k.nombre)} <b>×${Number(k.cantidad)}</b>${k.talla ? ` <span class="text-gray-500">(${esc(k.talla)})</span>` : ''}</li>`).join('')}</ul></details>`;
+}
+
+function renderKitTotales(totales) {
+  const cont = document.getElementById('kit-totales');
+  if (!totales.length) {
+    cont.classList.add('hidden');
+    cont.innerHTML = '';
+    return;
+  }
+  cont.classList.remove('hidden');
+  cont.innerHTML = `
+    <details>
+      <summary class="cursor-pointer text-sm font-bold text-gray-900">Kit de EPP a preparar
+        <span class="ml-2 text-xs font-semibold bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">${totales.length} elementos</span></summary>
+      <p class="text-xs text-gray-500 mt-2 mb-2">Total de cada elemento para las personas que hoy están en tu lista, según el kit que Prevención definió para su cargo.</p>
+      <div class="overflow-x-auto"><table class="w-full text-sm">
+        <thead class="bg-gray-50 text-gray-500 text-left"><tr><th class="px-3 py-2">Elemento</th><th class="px-3 py-2 text-right">Total</th><th class="px-3 py-2">Por talla</th></tr></thead>
+        <tbody>${totales.map(t => `
+          <tr class="border-t"><td class="px-3 py-2">${esc(t.nombre)}</td>
+          <td class="px-3 py-2 text-right font-bold">${Number(t.total)}</td>
+          <td class="px-3 py-2 text-xs text-gray-600">${Object.entries(t.tallas || {}).map(([k, n]) => `${esc(k)}: ${Number(n)}`).join(' · ')}</td></tr>`).join('')}
+        </tbody></table></div>
+    </details>`;
 }

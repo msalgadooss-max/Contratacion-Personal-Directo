@@ -28,7 +28,7 @@ $pdo = obtenerConexion();
 
 if (($_GET['todos'] ?? '') === '1') {
     $stmt = $pdo->query(
-        "SELECT p.id, p.nombre_completo, p.rut, c.nombre_cargo, d.talla_calzado, d.talla_overol,
+        "SELECT p.id, p.nombre_completo, p.rut, p.cargo_id, c.nombre_cargo, d.talla_calzado, d.talla_overol,
                 (SELECT MAX(t.fecha_hora) FROM trazabilidad_logs t
                   WHERE t.postulacion_id = p.id
                     AND t.accion LIKE 'Cambio de estado: % -> Aprobado_admin') AS completado_at
@@ -49,20 +49,28 @@ if (!$personas) {
     responderError('No hay personal con tallas para descargar por ahora.', 404);
 }
 
+// v10.49: kit de EPP de cada persona (según su cargo) y total a preparar.
+$kitTotales = [];
+try {
+    $kitTotales = adjuntarKitEpp($pdo, $personas);
+} catch (\Throwable $e) {
+    error_log('exportar_tallas_excel kit EPP error: ' . $e->getMessage());
+}
+
 $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
 $hoja = $spreadsheet->getActiveSheet();
 $hoja->setTitle('Tallas');
 
 $hoja->setCellValue('A1', $titulo . ' - ' . OBRA_NOMBRE . ' - ' . date('d-m-Y H:i'));
-$hoja->mergeCells('A1:G1');
+$hoja->mergeCells('A1:H1');
 $hoja->getStyle('A1')->getFont()->setBold(true)->setSize(12);
 
-$encabezados = ['N°', 'Nombre', 'RUT', 'Cargo', 'Talla calzado', 'Talla overol', 'Completó Etapa 2'];
+$encabezados = ['N°', 'Nombre', 'RUT', 'Cargo', 'Talla calzado', 'Talla overol', 'Completó Etapa 2', 'Kit de EPP'];
 foreach ($encabezados as $i => $titulo) {
     $hoja->setCellValue([$i + 1, 3], $titulo);
 }
-$hoja->getStyle('A3:G3')->getFont()->setBold(true);
-$hoja->getStyle('A3:G3')->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
+$hoja->getStyle('A3:H3')->getFont()->setBold(true);
+$hoja->getStyle('A3:H3')->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
     ->getStartColor()->setRGB('E5E7EB');
 
 $fila = 4;
@@ -75,6 +83,7 @@ foreach (array_values($personas) as $i => $p) {
         $p['talla_calzado'],
         $p['talla_overol'],
         !empty($p['completado_at']) ? (new DateTime($p['completado_at']))->format('d-m-Y H:i') : '',
+        $p['kit_texto'] ?? '',
     ];
     foreach ($valores as $c => $v) {
         $hoja->setCellValueExplicit(
@@ -120,7 +129,29 @@ foreach ($porOverol as $talla => $n) {
     $r++;
 }
 
-foreach (['A', 'B', 'C', 'D', 'E', 'F', 'G'] as $col) {
+// v10.49: total de cada elemento del kit que hay que preparar (con el detalle por talla).
+if ($kitTotales) {
+    $kitHoja = $spreadsheet->createSheet();
+    $kitHoja->setTitle('Total kit EPP');
+    foreach (['Categoría', 'Elemento', 'Total a preparar', 'Detalle por talla'] as $i => $t) {
+        $kitHoja->setCellValue([$i + 1, 1], $t);
+    }
+    $kitHoja->getStyle('A1:D1')->getFont()->setBold(true);
+    $rk = 2;
+    foreach ($kitTotales as $t) {
+        $detalle = implode(', ', array_map(fn ($k, $n) => "{$k}: {$n}", array_keys($t['tallas']), $t['tallas']));
+        $kitHoja->setCellValueExplicit("A{$rk}", (string)$t['categoria'], \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
+        $kitHoja->setCellValueExplicit("B{$rk}", (string)$t['nombre'], \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
+        $kitHoja->setCellValue("C{$rk}", (int)$t['total']);
+        $kitHoja->setCellValueExplicit("D{$rk}", $detalle, \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
+        $rk++;
+    }
+    foreach (['A', 'B', 'C', 'D'] as $col) {
+        $kitHoja->getColumnDimension($col)->setAutoSize(true);
+    }
+}
+
+foreach (['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'] as $col) {
     $hoja->getColumnDimension($col)->setAutoSize(true);
     $resumen->getColumnDimension($col)->setAutoSize(true);
 }

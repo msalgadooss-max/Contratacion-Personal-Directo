@@ -34,7 +34,7 @@ exigirMetodo('GET');
 
 $pdo = obtenerConexion();
 $stmt = $pdo->prepare(
-    'SELECT p.id, p.rut, p.nombre_completo, c.nombre_cargo, p.contrato_firmado_at,
+    'SELECT p.id, p.rut, p.nombre_completo, p.cargo_id, c.nombre_cargo, p.contrato_firmado_at,
             d.talla_calzado, d.talla_overol,
             (SELECT COUNT(*) FROM trazabilidad_logs t
               WHERE t.postulacion_id = p.id AND t.accion = :accion_irl) > 0 AS irl_realizada
@@ -64,7 +64,17 @@ try {
     $tallasPendientes = [];
 }
 
+// v10.49: kit de EPP de cada persona (según su cargo) y total a preparar. Extra del panel: si falla, el resto sigue.
+$kitTotales = [];
+try {
+    $kitTotales = adjuntarKitEpp($pdo, $postulaciones);
+    adjuntarKitEpp($pdo, $tallasPendientes);
+} catch (\Throwable $e) {
+    error_log('bodega/listar kit EPP error: ' . $e->getMessage());
+}
+
 responderOk([
+    'kit_totales' => $kitTotales,
     'postulaciones' => $postulaciones,
     'liberados_pendientes' => liberadosSinNomina($pdo),
     'tallas_pendientes' => $tallasPendientes,
