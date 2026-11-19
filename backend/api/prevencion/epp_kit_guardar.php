@@ -1,10 +1,12 @@
 <?php
 /**
  * v10.49 - Guarda el kit de EPP de un cargo (o el KIT BASE con cargo_id = 0).
- *   { cargo_id, items: { "<item_id>": cantidad, ... } }   cantidad 0 / ausente = no lo lleva
- *   { cargo_id, restablecer: true }                       el cargo vuelve a usar solo el kit base
- * Para un cargo solo se guardan las DIFERENCIAS contra el kit base; así, si Prevención cambia el kit
- * base después, todos los cargos sin cambios propios lo heredan.
+ *   { cargo_id, items: { "<item_id>": {q: cantidad, c: "rojo"|"amarillo"|"azul"|null}, ... } }
+ *       cantidad 0 / ausente = no lo lleva. (Por compatibilidad también se acepta "<item_id>": cantidad.)
+ *   { cargo_id, restablecer: true }   el cargo vuelve a usar solo el kit base
+ * Para un cargo solo se guardan las DIFERENCIAS contra el kit base (otra cantidad, otro color, uno extra
+ * o uno quitado); así, si Prevención cambia el kit base después, todos los cargos sin cambios propios lo heredan.
+ * v10.51: el color solo vale en elementos que vienen en colores (epp_items.colores = 1).
  */
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../includes/auth.php';
@@ -34,33 +36,60 @@ if ($cargoId > 0) {
     }
 }
 
+$conColor = usaColorEpp($pdo);
 $restablecer = !empty($body['restablecer']);
 $pdo->beginTransaction();
 try {
     $pdo->prepare('DELETE FROM epp_kit_cargo WHERE cargo_id = :c')->execute(['c' => $cargoId]);
 
     if (!$restablecer) {
-        $pedido = [];
-        foreach ((array)($body['items'] ?? []) as $itemId => $cant) {
-            $pedido[(int)$itemId] = max(0, min(99, (int)$cant));
+        // Catálogo: qué elementos existen y cuáles vienen en colores.
+        $catalogo = [];
+        foreach ($pdo->query($conColor ? 'SELECT id, colores FROM epp_items' : 'SELECT id, 0 AS colores FROM epp_items') as $r) {
+            $catalogo[(int)$r['id']] = (int)$r['colores'] === 1;
         }
-        $validos = array_map('intval', $pdo->query('SELECT id FROM epp_items')->fetchAll(PDO::FETCH_COLUMN));
-        $ins = $pdo->prepare('INSERT INTO epp_kit_cargo (cargo_id, item_id, cantidad) VALUES (:c, :i, :n)');
+        // Lo pedido, normalizado: [item_id => ['q' => n, 'c' => color|null]]
+        $pedido = [];
+        foreach ((array)($body['items'] ?? []) as $itemId => $v) {
+            $itemId = (int)$itemId;
+            if (!isset($catalogo[$itemId])) {
+                continue;
+            }
+            $q = is_array($v) ? (int)($v['q'] ?? 0) : (int)$v;
+            $c = (is_array($v) && $catalogo[$itemId]) ? colorEppValido($v['c'] ?? null) : null;
+            $pedido[$itemId] = ['q' => max(0, min(99, $q)), 'c' => $c];
+        }
+
+        $sqlIns = $conColor ? 'INSERT INTO epp_kit_cargo (cargo_id, item_id, cantidad, color) VALUES (:c, :i, :n, :col)'
+                            : 'INSERT INTO epp_kit_cargo (cargo_id, item_id, cantidad) VALUES (:c, :i, :n)';
+        $ins = $pdo->prepare($sqlIns);
+        $guardar = function (int $itemId, array $fila) use ($ins, $conColor, $cargoId) {
+            $params = ['c' => $cargoId, 'i' => $itemId, 'n' => $fila['q']];
+            if ($conColor) {
+                $params['col'] = $fila['c'];
+            }
+            $ins->execute($params);
+        };
+
         if ($cargoId === 0) {
-            foreach ($validos as $itemId) {
-                if (($pedido[$itemId] ?? 0) > 0) {
-                    $ins->execute(['c' => 0, 'i' => $itemId, 'n' => $pedido[$itemId]]);
+            foreach ($pedido as $itemId => $fila) {
+                if ($fila['q'] > 0) {
+                    $guardar($itemId, $fila);
                 }
             }
         } else {
             $base = [];
-            foreach ($pdo->query('SELECT item_id, cantidad FROM epp_kit_cargo WHERE cargo_id = 0') as $r) {
-                $base[(int)$r['item_id']] = (int)$r['cantidad'];
+            $selBase = $conColor ? 'SELECT item_id, cantidad, color FROM epp_kit_cargo WHERE cargo_id = 0'
+                                 : 'SELECT item_id, cantidad, NULL AS color FROM epp_kit_cargo WHERE cargo_id = 0';
+            foreach ($pdo->query($selBase) as $r) {
+                $base[(int)$r['item_id']] = ['q' => (int)$r['cantidad'], 'c' => colorEppValido($r['color'])];
             }
-            foreach ($validos as $itemId) {
-                $quiere = $pedido[$itemId] ?? 0;
-                if ($quiere !== ($base[$itemId] ?? 0)) {
-                    $ins->execute(['c' => $cargoId, 'i' => $itemId, 'n' => $quiere]);
+            foreach (array_keys($catalogo) as $itemId) {
+                $quiere = $pedido[$itemId] ?? ['q' => 0, 'c' => null];
+                $heredado = $base[$itemId] ?? ['q' => 0, 'c' => null];
+                $igual = $quiere['q'] === $heredado['q'] && ($quiere['q'] === 0 || $quiere['c'] === $heredado['c']);
+                if (!$igual) {
+                    $guardar($itemId, $quiere);
                 }
             }
         }

@@ -41,6 +41,8 @@ function configurarTabs() {
 
 function cambiarTab(tab) {
   TAB_ACTIVA = tab;
+  const cont = document.getElementById('contenedor');
+  if (cont) cont.style.maxWidth = tab === 'kits' ? '1360px' : '';
   document.querySelectorAll('.tab-btn').forEach(btn => {
     const activo = btn.dataset.tab === tab;
     btn.classList.toggle('border-blue-600', activo);
@@ -194,157 +196,291 @@ function pintarTablaIrl(filas) {
 }
 
 
-// --- v10.49: Kits de EPP por cargo ---------------------------------------------
-// Kit base (cargo_id 0) + diferencias por cargo. El servidor guarda solo las diferencias.
-let EPP = null;
-let EPP_SEL = 0;   // 0 = kit base; otro = id de cargo
+// --- v10.49 / v10.51: Kits de EPP por cargo ------------------------------------
+// Kit base (cargo_id 0) + diferencias por cargo; el servidor guarda solo las diferencias.
+// Diseño nuevo (v10.51): tarjetas tocables con dibujo, cantidad, color del casco y vista de lo que verá Bodega.
+const KX_COLORES = { rojo: '#D7263D', amarillo: '#F2B705', azul: '#1F5FBF' };
+const KX_ICONOS = {
+  casco:          { i1: '#F2B705', i2: '#3B4552' },
+  lentes:         { i1: 'rgba(150,205,235,.55)', i2: '#26303C' },
+  lentes_oscuros: { i1: '#1A212B', i2: '#0B0F14', sym: 'lentes' },
+  barbiquejo:     { i1: '#3E4856', i2: '#8794A3' },
+  overol:         { i1: '#2E5B9A', i2: '#F2B705' },
+  zapato:         { i1: '#6B4A33', i2: '#24201C' },
+  guantes:        { i1: '#D29A58', i2: '#8A5A2B' },
+  fono:           { i1: '#E1460E', i2: '#2B3440' },
+  chaleco:        { i1: '#F58A1F', i2: '#2B3440' },
+  botas:          { i1: '#2F6B3F', i2: '#1B1F24' },
+  legionario:     { i1: '#D8D1BE', i2: '#B7AF98' },
+  extra:          { i1: '#E1460E', i2: '#2B3440' },
+};
+const KX_PERSONAS = [
+  { nombre: 'Juan Pérez', ini: 'JP', calzado: '42', overol: 'L' },
+  { nombre: 'María Soto', ini: 'MS', calzado: '38', overol: 'M' },
+];
+
+let EPP = null;          // última respuesta de epp_config.php
+let EPP_SEL = 0;         // 0 = kit base; otro = id de cargo
+let KX_DRAFTS = {};      // cambios sin guardar, por cargo: { cargoId: { itemId: {q, c} } }
+let KX_QUIEN = 0;
+let KX_TALLA = 'none';
+
+const kxEl = (id) => document.getElementById('kx-' + id);
+const kxCopia = (o) => JSON.parse(JSON.stringify(o));
+const kxItem = (id) => EPP.items.find((i) => i.id === Number(id));
+
+// Kit efectivo guardado de un cargo: el base con las diferencias del cargo encima (q = 0 lo quita).
+function kxEfectivo(sel) {
+  const k = kxCopia(EPP.base || {});
+  if (sel !== 0) {
+    Object.entries(EPP.por_cargo[sel] || {}).forEach(([id, f]) => {
+      if (f.q > 0) k[id] = { q: f.q, c: f.c }; else delete k[id];
+    });
+  }
+  return k;
+}
+const kxNorm = (kit) => JSON.stringify(Object.keys(kit).filter((id) => kit[id].q > 0).sort((a, b) => a - b)
+  .map((id) => [id, kit[id].q, kit[id].c || null]));
+const kxDraft = () => (KX_DRAFTS[EPP_SEL] = KX_DRAFTS[EPP_SEL] || kxCopia(kxEfectivo(EPP_SEL)));
+const kxSucio = () => kxNorm(kxDraft()) !== kxNorm(kxEfectivo(EPP_SEL));
+const kxConCambios = (id) => id !== 0 && (EPP.cargos.find((c) => c.id === id) || {}).personalizado;
+
+function kxIcono(it, color) {
+  const def = KX_ICONOS[it.icono] || KX_ICONOS.extra;
+  const c1 = (it.colores && color) ? KX_COLORES[color] : def.i1;
+  const sym = def.sym || (KX_ICONOS[it.icono] ? it.icono : 'extra');
+  return `<svg style="--i1:${c1};--i2:${def.i2}" aria-hidden="true"><use href="#i-${sym}"/></svg>`;
+}
 
 async function cargarKitsEpp() {
   try {
     EPP = await apiFetch('/prevencion/epp_config.php');
-    const aviso = document.getElementById('kits-aviso');
+    const aviso = kxEl('aviso');
     if (!EPP.disponible) {
       aviso.textContent = 'Los kits de EPP todavía no están habilitados en esta base de datos (falta la actualización v10.49).';
       aviso.classList.remove('hidden');
       return;
     }
-    aviso.classList.add('hidden');
-    pintarKitsLista();
-    pintarKitsEditor();
-    pintarKitsCatalogo();
+    aviso.classList.toggle('hidden', EPP.colores_disponibles !== false);
+    if (EPP.colores_disponibles === false) {
+      aviso.textContent = 'Falta la actualización v10.51 de la base de datos: los kits funcionan, pero todavía no se puede elegir el color del casco.';
+    }
+    kxTodo();
   } catch (err) {
     mostrarAlerta('alerta', err.message);
   }
 }
 
-function eppCantidades(sel) {
-  // Cantidades efectivas del kit seleccionado: base, con las diferencias del cargo encima.
-  const c = Object.assign({}, EPP.base);
-  if (sel !== 0) Object.assign(c, EPP.por_cargo[sel] || {});
-  return c;
+function kxAviso(texto, error) {
+  const e = kxEl('toast');
+  e.textContent = texto;
+  e.style.background = error ? '#B42318' : '';
+  e.classList.add('show');
+  clearTimeout(kxAviso.t);
+  kxAviso.t = setTimeout(() => e.classList.remove('show'), 2400);
 }
 
-function pintarKitsLista() {
-  const fila = (id, nombre, marca) => `
-    <li><button onclick="elegirKit(${id})" class="w-full text-left px-3 py-2 rounded-lg flex items-center justify-between gap-2 ${EPP_SEL === id ? 'bg-blue-50 text-blue-700 font-semibold' : 'hover:bg-gray-50 text-gray-700'}">
-      <span>${esc(nombre)}</span>${marca}</button></li>`;
-  document.getElementById('kits-lista').innerHTML =
-    fila(0, 'Kit base (todos los cargos)', '<span class="text-[10px] font-bold bg-gray-900 text-white rounded-full px-2 py-0.5">BASE</span>') +
-    '<li class="text-[11px] uppercase tracking-wide text-gray-400 px-3 pt-3 pb-1">Cargos</li>' +
-    EPP.cargos.map(c => fila(c.id, c.nombre_cargo,
-      c.personalizado ? '<span class="text-[10px] font-semibold bg-amber-100 text-amber-800 rounded-full px-2 py-0.5">con cambios</span>' : '')).join('');
+function kxTodo() {
+  kxPintarCargos();
+  kxPintarEditor();
+  kxPintarVista();
+  kxPintarCatalogo();
+  kxEl('save').classList.toggle('show', kxSucio());
 }
 
-function elegirKit(id) {
-  EPP_SEL = id;
-  pintarKitsLista();
-  pintarKitsEditor();
+function kxPintarCargos() {
+  const q = kxEl('buscar').value.trim().toLowerCase();
+  const activos = new Set(EPP.items.filter((i) => i.activo).map((i) => String(i.id)));
+  const nItems = (id) => Object.entries(KX_DRAFTS[id] || kxEfectivo(id)).filter(([k, f]) => f.q > 0 && activos.has(k)).length;
+  const cargos = [{ id: 0, nombre_cargo: 'Kit base' }].concat(EPP.cargos);
+  kxEl('clist').innerHTML = cargos.filter((c) => c.id === 0 || c.nombre_cargo.toLowerCase().includes(q)).map((c) => {
+    if (c.id === 0) {
+      return `<button type="button" class="cbtn base-btn" data-id="0" ${EPP_SEL === 0 ? 'aria-current="true"' : ''}><span>Kit base<br><small>Todos los cargos</small></span><small>${nItems(0)} EPP</small></button>`;
+    }
+    return `<button type="button" class="cbtn" data-id="${c.id}" ${EPP_SEL === c.id ? 'aria-current="true"' : ''}><span>${esc(c.nombre_cargo)}</span>
+      <span style="display:flex;align-items:center;gap:7px">${c.personalizado ? '<i class="dot" title="Tiene cambios sobre el kit base"></i>' : ''}<small>${nItems(c.id)} EPP</small></span></button>`;
+  }).join('') || '<p class="help" style="padding:8px 10px">Sin resultados.</p>';
 }
 
-function pintarKitsEditor() {
-  const cant = eppCantidades(EPP_SEL);
+function kxPintarEditor() {
   const esBase = EPP_SEL === 0;
-  const cargo = EPP.cargos.find(c => c.id === EPP_SEL);
-  const items = EPP.items.filter(i => i.activo);
-  const categorias = [...new Set(items.map(i => i.categoria))];
-  const talla = { calzado: 'usa el N° de calzado', overol: 'usa la talla de overol', ninguna: '' };
-  const totalItems = items.filter(i => (cant[i.id] || 0) > 0).length;
-  document.getElementById('kits-editor').innerHTML = `
-    <div class="flex items-start justify-between gap-3 flex-wrap mb-4">
-      <div>
-        <h3 class="text-base font-bold text-gray-900">${esBase ? 'Kit base · todos los cargos' : esc(cargo ? cargo.nombre_cargo : '')}</h3>
-        <p class="text-xs text-gray-500 mt-0.5">${esBase
-          ? 'Lo que recibe todo trabajador. Cambiar esto afecta a todos los cargos que no tengan cambios propios.'
-          : 'Parte del kit base. Ajusta cantidades: 0 = este cargo no lo lleva. Lo marcado <em>base</em> viene del kit base.'}</p>
-      </div>
-      <span id="kits-contador" class="text-xs font-semibold bg-gray-100 text-gray-600 rounded-full px-3 py-1">${totalItems} elementos</span>
-    </div>
-    ${categorias.map(cat => `
-      <p class="text-[11px] font-bold uppercase tracking-wide text-gray-400 mt-4 mb-1">${esc(cat)}</p>
-      <div class="grid sm:grid-cols-2 gap-x-6">
-        ${items.filter(i => i.categoria === cat).map(i => {
-          const q = cant[i.id] || 0;
-          const base = (EPP.base[i.id] || 0) > 0;
-          return `<label class="flex items-center justify-between gap-3 py-1.5 border-b border-gray-100">
-            <span class="text-sm text-gray-800 min-w-0">${esc(i.nombre)}
-              ${i.tipo_talla !== 'ninguna' ? `<span class="block text-[11px] text-gray-400">${talla[i.tipo_talla]}</span>` : ''}
-              ${!esBase && base ? '<span class="text-[10px] font-semibold text-gray-400">base</span>' : ''}</span>
-            <input type="number" min="0" max="99" value="${q}" data-item="${i.id}" oninput="actualizarContadorKit()"
-                   class="w-16 border border-gray-300 rounded-lg px-2 py-1 text-sm text-center ${q > 0 ? 'bg-emerald-50 border-emerald-300' : ''}">
-          </label>`;
-        }).join('')}
-      </div>`).join('')}
-    <div class="flex flex-wrap gap-2 mt-5">
-      <button onclick="guardarKit()" class="bg-gray-900 hover:bg-gray-800 text-white text-sm font-semibold px-4 py-2 rounded-lg">Guardar kit</button>
-      ${!esBase && cargo && cargo.personalizado
-        ? '<button onclick="restablecerKit()" class="border border-gray-300 hover:bg-gray-50 text-gray-700 text-sm font-semibold px-4 py-2 rounded-lg">Volver al kit base</button>' : ''}
-    </div>`;
+  const cargo = EPP.cargos.find((c) => c.id === EPP_SEL);
+  const kit = kxDraft();
+  kxEl('etitulo').textContent = esBase ? 'Kit base · todos los cargos' : (cargo ? cargo.nombre_cargo : '');
+  kxEl('esub').textContent = esBase
+    ? 'Es lo que recibe todo trabajador al ingresar. Si lo cambias, cambia para todos los cargos que no tengan ajustes propios.'
+    : (cargo && cargo.personalizado
+        ? 'Parte del kit base y tiene ajustes propios (marcados con un punto en la lista).'
+        : 'Hoy usa el kit base completo. Toca un elemento para agregarlo o quitarlo solo a este cargo.');
+  kxEl('reset').hidden = esBase || !(cargo && cargo.personalizado) && !kxSucio();
+  kxEl('copiar').innerHTML = '<option value="">Copiar el kit de…</option>' +
+    [{ id: 0, nombre_cargo: 'Kit base' }].concat(EPP.cargos).filter((c) => c.id !== EPP_SEL)
+      .map((c) => `<option value="${c.id}">${esc(c.nombre_cargo)}</option>`).join('');
+
+  const activos = EPP.items.filter((i) => i.activo);
+  kxEl('grid').innerHTML = activos.map((it) => {
+    const k = kit[it.id] && kit[it.id].q > 0 ? kit[it.id] : null;
+    const tag = it.tipo_talla === 'calzado' ? 'Usa el N° de calzado' : it.tipo_talla === 'overol' ? 'Usa la talla de overol'
+      : (it.colores ? 'Rojo, amarillo o azul' : '&nbsp;');
+    const ctrl = !k ? 'Toca para agregar' : `
+      <div class="stepper"><label>Cantidad</label>
+        <div class="qty"><button type="button" data-a="menos" data-id="${it.id}" aria-label="Menos ${esc(it.nombre)}">−</button><output>${k.q}</output><button type="button" data-a="mas" data-id="${it.id}" aria-label="Más ${esc(it.nombre)}">+</button></div></div>
+      ${it.colores ? `<div class="colors"><span>Color</span><div class="chips">${Object.keys(KX_COLORES).map((co) =>
+        `<button type="button" class="chip" data-a="color" data-id="${it.id}" data-c="${co}" aria-pressed="${k.c === co}" aria-label="Color ${co}" title="${co}" style="background:${KX_COLORES[co]}"></button>`).join('')}</div></div>` : ''}`;
+    return `<article class="card ${k ? 'on' : ''}">
+      <button type="button" class="main" data-a="toggle" data-id="${it.id}" aria-pressed="${!!k}">
+        <span class="chk">✓</span>
+        <span class="pic">${kxIcono(it, k && k.c)}</span>
+        <span class="name">${esc(it.nombre)}</span>
+        <span class="tag">${tag}</span>
+      </button>
+      <div class="ctrl">${ctrl}</div>
+    </article>`;
+  }).join('') + `<article class="card add"><button type="button" class="main" data-a="nuevo"><span class="pic">+</span><span class="name">Agregar otro EPP</span><span class="tag">Si falta uno, créalo aquí</span></button></article>`;
 }
 
-function actualizarContadorKit() {
-  const inputs = [...document.querySelectorAll('#kits-editor input[data-item]')];
-  inputs.forEach(i => i.classList.toggle('bg-emerald-50', Number(i.value) > 0));
-  const n = inputs.filter(i => Number(i.value) > 0).length;
-  document.getElementById('kits-contador').textContent = `${n} elementos`;
+function kxPintarVista() {
+  const esBase = EPP_SEL === 0;
+  const cargo = EPP.cargos.find((c) => c.id === EPP_SEL);
+  const kit = kxDraft();
+  const p = KX_PERSONAS[KX_QUIEN];
+  kxEl('ptitulo').textContent = esBase ? 'Ejemplo con el kit base' : (cargo ? cargo.nombre_cargo : '');
+  kxEl('segWho').innerHTML = KX_PERSONAS.map((x, i) => `<button type="button" data-i="${i}" aria-pressed="${i === KX_QUIEN}">${esc(x.nombre.split(' ')[0])}</button>`).join('');
+  kxEl('who').innerHTML = `<div class="av">${p.ini}</div><div><b>${esc(p.nombre)}</b><span>${esBase ? 'Cualquier cargo' : esc(cargo ? cargo.nombre_cargo : '')} · persona de ejemplo</span></div>
+    <div class="sizes"><span class="sz"><em>Calzado</em> ${p.calzado}</span><span class="sz"><em>Overol</em> ${p.overol}</span></div>`;
+  const filas = EPP.items.filter((i) => i.activo && kit[i.id] && kit[i.id].q > 0);
+  kxEl('lines').innerHTML = filas.length ? filas.map((it) => {
+    const k = kit[it.id];
+    const det = [it.colores && k.c ? `<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${KX_COLORES[k.c]};margin-right:5px"></span>${k.c}` : '',
+      it.tipo_talla === 'calzado' ? 'N° ' + p.calzado : it.tipo_talla === 'overol' ? 'Talla ' + p.overol : ''].filter(Boolean).join(' · ');
+    return `<li class="line"><span class="mini">${kxIcono(it, k.c)}</span><b>${esc(it.nombre)}${det ? `<small>${det}</small>` : ''}</b><span class="times">×${k.q}</span></li>`;
+  }).join('') : '<li class="empty">Este kit está vacío. Toca los EPP del centro para armarlo.</li>';
+  kxEl('ptotal').textContent = `${filas.length} elementos distintos`;
+  kxEl('pcount').textContent = `${filas.reduce((a, i) => a + kit[i.id].q, 0)} piezas`;
 }
 
-async function guardarKit() {
+function kxPintarCatalogo() {
+  const etiqueta = { ninguna: 'Sin talla', calzado: 'N° de calzado', overol: 'Talla de overol' };
+  const fila = (i) => `
+    <tr data-fila="${i ? i.id : 0}">
+      <td><input type="text" value="${esc(i ? i.nombre : '')}" placeholder="Nombre del elemento" maxlength="60" class="f-nombre"></td>
+      <td><select class="f-talla">${['ninguna', 'calzado', 'overol'].map((t) => `<option value="${t}" ${i && i.tipo_talla === t ? 'selected' : ''}>${etiqueta[t]}</option>`).join('')}</select></td>
+      <td class="c"><input type="checkbox" class="f-colores" ${i && i.colores ? 'checked' : ''} ${EPP.colores_disponibles === false ? 'disabled' : ''}></td>
+      <td class="c"><input type="checkbox" class="f-activo" ${!i || i.activo ? 'checked' : ''}></td>
+      <td class="r"><button type="button" class="btn" data-a="guardar-item">${i ? 'Guardar' : '+ Agregar'}</button></td>
+    </tr>`;
+  kxEl('catalogo').innerHTML = `
+    <p class="help" style="margin:0 0 8px">Cambia el nombre, la talla o los colores de un EPP. Los elementos no se borran: se desactivan y dejan de aparecer en los kits.</p>
+    <table class="cat"><thead><tr><th>Elemento</th><th>Talla</th><th class="c">Colores</th><th class="c">Activo</th><th></th></tr></thead>
+    <tbody>${EPP.items.map(fila).join('')}</tbody></table>`;
+}
+
+// --- eventos -----------------------------------------------------------------
+document.addEventListener('click', async (e) => {
+  const raiz = e.target.closest('#panel-kits');
+  if (!raiz || !EPP || !EPP.disponible) return;
+
+  const cb = e.target.closest('#kx-clist [data-id]');
+  if (cb) { EPP_SEL = Number(cb.dataset.id); kxEl('adder').hidden = true; kxTodo(); return; }
+
+  const who = e.target.closest('#kx-segWho [data-i]');
+  if (who) { KX_QUIEN = Number(who.dataset.i); kxPintarVista(); return; }
+
+  const talla = e.target.closest('#kx-segTalla button');
+  if (talla) {
+    KX_TALLA = talla.dataset.v;
+    kxEl('segTalla').querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', String(x === talla)));
+    return;
+  }
+
+  const b = e.target.closest('[data-a]');
+  if (b) {
+    const kit = kxDraft();
+    const id = b.dataset.id;
+    const it = id ? kxItem(id) : null;
+    if (b.dataset.a === 'toggle') {
+      if (kit[id] && kit[id].q > 0) delete kit[id]; else kit[id] = { q: 1, c: it.colores ? 'amarillo' : null };
+    } else if (b.dataset.a === 'mas') { kit[id].q = Math.min(99, kit[id].q + 1); }
+    else if (b.dataset.a === 'menos') { kit[id].q = Math.max(1, kit[id].q - 1); }
+    else if (b.dataset.a === 'color') { kit[id].c = b.dataset.c; }
+    else if (b.dataset.a === 'nuevo') {
+      kxEl('adder').hidden = false;
+      kxEl('adder').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      kxEl('nuevoNombre').focus();
+      return;
+    } else if (b.dataset.a === 'guardar-item') { await kxGuardarItem(b); return; }
+    kxTodo();
+    const foco = document.querySelector(`#kx-grid [data-a="${b.dataset.a}"][data-id="${id}"]${b.dataset.c ? `[data-c="${b.dataset.c}"]` : ''}`);
+    if (foco) foco.focus();
+    return;
+  }
+
+  switch (e.target.id) {
+    case 'kx-reset': KX_DRAFTS[EPP_SEL] = kxCopia(kxEfectivo(0)); kxTodo(); break;
+    case 'kx-descartar': delete KX_DRAFTS[EPP_SEL]; kxTodo(); break;
+    case 'kx-guardar': await kxGuardarKit(); break;
+    case 'kx-addCancel': kxEl('adder').hidden = true; break;
+    case 'kx-addOk': await kxAgregarItem(); break;
+    default: break;
+  }
+});
+
+document.addEventListener('input', (e) => { if (e.target.id === 'kx-buscar') kxPintarCargos(); });
+document.addEventListener('change', (e) => {
+  if (e.target.id !== 'kx-copiar' || !e.target.value || !EPP) return;
+  KX_DRAFTS[EPP_SEL] = kxCopia(kxEfectivo(Number(e.target.value)));
+  kxAviso('Kit copiado. Revísalo y guarda.');
+  kxTodo();
+});
+
+async function kxGuardarKit() {
+  const kit = kxDraft();
   const items = {};
-  document.querySelectorAll('#kits-editor input[data-item]').forEach(i => { items[i.dataset.item] = Number(i.value) || 0; });
+  Object.entries(kit).forEach(([id, f]) => { items[id] = { q: f.q, c: f.c || null }; });
   try {
     const data = await apiFetch('/prevencion/epp_kit_guardar.php', { method: 'POST', body: { cargo_id: EPP_SEL, items } });
-    mostrarAlerta('alerta', data.mensaje, 'exito');
+    delete KX_DRAFTS[EPP_SEL];
     await cargarKitsEpp();
+    kxAviso(data.mensaje || 'Kit guardado');
   } catch (err) {
-    mostrarAlerta('alerta', err.message);
+    kxAviso(err.message, true);
   }
 }
 
-async function restablecerKit() {
-  if (!confirm('¿Quitar los cambios de este cargo y usar solo el kit base?')) return;
+async function kxAgregarItem() {
+  const nombre = kxEl('nuevoNombre').value.trim();
+  if (nombre.length < 3) { kxEl('nuevoNombre').focus(); kxAviso('Escribe el nombre del elemento', true); return; }
   try {
-    const data = await apiFetch('/prevencion/epp_kit_guardar.php', { method: 'POST', body: { cargo_id: EPP_SEL, restablecer: true } });
-    mostrarAlerta('alerta', data.mensaje, 'exito');
+    const data = await apiFetch('/prevencion/epp_item_guardar.php', {
+      method: 'POST', body: { nombre, tipo_talla: KX_TALLA, colores: kxEl('nuevoColores').checked, activo: true } });
+    const colores = kxEl('nuevoColores').checked && EPP.colores_disponibles !== false;
+    kxDraft();                           // lo ya armado sin guardar se conserva
     await cargarKitsEpp();
+    kxDraft()[data.id] = { q: 1, c: colores ? 'amarillo' : null };
+    kxEl('nuevoNombre').value = '';
+    kxEl('nuevoColores').checked = false;
+    kxEl('adder').hidden = true;
+    kxTodo();
+    kxAviso('Agregado al catálogo y a este kit. Guarda el kit para dejarlo listo.');
   } catch (err) {
-    mostrarAlerta('alerta', err.message);
+    kxAviso(err.message, true);
   }
 }
 
-function pintarKitsCatalogo() {
-  const etiquetaTalla = { ninguna: 'Sin talla', calzado: 'N° de calzado', overol: 'Talla de overol' };
-  const opcionesTalla = (v) => ['ninguna', 'calzado', 'overol'].map(t =>
-    `<option value="${t}" ${t === v ? 'selected' : ''}>${etiquetaTalla[t]}</option>`).join('');
-  const fila = (i) => `
-    <tr class="border-t" data-fila="${i ? i.id : 0}">
-      <td class="py-1.5 pr-2"><input type="text" value="${esc(i ? i.nombre : '')}" placeholder="Nombre del elemento" class="f-nombre w-full border border-gray-300 rounded-lg px-2 py-1 text-sm"></td>
-      <td class="py-1.5 pr-2"><input type="text" value="${esc(i ? i.categoria : '')}" placeholder="Categoría" class="f-cat w-32 border border-gray-300 rounded-lg px-2 py-1 text-sm"></td>
-      <td class="py-1.5 pr-2"><select class="f-talla border border-gray-300 rounded-lg px-2 py-1 text-sm">${opcionesTalla(i ? i.tipo_talla : 'ninguna')}</select></td>
-      <td class="py-1.5 pr-2 text-center"><input type="checkbox" class="f-activo" ${!i || i.activo ? 'checked' : ''}></td>
-      <td class="py-1.5 text-right"><button onclick="guardarElementoEpp(this)" class="text-xs font-semibold text-blue-700 hover:underline">${i ? 'Guardar' : '+ Agregar'}</button></td>
-    </tr>`;
-  document.getElementById('kits-catalogo').innerHTML = `
-    <p class="text-xs text-gray-500 mb-2">Los elementos no se borran: se desactivan (dejan de aparecer en los kits nuevos).</p>
-    <table class="w-full text-sm">
-      <thead class="text-left text-xs text-gray-500"><tr><th>Elemento</th><th>Categoría</th><th>Talla</th><th class="text-center">Activo</th><th></th></tr></thead>
-      <tbody>${fila(null)}${EPP.items.map(fila).join('')}</tbody>
-    </table>`;
-}
-
-async function guardarElementoEpp(boton) {
+async function kxGuardarItem(boton) {
   const tr = boton.closest('tr');
   const body = {
     id: Number(tr.dataset.fila) || 0,
     nombre: tr.querySelector('.f-nombre').value,
-    categoria: tr.querySelector('.f-cat').value,
     tipo_talla: tr.querySelector('.f-talla').value,
+    colores: tr.querySelector('.f-colores').checked,
     activo: tr.querySelector('.f-activo').checked,
   };
   try {
     const data = await apiFetch('/prevencion/epp_item_guardar.php', { method: 'POST', body });
-    mostrarAlerta('alerta', data.mensaje, 'exito');
     await cargarKitsEpp();
+    kxAviso(data.mensaje || 'Elemento guardado');
   } catch (err) {
-    mostrarAlerta('alerta', err.message);
+    kxAviso(err.message, true);
   }
 }

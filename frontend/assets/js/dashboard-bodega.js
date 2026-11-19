@@ -418,7 +418,7 @@ function kitDetalleHtml(p) {
   if (!kit.length) return '<span class="text-xs text-gray-400" title="Prevención todavía no configura el kit de este cargo">Sin kit definido</span>';
   return `<details><summary class="cursor-pointer text-xs font-semibold text-blue-700">Ver kit (${kit.length})</summary>
     <ul class="mt-1 text-xs text-gray-700 space-y-0.5">${kit.map(k =>
-      `<li>${esc(k.nombre)} <b>×${Number(k.cantidad)}</b>${k.talla ? ` <span class="text-gray-500">(${esc(k.talla)})</span>` : ''}</li>`).join('')}</ul></details>`;
+      `<li>${esc(k.nombre)} <b>×${Number(k.cantidad)}</b>${(k.color || k.talla) ? ` <span class="text-gray-500">(${[k.color, k.talla].filter(Boolean).map(esc).join(', ')})</span>` : ''}</li>`).join('')}</ul></details>`;
 }
 
 function renderKitTotales(totales) {
@@ -435,7 +435,7 @@ function renderKitTotales(totales) {
         <span class="ml-2 text-xs font-semibold bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">${totales.length} elementos</span></summary>
       <p class="text-xs text-gray-500 mt-2 mb-2">Total de cada elemento para las personas que hoy están en tu lista, según el kit que Prevención definió para su cargo.</p>
       <div class="overflow-x-auto"><table class="w-full text-sm">
-        <thead class="bg-gray-50 text-gray-500 text-left"><tr><th class="px-3 py-2">Elemento</th><th class="px-3 py-2 text-right">Total</th><th class="px-3 py-2">Por talla</th></tr></thead>
+        <thead class="bg-gray-50 text-gray-500 text-left"><tr><th class="px-3 py-2">Elemento</th><th class="px-3 py-2 text-right">Total</th><th class="px-3 py-2">Por talla o color</th></tr></thead>
         <tbody>${totales.map(t => `
           <tr class="border-t"><td class="px-3 py-2">${esc(t.nombre)}</td>
           <td class="px-3 py-2 text-right font-bold">${Number(t.total)}</td>

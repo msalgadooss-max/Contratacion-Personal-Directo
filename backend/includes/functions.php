@@ -1987,9 +1987,14 @@ function resumenHistorialPorRut(PDO $pdo, array $postulaciones): array
 // ---------------------------------------------------------------------
 // v10.49 - Kit de EPP por cargo (lo configura Prevención; Bodega lo ve desde el Día 0).
 // Modelo: epp_items (catálogo) + epp_kit_cargo (cantidades). cargo_id = 0 es el KIT BASE; para un
-// cargo solo se guardan las diferencias contra el base (extra / otra cantidad / 0 = no lo lleva).
-// Todo es a prueba de bases sin la migración v10.49: sin las tablas, el kit simplemente es vacío.
+// cargo solo se guardan las diferencias contra el base (extra / otra cantidad u otro color /
+// cantidad 0 = no lo lleva).
+// v10.51: el casco puede ir en color (rojo / amarillo / azul): epp_items.colores, epp_items.icono y
+// epp_kit_cargo.color. Todo es a prueba de bases sin las migraciones: sin las tablas el kit es vacío,
+// y sin las columnas nuevas simplemente no hay color.
 // ---------------------------------------------------------------------
+
+const EPP_COLORES = ['rojo', 'amarillo', 'azul'];
 
 /** ¿Existen las tablas del kit de EPP? (migración v10.49) */
 function usaKitEpp(PDO $pdo): bool
@@ -2007,6 +2012,29 @@ function usaKitEpp(PDO $pdo): bool
     return $existe;
 }
 
+/** ¿Existen las columnas de color / icono? (migración v10.51) */
+function usaColorEpp(PDO $pdo): bool
+{
+    static $existe = null;
+    if ($existe === null) {
+        try {
+            $pdo->query('SELECT colores, icono FROM epp_items LIMIT 1');
+            $pdo->query('SELECT color FROM epp_kit_cargo LIMIT 1');
+            $existe = true;
+        } catch (\Throwable $e) {
+            $existe = false;
+        }
+    }
+    return $existe;
+}
+
+/** Color válido o null. */
+function colorEppValido($c): ?string
+{
+    $c = is_string($c) ? strtolower(trim($c)) : '';
+    return in_array($c, EPP_COLORES, true) ? $c : null;
+}
+
 /** Carga una vez por petición: catálogo activo, kit base y diferencias por cargo. */
 function eppMapa(PDO $pdo): array
 {
@@ -2019,14 +2047,21 @@ function eppMapa(PDO $pdo): array
         return $mapa;
     }
     try {
-        foreach ($pdo->query('SELECT id, nombre, categoria, tipo_talla, orden FROM epp_items WHERE activo = 1 ORDER BY orden, id') as $i) {
+        $conColor = usaColorEpp($pdo);
+        $selItems = $conColor
+            ? 'SELECT id, nombre, categoria, tipo_talla, colores, icono, orden FROM epp_items WHERE activo = 1 ORDER BY orden, id'
+            : "SELECT id, nombre, categoria, tipo_talla, 0 AS colores, 'extra' AS icono, orden FROM epp_items WHERE activo = 1 ORDER BY orden, id";
+        foreach ($pdo->query($selItems) as $i) {
             $mapa['items'][(int)$i['id']] = $i;
         }
-        foreach ($pdo->query('SELECT cargo_id, item_id, cantidad FROM epp_kit_cargo') as $r) {
+        $selKit = $conColor ? 'SELECT cargo_id, item_id, cantidad, color FROM epp_kit_cargo'
+                            : 'SELECT cargo_id, item_id, cantidad, NULL AS color FROM epp_kit_cargo';
+        foreach ($pdo->query($selKit) as $r) {
+            $fila = ['q' => (int)$r['cantidad'], 'c' => colorEppValido($r['color'])];
             if ((int)$r['cargo_id'] === 0) {
-                $mapa['base'][(int)$r['item_id']] = (int)$r['cantidad'];
+                $mapa['base'][(int)$r['item_id']] = $fila;
             } else {
-                $mapa['cargo'][(int)$r['cargo_id']][(int)$r['item_id']] = (int)$r['cantidad'];
+                $mapa['cargo'][(int)$r['cargo_id']][(int)$r['item_id']] = $fila;
             }
         }
     } catch (\Throwable $e) {
@@ -2038,21 +2073,22 @@ function eppMapa(PDO $pdo): array
 
 /**
  * Kit efectivo de un cargo: kit base + diferencias del cargo (cantidad 0 = lo quita).
- * Devuelve [['item_id','nombre','categoria','tipo_talla','cantidad'], ...] en el orden del catálogo.
+ * Devuelve [['item_id','nombre','categoria','tipo_talla','colores','icono','cantidad','color'], ...] en el orden del catálogo.
  */
 function kitEppDelCargo(PDO $pdo, int $cargoId): array
 {
     $m = eppMapa($pdo);
-    $cantidades = $m['base'];
-    foreach (($m['cargo'][$cargoId] ?? []) as $itemId => $cant) {
-        $cantidades[$itemId] = $cant;
+    $filas = $m['base'];
+    foreach (($m['cargo'][$cargoId] ?? []) as $itemId => $fila) {
+        $filas[$itemId] = $fila;
     }
     $kit = [];
     foreach ($m['items'] as $itemId => $i) {
-        $cant = $cantidades[$itemId] ?? 0;
-        if ($cant > 0) {
+        $f = $filas[$itemId] ?? null;
+        if ($f && $f['q'] > 0) {
             $kit[] = ['item_id' => $itemId, 'nombre' => $i['nombre'], 'categoria' => $i['categoria'],
-                      'tipo_talla' => $i['tipo_talla'], 'cantidad' => $cant];
+                      'tipo_talla' => $i['tipo_talla'], 'colores' => (int)$i['colores'] === 1, 'icono' => $i['icono'],
+                      'cantidad' => $f['q'], 'color' => ((int)$i['colores'] === 1) ? $f['c'] : null];
         }
     }
     return $kit;
@@ -2060,9 +2096,10 @@ function kitEppDelCargo(PDO $pdo, int $cargoId): array
 
 /**
  * Agrega a cada persona (con cargo_id, talla_calzado, talla_overol) su kit ya resuelto:
- *   'kit'       => [['nombre','cantidad','talla'], ...]   (talla = N° de calzado / talla de overol, o '')
- *   'kit_texto' => "Casco ×1 · Zapatos ×1 (N° 42) · ..."
- * y devuelve el total a preparar por elemento: [['nombre','categoria','total','tallas'=>['42'=>2,...]], ...].
+ *   'kit'       => [['nombre','cantidad','talla','color','icono'], ...]  (talla = N° de calzado / talla de overol, o '')
+ *   'kit_texto' => "Casco de seguridad ×1 (amarillo) · Zapato de seguridad ×1 (42) · ..."
+ * y devuelve el total a preparar por elemento: [['nombre','categoria','total','tallas'=>['42'=>2,'rojo'=>1,...]], ...]
+ * ('tallas' agrupa por talla o, en los elementos con colores, por color).
  */
 function adjuntarKitEpp(PDO $pdo, array &$personas): array
 {
@@ -2072,17 +2109,21 @@ function adjuntarKitEpp(PDO $pdo, array &$personas): array
         foreach (kitEppDelCargo($pdo, (int)($p['cargo_id'] ?? 0)) as $it) {
             $talla = $it['tipo_talla'] === 'calzado' ? (string)($p['talla_calzado'] ?? '')
                    : ($it['tipo_talla'] === 'overol' ? (string)($p['talla_overol'] ?? '') : '');
-            $kit[] = ['nombre' => $it['nombre'], 'cantidad' => $it['cantidad'], 'talla' => $talla];
+            $color = (string)($it['color'] ?? '');
+            $kit[] = ['nombre' => $it['nombre'], 'cantidad' => $it['cantidad'], 'talla' => $talla, 'color' => $color, 'icono' => $it['icono']];
             $k = $it['item_id'];
             $totales[$k] = $totales[$k] ?? ['nombre' => $it['nombre'], 'categoria' => $it['categoria'], 'total' => 0, 'tallas' => []];
             $totales[$k]['total'] += $it['cantidad'];
-            if ($talla !== '') {
-                $totales[$k]['tallas'][$talla] = ($totales[$k]['tallas'][$talla] ?? 0) + $it['cantidad'];
+            $clave = $talla !== '' ? $talla : $color;
+            if ($clave !== '') {
+                $totales[$k]['tallas'][$clave] = ($totales[$k]['tallas'][$clave] ?? 0) + $it['cantidad'];
             }
         }
         $p['kit'] = $kit;
-        $p['kit_texto'] = implode(' · ', array_map(
-            fn ($x) => $x['nombre'] . ' ×' . $x['cantidad'] . ($x['talla'] !== '' ? ' (' . $x['talla'] . ')' : ''), $kit));
+        $p['kit_texto'] = implode(' · ', array_map(function ($x) {
+            $det = array_filter([$x['color'], $x['talla']], fn ($v) => $v !== '');
+            return $x['nombre'] . ' ×' . $x['cantidad'] . ($det ? ' (' . implode(', ', $det) . ')' : '');
+        }, $kit));
     }
     unset($p);
     foreach ($totales as &$t) {

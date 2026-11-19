@@ -1,0 +1,156 @@
+/* v10.51 - Pantalla "Kits de EPP" del panel de Prevención (diseño aprobado el 19-11).
+   Todo vive bajo .kx (la sección completa de la pestaña). */
+.kx{
+  --bg:#F1F3F6; --surface:#FFFFFF; --surface-2:#F7F8FA; --ink:#11161D; --muted:#5A6573; --line:#DCE1E8;
+  --accent:#E1460E; --accent-ink:#FFFFFF; --accent-soft:#FDEDE6; --ok:#177A4B; --ok-soft:#E4F4EB;
+  --shadow:0 1px 2px rgba(17,22,29,.06),0 8px 24px -12px rgba(17,22,29,.18);
+  --f-head:'Manrope','Inter',system-ui,sans-serif; --f-body:'Inter',system-ui,sans-serif;
+  color:var(--ink); font-family:var(--f-body); font-size:14px; line-height:1.45;
+}
+.kx *{box-sizing:border-box}
+.kx h2,.kx h3{font-family:var(--f-head);margin:0;text-wrap:balance;letter-spacing:-.01em}
+.kx button,.kx input,.kx select{font:inherit;color:inherit}
+.kx button{cursor:pointer}
+.kx :focus-visible{outline:3px solid var(--accent);outline-offset:2px;border-radius:8px}
+.kx .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:6px 0 20px}
+.kx .step{display:flex;gap:12px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 14px}
+.kx .step i{flex:none;width:28px;height:28px;border-radius:50%;background:var(--ink);color:var(--bg);display:grid;place-items:center;font:800 13px var(--f-head);font-style:normal}
+.kx .step b{display:block;font-size:13.5px}
+.kx .step span{font-size:12px;color:var(--muted)}
+.kx .layout{display:grid;grid-template-columns:260px minmax(0,1fr) 350px;gap:18px;align-items:start}
+.kx .panel{background:var(--surface);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow)}
+.kx .cargos{padding:12px;position:sticky;top:12px;max-height:calc(100vh - 24px);display:flex;flex-direction:column;gap:10px}
+.kx .search{width:100%;border:1px solid var(--line);background:var(--surface-2);border-radius:10px;padding:9px 12px}
+.kx .clist{overflow:auto;display:flex;flex-direction:column;gap:3px;margin:0 -4px;padding:0 4px}
+.kx .cbtn{display:flex;align-items:center;justify-content:space-between;gap:8px;text-align:left;width:100%;background:none;border:1px solid transparent;border-radius:10px;padding:9px 10px;color:var(--ink)}
+.kx .cbtn:hover{background:var(--surface-2)}
+.kx .cbtn[aria-current="true"]{background:var(--accent-soft);border-color:color-mix(in srgb,var(--accent) 40%,transparent);font-weight:700}
+.kx .cbtn small{color:var(--muted);font-weight:500;font-size:11.5px}
+.kx .base-btn{border:1px solid var(--line);background:var(--ink);color:var(--bg);margin-bottom:2px}
+.kx .base-btn:hover{background:var(--ink);opacity:.92}
+.kx .base-btn small{color:inherit;opacity:.7}
+.kx .base-btn[aria-current="true"]{background:var(--ink);color:var(--bg);border-color:var(--accent);box-shadow:0 0 0 2px var(--accent)}
+.kx .dot{width:8px;height:8px;border-radius:50%;background:var(--accent);flex:none}
+.kx .cap{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:8px 10px 2px}
+.kx .editor{padding:22px}
+.kx .ehead{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap;margin-bottom:16px}
+.kx .ehead h2{font-size:26px}
+.kx .ehead p{margin:4px 0 0;color:var(--muted);font-size:13px;max-width:52ch}
+.kx .tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.kx .btn{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:8px 13px;font-weight:600;font-size:13px}
+.kx .btn:hover{background:var(--surface-2)}
+.kx .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.kx .btn.primary:hover{background:var(--accent);filter:brightness(1.05)}
+.kx select.btn{padding-right:8px}
+.kx .legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin:2px 0 14px}
+.kx .legend span{display:inline-flex;align-items:center;gap:6px}
+.kx .legend .sw{width:12px;height:12px;border-radius:4px;border:2px solid var(--line)}
+.kx .legend .sw.on{background:var(--accent);border-color:var(--accent)}
+.kx .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(172px,1fr));gap:12px}
+.kx .card{position:relative;border:2px solid var(--line);border-radius:16px;background:var(--surface);display:flex;flex-direction:column;transition:border-color .15s,box-shadow .15s,transform .15s}
+.kx .card:hover{transform:translateY(-1px);border-color:color-mix(in srgb,var(--accent) 45%,var(--line))}
+.kx .card.on{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 16%,transparent)}
+.kx .main{all:unset;box-sizing:border-box;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px 12px 10px;text-align:center;border-radius:14px}
+.kx .main:focus-visible{outline:3px solid var(--accent);outline-offset:-3px}
+.kx .pic{width:88px;height:88px;border-radius:22px;background:var(--surface-2);display:grid;place-items:center;transition:background .15s,opacity .15s}
+.kx .card:not(.on) .pic{opacity:.55;filter:saturate(.6)}
+.kx .card.on .pic{background:var(--accent-soft)}
+.kx .pic svg{width:62px;height:62px}
+.kx .name{font-weight:700;font-size:13.5px;line-height:1.25}
+.kx .tag{font-size:11.5px;color:var(--muted)}
+.kx .chk{position:absolute;top:10px;right:10px;width:24px;height:24px;border-radius:50%;border:2px solid var(--line);background:var(--surface);display:grid;place-items:center;color:transparent;font-size:13px;font-weight:800}
+.kx .card.on .chk{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.kx .ctrl{border-top:1px dashed var(--line);padding:10px 12px 12px;display:flex;flex-direction:column;gap:9px;min-height:50px;justify-content:center}
+.kx .card:not(.on) .ctrl{color:var(--muted);font-size:12px;text-align:center}
+.kx .stepper{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.kx .stepper label{font-size:12px;color:var(--muted);font-weight:600}
+.kx .qty{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--surface)}
+.kx .qty button{all:unset;cursor:pointer;width:30px;height:30px;display:grid;place-items:center;font-weight:800;font-size:16px}
+.kx .qty button:hover{background:var(--surface-2)}
+.kx .qty button:focus-visible{outline:3px solid var(--accent);outline-offset:-3px}
+.kx .qty output{min-width:28px;text-align:center;font-weight:800;font-variant-numeric:tabular-nums}
+.kx .colors{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.kx .colors>span{font-size:12px;color:var(--muted);font-weight:600}
+.kx .chips{display:flex;gap:7px}
+.kx .chip{all:unset;cursor:pointer;width:26px;height:26px;border-radius:50%;border:3px solid var(--surface);box-shadow:0 0 0 2px var(--line)}
+.kx .chip[aria-pressed="true"]{box-shadow:0 0 0 2px var(--ink)}
+.kx .chip:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+.kx .card.add{border-style:dashed;background:transparent;justify-content:center;align-items:center;text-align:center;min-height:210px;color:var(--muted)}
+.kx .card.add .main{color:inherit}
+.kx .card.add .pic{background:transparent;border:2px dashed var(--line);font-size:34px;font-weight:300;color:var(--muted)}
+.kx .card.add:hover{color:var(--accent)}
+.kx .adder{margin-top:16px;border:2px dashed color-mix(in srgb,var(--accent) 50%,var(--line));background:var(--accent-soft);border-radius:16px;padding:16px}
+.kx .adder h3{font-size:16px;margin-bottom:12px}
+.kx .fields{display:grid;grid-template-columns:2fr 1.4fr;gap:14px}
+.kx .field label,.kx .field .lab{display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px}
+.kx .field input[type=text]{width:100%;border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:10px 12px}
+.kx .seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--surface)}
+.kx .seg button{all:unset;cursor:pointer;padding:9px 12px;font-size:12.5px;font-weight:600;border-right:1px solid var(--line)}
+.kx .seg button:last-child{border-right:0}
+.kx .seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.kx .seg button:focus-visible{outline:3px solid var(--accent);outline-offset:-3px}
+.kx .adder .row{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;align-items:center}
+.kx .help{font-size:12px;color:var(--muted)}
+.kx .cb{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600}
+.kx .cb input{accent-color:var(--accent);width:16px;height:16px}
+.kx .prev{position:sticky;top:12px;overflow:hidden}
+.kx .phead{padding:16px 18px 12px;border-bottom:1px solid var(--line);background:var(--surface-2)}
+.kx .phead .eyebrow{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.kx .phead h3{font-size:18px;margin-top:2px}
+.kx .who{padding:14px 18px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--line)}
+.kx .av{width:42px;height:42px;border-radius:50%;background:var(--ink);color:var(--bg);display:grid;place-items:center;font:800 14px var(--f-head);flex:none}
+.kx .who b{display:block;font-size:14.5px}
+.kx .who span{font-size:12px;color:var(--muted)}
+.kx .sizes{display:flex;gap:6px;margin-left:auto;flex-wrap:wrap;justify-content:flex-end}
+.kx .sz{font-size:11.5px;font-weight:700;border-radius:8px;padding:4px 8px;background:var(--surface-2);border:1px solid var(--line)}
+.kx .sz em{font-style:normal;color:var(--muted);font-weight:600}
+.kx .lines{list-style:none;margin:0;padding:6px 10px 6px}
+.kx .line{display:flex;align-items:center;gap:11px;padding:8px;border-radius:12px}
+.kx .line:nth-child(odd){background:var(--surface-2)}
+.kx .mini{width:34px;height:34px;border-radius:10px;background:var(--surface);border:1px solid var(--line);display:grid;place-items:center;flex:none}
+.kx .mini svg{width:24px;height:24px}
+.kx .line b{font-size:13px;font-weight:600;flex:1;min-width:0}
+.kx .line small{display:block;font-weight:500;color:var(--muted);font-size:11.5px}
+.kx .times{font:800 13px var(--f-head);font-variant-numeric:tabular-nums;background:var(--ink);color:var(--bg);border-radius:8px;padding:3px 8px}
+.kx .empty{padding:26px 18px;text-align:center;color:var(--muted);font-size:13px}
+.kx .pfoot{border-top:1px solid var(--line);padding:12px 18px;display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:13px}
+.kx .pfoot b{font:800 15px var(--f-head)}
+.kx .flow{padding:12px 18px 16px;background:var(--surface-2);border-top:1px solid var(--line);font-size:12px;color:var(--muted);display:flex;gap:10px;align-items:flex-start}
+.kx .flow svg{flex:none;width:18px;height:18px;margin-top:1px;color:var(--ok)}
+.kx .who-sw{padding:10px 18px 0;display:flex;gap:8px;align-items:center;font-size:12px;color:var(--muted)}
+.kx .save{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));transform:translate(-50%,24px);opacity:0;pointer-events:none;
+  background:var(--ink);color:var(--bg);border-radius:16px;padding:10px 12px 10px 18px;display:flex;align-items:center;gap:14px;box-shadow:0 14px 40px -10px rgba(0,0,0,.5);
+  transition:opacity .2s,transform .2s;z-index:20;max-width:calc(100vw - 32px)}
+.kx .save.show{opacity:1;transform:translate(-50%,0);pointer-events:auto}
+.kx .save span{font-weight:600;font-size:13.5px}
+.kx .save .btn{background:transparent;color:var(--bg);border-color:color-mix(in srgb,var(--bg) 30%,transparent)}
+.kx .save .btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.kx .toast{position:fixed;left:50%;top:calc(18px + env(safe-area-inset-top,0px));transform:translate(-50%,-20px);opacity:0;background:var(--ok);color:#fff;border-radius:12px;padding:10px 18px;font-weight:700;z-index:30;transition:.25s;pointer-events:none}
+.kx .toast.show{transform:translate(-50%,0);opacity:1}
+@media (max-width:1150px){.kx .layout{grid-template-columns:230px minmax(0,1fr)}
+.kx .prev{position:static;grid-column:1/-1}}
+@media (max-width:760px){.kx .steps{grid-template-columns:1fr}
+.kx .layout{grid-template-columns:minmax(0,1fr)}
+.kx .cargos{position:static;max-height:none}
+.kx .clist{flex-direction:row;overflow-x:auto;padding-bottom:6px}
+.kx .cbtn{white-space:nowrap;width:auto;border:1px solid var(--line)}
+.kx .cap{display:none}
+.kx .fields{grid-template-columns:1fr}
+.kx .editor{padding:16px}
+.kx .ehead h2{font-size:22px}}
+@media (prefers-reduced-motion:reduce){.kx *{transition:none!important}}
+
+.kx .catalogo{margin-top:18px;border:1px solid var(--line);border-radius:14px;padding:12px 16px;background:var(--surface-2)}
+.kx .catalogo summary{cursor:pointer;font-weight:700;font-size:13px}
+.kx .catalogo[open] summary{margin-bottom:10px}
+.kx .cat{width:100%;border-collapse:collapse;font-size:13px}
+.kx .cat th{text-align:left;font-size:11.5px;color:var(--muted);font-weight:700;padding:4px 6px}
+.kx .cat td{padding:5px 6px;border-top:1px solid var(--line);vertical-align:middle}
+.kx .cat .c{text-align:center}.kx .cat .r{text-align:right}
+.kx .cat input[type=text],.kx .cat select{width:100%;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:7px 9px}
+.kx .cat input[type=checkbox]{accent-color:var(--accent);width:16px;height:16px}
+.kx .cat .btn{padding:6px 11px}
+.kx .cat-wrap{overflow-x:auto}
+.kx .tools{max-width:100%}
+.kx select.btn{max-width:100%;min-width:0}
+@media (max-width:760px){.kx .tools{width:100%}.kx .tools .btn{flex:1 1 auto}}

@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Dashboard Prevención de Riesgos - ICAFAL</title>
 <link rel="icon" href="../assets/img/logo-icafal-mark.png">
+<link rel="stylesheet" href="../assets/css/kits-epp.css">
 <script src="https://cdn.tailwindcss.com"></script>
 <!-- ICAFAL_TEMA_MARCA v1 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -55,7 +56,7 @@
     </div>
   </header>
 
-  <main class="max-w-4xl mx-auto p-6">
+  <main id="contenedor" class="max-w-4xl mx-auto p-6">
     <div id="alerta"></div>
     <div id="estado-vivo"></div>
     <!-- v10.21 (pedido explícito del usuario, tras el piloto del 16-09):
@@ -63,7 +64,7 @@
     <!-- v10.24 (pedido explícito del usuario, 07-10): cada día en su propia
          pestaña, con contador de pendientes. Día 0 = verificación; Día 1 =
          contratación (IRL). -->
-    <div class="flex gap-1 border-b border-gray-200 mb-6" id="tabs">
+    <div class="flex gap-1 border-b border-gray-200 mb-6 overflow-x-auto whitespace-nowrap" id="tabs">
       <button data-tab="dia0" class="tab-btn px-4 py-2 text-sm font-semibold border-b-2 border-blue-600 text-blue-600">
         Día 0 · Postulación <span id="cuenta-dia0" class="ml-1 text-xs font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">0</span>
       </button>
@@ -114,23 +115,172 @@
       </div>
     </section>
 
-    <!-- v10.49 (pedido del usuario, 18-11): Prevención define qué EPP lleva cada cargo; Bodega lo ve desde el Día 0. -->
-    <section id="panel-kits" class="tab-panel hidden">
-      <h2 class="text-sm font-bold text-gray-900 mb-1">Kits de EPP por cargo</h2>
-      <p class="text-xs text-gray-500 mb-4 max-w-3xl">Define qué elementos de protección personal recibe cada trabajador al ingresar. Todo cargo parte con el <strong>kit base</strong>; a cada cargo puedes agregarle elementos, cambiar cantidades o quitarle alguno. Bodega ve el kit de cada persona (con su talla de calzado y overol) y el total a preparar, desde el Día 0 de la postulación.</p>
-      <div id="kits-aviso" class="hidden bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-lg px-4 py-3 mb-4"></div>
-      <div class="grid md:grid-cols-[250px_1fr] gap-4">
-        <div class="bg-white rounded-xl shadow-sm p-2 max-h-[70vh] overflow-y-auto">
-          <ul id="kits-lista" class="text-sm"></ul>
-        </div>
-        <div>
-          <div id="kits-editor" class="bg-white rounded-xl shadow-sm p-5"></div>
-          <details class="bg-white rounded-xl shadow-sm p-5 mt-4">
-            <summary class="text-sm font-semibold text-gray-800 cursor-pointer">Catálogo de elementos (agregar o editar)</summary>
-            <div id="kits-catalogo" class="mt-3 overflow-x-auto"></div>
-          </details>
-        </div>
+    <!-- v10.51 (pedido del usuario, 19-11): pantalla de kits de EPP rediseñada. Prevención define qué EPP lleva cada cargo; Bodega lo ve desde el Día 0. -->
+    <section id="panel-kits" class="tab-panel kx hidden">
+      <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-casco" viewBox="0 0 64 64">
+      <path d="M9 43c0-14.5 10-26 23-26s23 11.5 23 26z" fill="var(--i1)"/>
+      <rect x="4" y="42" width="56" height="7" rx="3.5" fill="var(--i1)"/>
+      <rect x="4" y="46" width="56" height="3" rx="1.5" fill="#000" opacity=".16"/>
+      <rect x="28" y="13" width="8" height="29" rx="3" fill="#fff" opacity=".3"/>
+      <path d="M15 36c1-8 6-13 12-15" stroke="#fff" stroke-width="3" stroke-linecap="round" fill="none" opacity=".5"/>
+    </symbol>
+    <symbol id="i-lentes" viewBox="0 0 64 64">
+      <path d="M6 28l-0 -4M58 28l0 -4" stroke="var(--i2)" stroke-width="3" stroke-linecap="round"/>
+      <rect x="6" y="24" width="23" height="18" rx="8" fill="var(--i1)" stroke="var(--i2)" stroke-width="3"/>
+      <rect x="35" y="24" width="23" height="18" rx="8" fill="var(--i1)" stroke="var(--i2)" stroke-width="3"/>
+      <path d="M29 31c2-3 4-3 6 0" stroke="var(--i2)" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <path d="M11 30l6-3M40 30l6-3" stroke="#fff" stroke-width="2.5" stroke-linecap="round" opacity=".7"/>
+    </symbol>
+    <symbol id="i-barbiquejo" viewBox="0 0 64 64">
+      <path d="M14 8v18c0 16 7 27 18 27s18-11 18-27V8" fill="none" stroke="var(--i1)" stroke-width="6" stroke-linecap="round"/>
+      <rect x="24" y="42" width="16" height="12" rx="3" fill="var(--i2)"/>
+      <rect x="29" y="45" width="6" height="6" rx="1.5" fill="#fff" opacity=".6"/>
+      <circle cx="14" cy="10" r="4" fill="var(--i2)"/><circle cx="50" cy="10" r="4" fill="var(--i2)"/>
+    </symbol>
+    <symbol id="i-overol" viewBox="0 0 64 64">
+      <path d="M22 6L11 13 3 29l9 5 7-4v28h11l2-19 2 19h11V30l7 4 9-5-8-16-11-7q-10 12-20 0z" fill="var(--i1)"/>
+      <path d="M32 17v26" stroke="var(--i2)" stroke-width="2.5" stroke-linecap="round"/>
+      <rect x="21" y="30" width="9" height="8" rx="2" fill="#000" opacity=".16"/>
+      <rect x="34" y="30" width="9" height="8" rx="2" fill="#000" opacity=".16"/>
+      <path d="M13 24l5 2M51 24l-5 2" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".55"/>
+    </symbol>
+    <symbol id="i-zapato" viewBox="0 0 64 64">
+      <path d="M7 41V17q0-5 5-5h9q3 0 4 3 3 8 12 11l15 5q7 2 7 9v5H7z" fill="var(--i1)"/>
+      <path d="M40 31l15 5q7 2 7 9v1H40z" fill="#fff" opacity=".28"/>
+      <rect x="5" y="45" width="55" height="8" rx="3" fill="var(--i2)"/>
+      <path d="M13 22h9M13 28h9" stroke="#fff" stroke-width="2.5" stroke-linecap="round" opacity=".55"/>
+    </symbol>
+    <symbol id="i-guantes" viewBox="0 0 64 64">
+      <rect x="17" y="10" width="8" height="26" rx="4" fill="var(--i1)"/>
+      <rect x="25.5" y="6" width="8" height="30" rx="4" fill="var(--i1)"/>
+      <rect x="34" y="8" width="8" height="28" rx="4" fill="var(--i1)"/>
+      <rect x="42.5" y="14" width="8" height="24" rx="4" fill="var(--i1)"/>
+      <rect x="17" y="26" width="33.5" height="22" rx="10" fill="var(--i1)"/>
+      <rect x="6" y="30" width="19" height="9" rx="4.5" transform="rotate(32 6 30)" fill="var(--i1)"/>
+      <rect x="19" y="46" width="30" height="12" rx="3" fill="var(--i2)"/>
+      <path d="M24 12v14M33 9v16M42 11v15" stroke="#000" stroke-opacity=".12" stroke-width="2" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="i-fono" viewBox="0 0 64 64">
+      <path d="M13 38V28a19 19 0 0 1 38 0v10" fill="none" stroke="var(--i2)" stroke-width="5" stroke-linecap="round"/>
+      <rect x="6" y="32" width="15" height="24" rx="7" fill="var(--i1)"/>
+      <rect x="43" y="32" width="15" height="24" rx="7" fill="var(--i1)"/>
+      <rect x="16" y="37" width="5" height="14" rx="2.5" fill="#000" opacity=".2"/>
+      <rect x="43" y="37" width="5" height="14" rx="2.5" fill="#000" opacity=".2"/>
+    </symbol>
+    <symbol id="i-chaleco" viewBox="0 0 64 64">
+      <path d="M17 6L7 15l3 44h17V36h10v23h17l3-44-10-9h-7l-6 15-6-15z" fill="var(--i1)"/>
+      <path d="M17 6l9 0 6 15-1 5M47 6l-9 0-6 15" fill="none" stroke="#000" stroke-opacity=".12" stroke-width="2"/>
+      <rect x="9" y="42" width="46" height="6" fill="#EEF1F4"/>
+      <path d="M17 9l3 33M47 9l-3 33" stroke="#EEF1F4" stroke-width="5"/>
+    </symbol>
+    <symbol id="i-botas" viewBox="0 0 64 64">
+      <path d="M21 5h19v28q0 4 6 6l10 3q6 2 6 8v5H21z" fill="var(--i1)"/>
+      <rect x="21" y="5" width="19" height="7" fill="#000" opacity=".15"/>
+      <rect x="19" y="52" width="43" height="6" rx="3" fill="var(--i2)"/>
+      <path d="M26 16v22" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".45"/>
+    </symbol>
+    <symbol id="i-legionario" viewBox="0 0 64 64">
+      <path d="M8 33l-3 20q0 5 6 5h14V33z" fill="var(--i2)"/>
+      <path d="M10 36c0-13 9-21 22-21s22 8 22 21z" fill="var(--i1)"/>
+      <path d="M32 36h28l-5 6H32z" fill="var(--i1)"/>
+      <rect x="10" y="33" width="44" height="5" fill="#000" opacity=".12"/>
+      <path d="M17 31c2-7 7-11 13-12" stroke="#fff" stroke-width="3" stroke-linecap="round" fill="none" opacity=".5"/>
+    </symbol>
+    <symbol id="i-extra" viewBox="0 0 64 64">
+      <path d="M32 6l20 7v16c0 14-8 23-20 29C20 52 12 43 12 29V13z" fill="var(--i1)"/>
+      <path d="M32 6l20 7v16c0 14-8 23-20 29z" fill="#000" opacity=".14"/>
+      <path d="M23 31l7 7 12-14" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+  </defs>
+</svg>
+      <div class="steps" aria-label="Cómo se usa">
+        <div class="step"><i>1</i><div><b>Elige el cargo</b><span>O el kit base, que parte para todos.</span></div></div>
+        <div class="step"><i>2</i><div><b>Toca los EPP que lleva</b><span>Ajusta cantidad y color del casco.</span></div></div>
+        <div class="step"><i>3</i><div><b>Revisa a la derecha y guarda</b><span>Así lo verá Bodega desde el Día 0.</span></div></div>
       </div>
+      <div id="kx-aviso" class="hidden" style="background:#FFF7E6;border:1px solid #F5D58B;color:#8A5A00;border-radius:12px;padding:10px 14px;margin-bottom:14px;font-size:13px"></div>
+
+      <div class="layout">
+        <aside class="panel cargos" aria-label="Cargos">
+          <input id="kx-buscar" class="search" type="search" placeholder="Buscar cargo…" aria-label="Buscar cargo">
+          <div class="clist" id="kx-clist"></div>
+        </aside>
+
+        <main class="panel editor" aria-live="polite">
+          <div class="ehead">
+            <div>
+              <h2 id="kx-etitulo"></h2>
+              <p id="kx-esub"></p>
+            </div>
+            <div class="tools">
+              <select id="kx-copiar" class="btn" aria-label="Copiar el kit de otro cargo"></select>
+              <button id="kx-reset" class="btn" type="button">Volver al kit base</button>
+            </div>
+          </div>
+          <div class="legend">
+            <span><i class="sw on"></i> En el kit: toca para quitar</span>
+            <span><i class="sw"></i> No lo lleva: toca para agregar</span>
+          </div>
+          <div class="grid" id="kx-grid"></div>
+
+          <div id="kx-adder" class="adder" hidden>
+            <h3>Agregar otro EPP</h3>
+            <div class="fields">
+              <div class="field">
+                <label for="kx-nuevoNombre">Nombre del elemento</label>
+                <input id="kx-nuevoNombre" type="text" placeholder="Ej: Mascarilla con filtro" maxlength="60">
+              </div>
+              <div class="field">
+                <span class="lab" id="kx-labTalla">¿Usa talla?</span>
+                <div class="seg" role="group" aria-labelledby="kx-labTalla" id="kx-segTalla">
+                  <button type="button" data-v="none" aria-pressed="true">Sin talla</button>
+                  <button type="button" data-v="calzado" aria-pressed="false">N° calzado</button>
+                  <button type="button" data-v="overol" aria-pressed="false">Talla overol</button>
+                </div>
+              </div>
+            </div>
+            <div class="row">
+              <label class="cb"><input id="kx-nuevoColores" type="checkbox"> Viene en colores (rojo, amarillo, azul)</label>
+            </div>
+            <div class="row">
+              <button id="kx-addOk" class="btn primary" type="button">Agregar al catálogo</button>
+              <button id="kx-addCancel" class="btn" type="button">Cancelar</button>
+              <span class="help">Queda disponible para todos los cargos.</span>
+            </div>
+          </div>
+
+          <details class="catalogo">
+            <summary>Editar el catálogo de elementos</summary>
+            <div id="kx-catalogo"></div>
+          </details>
+        </main>
+
+        <aside class="panel prev" aria-label="Vista de Bodega">
+          <div class="phead">
+            <div class="eyebrow">Así lo verá Bodega</div>
+            <h3 id="kx-ptitulo"></h3>
+          </div>
+          <div class="who-sw"><span>Ejemplo con:</span>
+            <div class="seg" id="kx-segWho" role="group" aria-label="Persona de ejemplo"></div>
+          </div>
+          <div class="who" id="kx-who"></div>
+          <ul class="lines" id="kx-lines"></ul>
+          <div class="pfoot"><span id="kx-ptotal"></span><b id="kx-pcount"></b></div>
+          <div class="flow">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg>
+            <span>Le llega a Bodega el <b>Día 0</b>: en su panel, en el correo de las 14:00 y en el Excel, con la talla de cada persona ya puesta.</span>
+          </div>
+        </aside>
+      </div>
+
+      <div class="save" id="kx-save" role="status">
+        <span>Tienes cambios sin guardar en este kit</span>
+        <button class="btn" id="kx-descartar" type="button">Descartar</button>
+        <button class="btn primary" id="kx-guardar" type="button">Guardar kit</button>
+      </div>
+      <div class="toast" id="kx-toast" role="status"></div>
     </section>
   </main>
 
